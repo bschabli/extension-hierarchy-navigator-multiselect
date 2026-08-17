@@ -1,7 +1,9 @@
 import { Checkbox } from '@tableau/tableau-ui';
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { HierarchyProps, Status } from '../API/Interfaces';
 import { Selector } from '../shared/Selector';
+import { ConfigSection, ConfigStepIntro } from './ConfigPrimitives';
+import { TargetFilterControls } from './TargetFilterControls';
 
 interface Props {
     data: HierarchyProps;
@@ -12,94 +14,70 @@ interface Props {
 }
 
 export function Page3Recursive(props: Props) {
-    const [filterList, setFilterList]=useState<string[]>([]);
-
-    useEffect(() => {
-        const { filters }=props.data.dashboardItems.allCurrentWorksheetItems;
-        const res=filters.filter(filter => {
-            return (filter===props.data.worksheet.childId||filter===props.data.worksheet.childLabel);
-        });
-        if (res.length && props.data.worksheet.filter !== props.data.worksheet.childId && props.data.worksheet.filter !== props.data.worksheet.childLabel) { 
-            props.setUpdates({type: 'SET_FILTER_FIELD', data: res[0]})
-        }
-        setFilterList(res);
-
-    }, [props.data.worksheet.childId, props.data.dashboardItems.allCurrentWorksheetItems.filters]);
-
-    const changeFilter=(e: React.ChangeEvent<HTMLSelectElement>): void => {
-        props.setUpdates({ type: 'SET_FILTER_FIELD', data: e.target.value });
-    };
-
-
     // PARAMETERS CONTENT
     return (
-        <>
-            <div className='sectionStyle mb-2'>
-                <b>Parameters</b>
-                <br />
-                <div style={{ marginLeft: '9px' }}>
+        <div className='config-page'>
+            <ConfigStepIntro
+                eyebrow='Step 3 of 4'
+                title='Choose what a selection controls'
+                description='Filtering is the usual choice. Parameters and source mark selection are optional integrations for more advanced dashboards.'
+            />
+            <TargetFilterControls {...props} />
+            <details className='config-advanced' open={props.data.parameters.childIdEnabled||props.data.parameters.childLabelEnabled}>
+                <summary>
+                    <span>
+                        <strong>Advanced: write values to parameters</strong>
+                        <small>Expose the selected item to calculations and parameter actions.</small>
+                    </span>
+                </summary>
+                <ConfigSection
+                    title='Parameter outputs'
+                    description='Create string parameters in Tableau first, then map them here. Leave these off if filtering is all you need.'
+                    optional={true}
+                >
+                    <div className='config-toggle-field'>
                     <Checkbox
                         disabled={!props.data.dashboardItems.parameters.length}
                         checked={props.data.parameters.childIdEnabled}
                         onChange={props.changeEnabled}
                         data-type='id'
-                    >Parameter for Child Id Field
-        </Checkbox>
-                    <Selector
-                        status={props.data.parameters.childIdEnabled? (props.data.dashboardItems.parameters.length? Status.set:Status.notpossible):Status.notpossible}
-                        onChange={props.changeParam}
-                        list={props.data.dashboardItems.parameters}
-                        selected={props.data.parameters.childId}
-                        type='id'
-                    />
+                        aria-label='Write selected child ID to a parameter'
+                    >Write selected item ID to a parameter</Checkbox>
+                    {props.data.parameters.childIdEnabled&&
+                        <Selector
+                            title='Item ID parameter'
+                            status={props.data.dashboardItems.parameters.length? Status.set:Status.notpossible}
+                            onChange={props.changeParam}
+                            list={props.data.dashboardItems.parameters}
+                            selected={props.data.parameters.childId}
+                            type='id'
+                        />
+                    }
+                    </div>
+                    <div className='config-toggle-field'>
                     <Checkbox
                         disabled={!props.data.dashboardItems.parameters.length}
                         checked={props.data.parameters.childLabelEnabled}
                         onChange={props.changeEnabled}
                         data-type='label'
-                    >
-                        Parameter for Child Label Field
-        </Checkbox>
-                    <Selector
-                        // For label field'
-                        status={props.data.parameters.childLabelEnabled?
-                            (props.data.dashboardItems.parameters.length? Status.set:Status.notpossible):Status.notpossible}
-                        onChange={props.changeParam}
-                        list={props.data.dashboardItems.parameters}
-                        selected={props.data.parameters.childLabel}
-                        type='label'
-                    />
-                </div>
-            </div>
-            <div className='sectionStyle mb-2'>
-                <b>Sheet Interactions</b>
-                <div style={{ marginLeft: '9px' }}>
-                    <Checkbox
-                        // for filter field
-                        disabled={filterList.length===0}
-                        checked={props.data.worksheet.filterEnabled}
-                        onChange={props.changeEnabled}
-                        data-type='filter'
-                    >Filter {!filterList.length? ` (to enable, add a filter on Child ID  or Child Label field on the source sheet)`:''}
-                    </Checkbox>
-                    <br />
-                    <div style={filterList.length? {}:{ display: 'none' }}>
+                        aria-label='Write selected child label to a parameter'
+                    >Write selected item label to a parameter</Checkbox>
+                    {props.data.parameters.childLabelEnabled&&
                         <Selector
-                            status={filterList.length>0? Status.set:Status.notset}
-                            onChange={changeFilter}
-                            list={filterList}
-                            selected={props.data.worksheet.filter}
-                            type='filter'
+                            title='Item label parameter'
+                            status={props.data.dashboardItems.parameters.length? Status.set:Status.notpossible}
+                            onChange={props.changeParam}
+                            list={props.data.dashboardItems.parameters}
+                            selected={props.data.parameters.childLabel}
+                            type='label'
                         />
+                    }
                     </div>
-                    <Checkbox
-                        checked={props.data.worksheet.enableMarkSelection}
-                        onChange={props.changeEnabled}
-                        data-type='mark'
-                    >Enable Mark Selection
-                </Checkbox>
-                </div>
-            </div>
-        </>
+                    {!props.data.dashboardItems.parameters.length&&
+                        <p className='config-muted-note'>No compatible string or integer parameters were found on this dashboard.</p>
+                    }
+                </ConfigSection>
+            </details>
+        </div>
     );
 }

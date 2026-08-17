@@ -10,10 +10,11 @@
     "tslib": "^2.4.0"
   },
   "scripts": {
-    "start": "webpack-dev-server --open --mode development --hot",
+    "start": "npm run copy-resources && webpack-dev-server --open --mode development --hot",
     "build": "npm run copy-resources && webpack --mode production --no-devtool",
+    "test": "tsc -p tsconfig.test.json && node /tmp/hierarchy-navigator-tests/TreeModel.test.js",
     "sandbox": "webpack --mode production --watch --progress --no-devtool & npx tabextsandbox --config sandbox-config.json",
-    "copy-resources": "mkdir -p ./docs; cp src/*.ico ./docs/ & cp src/*.trex ./docs/ & cp src/*.twbx ./docs/"
+    "copy-resources": "mkdir -p ./docs/resources && cp src/*.ico ./docs/ && cp src/*.trex ./docs/ && cp src/*.twbx ./docs/ && cp src/hierarchynavigator-1.0.trex ./docs/hierarchynavigator-multiselect.trex && cp src/resources/*.js ./docs/resources/"
   },
   "devDependencies": {
     "@babel/core": "^7.18.2",
@@ -31,6 +32,7 @@
     "css-loader": "^6.7.1",
     "html-loader": "^3.1.0",
     "html-webpack-plugin": "^5.5.0",
+    "minimizer-webpack-plugin": "^5.6.1",
     "react": "^18.0.0",
     "react-dom": "^18.0.0",
     "reactstrap": "^9.0.1",

@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { createRoot } from 'react-dom/client';
 import '../css/style.css';
-import hierimage from "../images/TableauHierarchyNavigator.png";
+import hierimage from '../images/TableauHierarchyNavigator.png';
  
 class AHome extends React.Component<any, any> {
 	public render() {	
@@ -10,24 +10,33 @@ class AHome extends React.Component<any, any> {
 				<div className='icontainer'>
 					<div className='box'>
 						<div className='left'>
-							<div><img src={hierimage} width='45%'/></div>
-							<h1 className='iheader'>Hierarchy Navigator Extension</h1>
-							<span className='tagline'>Recursive Data Visualized</span>
+							<div><img src={hierimage} width='45%' alt='Hierarchy Navigator tree' /></div>
+							<h1 className='iheader'>Hierarchy Navigator Multiselect</h1>
+							<span className='tagline'>Flat and recursive Tableau hierarchies with checkbox selection</span>
 						</div>
 						<div className='right'>
-							<h4 className='big'>What is it?</h4>
-							<p>This extension allows you to take flat/dimensional or recursive data and visualize it and enable interactions with other dashboard components.  </p>
-							<p>Why? Because users have been <a href='https://community.tableau.com/ideas/1083'>asking</a> for this for a long time.</p>
-							<h4 className='big'>Using the Extension</h4>
+							<h4 className='big'>About this project</h4>
+							<p>
+								This fork extends the open-source Tableau Hierarchy Navigator with shared checkbox
+								multi-selection for Flat/Dimensional and Recursive hierarchies.
+							</p>
+							<ul>
+								<li>Select leaves across multiple branches.</li>
+								<li>Select or clear an entire parent subtree.</li>
+								<li>See checked and indeterminate parent states.</li>
+								<li>Handle incomplete Flat paths without visible NULL nodes.</li>
+								<li>Apply the complete selection directly to a configured Tableau filter.</li>
+							</ul>
+							<h4 className='big'>Test the Extension</h4>
 							<ol>
-                                <li>Download/find the sandboxed <a href='https://tableau.github.io/extension-hierarchy-navigator-sandboxed/hierarchynavigator-1.0.sandboxed.trex'> manifest file</a>.</li>
-								<li>View the <a href='https://github.com/tableau/extension-hierarchy-navigator-sandboxed'>README</a> in the GitHub repository and <a href='https://tableau.github.io/extension-hierarchy-navigator-sandboxed/Hierarchy%20Navigator%20Extension%20v2.twbx'>download (v2 2018.3+ with Set Actions)</a> the sample workbook with directions and examples.  This <a href='https://tableau.github.io/extension-hierarchy-navigator-sandboxed/Dimensional-Flat%20example%20Hierarchy%20Navigator_v2018.2.twbx'>workbook</a> is an example of a dimensional/flat hierarchy in 2018.2 (pre-parameter and set actions)</li>
+								<li><a href='./hierarchynavigator-multiselect.trex'>Download the multiselect test manifest</a>.</li>
+								<li>In Tableau, add an Extension and choose <b>My Extensions</b>, then select the downloaded manifest.</li>
+								<li>Configure the hierarchy source worksheet, ordered fields or recursive IDs, and the target worksheet/filter field.</li>
+								<li>Use the included <a href='./Hierarchy%20Navigator%20Extension%20v2.twbx'>sample workbook</a> as a starting point if needed.</li>
 							</ol>
-							<p><b>Note:</b> You can add as many instances of this extension as you like!</p>
+							<p><b>Testing note:</b> This is a proof-of-concept build hosted from the multiselect feature branch.</p>
 							<div className='gh' style={{paddingTop: '10px'}}>
-								Get this extension and more in the <a href='https://extensiongallery.tableau.com/'>Extension Gallery</a>.
-								<br />
-								<a href='https://tableau.github.io/extension-hierarchy-navigator-sandboxed'>View on GitHub</a>
+								<a href='https://github.com/bschabli/extension-hierarchy-navigator-multiselect'>View source and documentation on GitHub</a>
 							</div>
 						</div>
 					</div>

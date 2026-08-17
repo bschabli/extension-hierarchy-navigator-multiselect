@@ -1,16 +1,16 @@
 /* tslint:disable:jsx-no-lambda */
 import '../../css/bootstrap.css';
 import '../../css/style.css';
-import '../../resources/tableau.extensions.1.latest.js';
 import { Extensions } from '@tableau/extensions-api-types';
-import { Button, Pill, Spinner } from '@tableau/tableau-ui';
+import { Button, Spinner } from '@tableau/tableau-ui';
 import React, { useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { Alert, Col, Container, Row } from 'reactstrap';
+import { Alert } from 'reactstrap';
 import flatHier from '../../images/FlatHier.jpeg';
 import recursiveHier from '../../images/RecursiveHier.jpeg';
 import HierarchyAPI from '../API/HierarchyAPI';
 import { debugOverride, HierarchyProps, HierType } from '../API/Interfaces';
+import { ConfigStatus, ConfigStepIntro } from './ConfigPrimitives';
 import { Page2Flat } from './Page2Flat';
 import { Page2Recursive } from './Page2Recursive';
 import { Page3Flat } from './Page3Flat';
@@ -96,26 +96,63 @@ function Configure(props: any) {
         setUpdates({ type: 'SUBMIT' });
     };
 
-    const page: Array<{ name: string, content: React.ReactFragment; }> = [{ name: 'Hierarchy Type', content: (<div />) }, { name: 'Sheet/Fields', content: (<div />) }, { name: 'Interactions', content: (<div />) }, { name: 'Options', content: (<div />) }];
+    const page: Array<{ name: string, description: string, content: React.ReactFragment; }> = [
+        { name: 'Hierarchy format', description: 'Choose the shape of your data', content: (<div />) },
+        { name: 'Source data', description: 'Map the worksheet and fields', content: (<div />) },
+        { name: 'Dashboard actions', description: 'Choose what selection controls', content: (<div />) },
+        { name: 'Review & display', description: 'Confirm settings and appearance', content: (<div />) }
+    ];
+    const sourceComplete=data.worksheet.name!==''&&data.worksheet.childId!==''&&(
+        (data.type===HierType.FLAT&&data.worksheet.fields.length>0)||
+        (data.type===HierType.RECURSIVE&&data.worksheet.parentId!==''&&data.worksheet.childLabel!=='')
+    );
+    const stepComplete=[true, sourceComplete, false, false];
+    const isStepComplete=(index: number): boolean => stepComplete[index]||(index>1&&selectedTabIndex>index);
+
     // WORKSHEET CONTENT
     page[0].content = (
-        <div className='sectionStyle mb-5'>
-            <b>Hierarchy Type</b><br />
-            Select your data type. The source hierarchy should be on a separate sheet (can be hidden).
-            <p />
-            <Row>
-
-                <Col onClick={() => changeHierType(HierType.FLAT)} className='centerChildren sectionStyle' style={{background: data.type === HierType.FLAT ? 'lightblue' : ''}}>
-                    <b>Dimensional </b><br />
-                    <img src={flatHier} /><br />
-                    Description: Levels of the hierarchy are in separate columns/dimensions.
-                </Col>
-                <Col onClick={() => changeHierType(HierType.RECURSIVE)} className='centerChildren sectionStyle' style={{ background: data.type === HierType.RECURSIVE?'lightblue':'' }}>
-                    <b>Recursive</b> <br />
-                    <img src={recursiveHier} /><br />
-                    Description: Relationships are stored in a parent/child relationship.
-                </Col>
-            </Row>
+        <div className='config-page'>
+            <ConfigStepIntro
+                eyebrow='Step 1 of 4'
+                title='How is your hierarchy stored?'
+                description='Choose the format used by the dedicated source worksheet. The worksheet can be hidden after configuration.'
+            />
+            <div className='config-choice-grid' role='radiogroup' aria-label='Hierarchy format'>
+                <button
+                    className={`config-choice ${data.type===HierType.FLAT?'config-choice--selected':''}`}
+                    type='button'
+                    role='radio'
+                    aria-checked={data.type===HierType.FLAT}
+                    onClick={() => changeHierType(HierType.FLAT)}
+                >
+                    <div className='config-choice-heading'>
+                        <div>
+                            <span className='config-choice-title'>Separate level columns</span>
+                            <span className='config-tag config-tag--recommended'>Recommended</span>
+                        </div>
+                        <span className='config-radio' aria-hidden='true' />
+                    </div>
+                    <img src={flatHier} alt='Example table with one column for each hierarchy level' />
+                    <p>Use this when each level—such as Category, Sub-category, and Product—has its own field.</p>
+                </button>
+                <button
+                    className={`config-choice ${data.type===HierType.RECURSIVE?'config-choice--selected':''}`}
+                    type='button'
+                    role='radio'
+                    aria-checked={data.type===HierType.RECURSIVE}
+                    onClick={() => changeHierType(HierType.RECURSIVE)}
+                >
+                    <div className='config-choice-heading'>
+                        <span className='config-choice-title'>Parent and child rows</span>
+                        <span className='config-radio' aria-hidden='true' />
+                    </div>
+                    <img src={recursiveHier} alt='Example table with parent and child columns' />
+                    <p>Use this when every row identifies one item and its parent, such as Manager ID and Employee ID.</p>
+                </button>
+            </div>
+            <div className='config-callout'>
+                <strong>Not sure?</strong> Choose separate level columns if your Tableau view already contains one dimension for every hierarchy level.
+            </div>
         </div>
     );
 
@@ -173,101 +210,65 @@ function Configure(props: any) {
         setUpdates({ type: 'CLEAR_WARNING' });
     };
     return (
-        <>
-            {!doneLoading ? (<div aria-busy='true' className='overlay'><div className='centerOnPage'><div className='spinnerBg centerOnPage'>{ }</div><Spinner color='light' /></div></div>) : undefined}
-            <div className='headerStyle' >
-                Hierarchy Navigator
-            </div>
+        <div className='config-shell'>
+            {!doneLoading ? (<div aria-busy='true' className='overlay'><div className='centerOnPage'><div className='spinnerBg centerOnPage'>{ }</div><Spinner color='light'
+            alt="Loading..." /></div></div>) : undefined}
+            <header className='config-app-header'>
+                <div>
+                    <strong>Hierarchy Navigator</strong>
+                    <span>Configuration</span>
+                </div>
+                <ConfigStatus
+                    complete={sourceComplete}
+                    completeLabel='Source ready'
+                    incompleteLabel='Setup in progress'
+                />
+            </header>
 
-            <Container className='navcontainer'>
-                <Row>
-                    <Col style={{minWidth: "86px"}}>
-                        <Row style={{ paddingLeft: "28px" }}>
-                            <Pill kind='discrete'
-                                style={{ height: "30px", width: "30px", minWidth: "unset", borderColor: "rgb(73,150,178)" }}
-                            >1</Pill>
-                        </Row>
-                        <Row className='noMargin'>
-                            {page[0].name}
-                        </Row>
-                    </Col>
-                    <Col className='narrow'>
-                        <div className='userhr' />
-                    </Col>
-                    <Col style={{minWidth: "86px"}}>
-                        <Row style={{ paddingLeft: "28px" }}>
-                            <Pill
-                                kind={selectedTabIndex >= 1 ? 'discrete' : 'other'}
-                                style={{ height: "30px", width: "30px", minWidth: "unset", borderColor: selectedTabIndex >=2 ? "rgb(73,150,178)" : "#d4d4d4" }}
-                            >2</Pill>
-                        </Row>
-                        <Row className='noMargin'>
-                            {page[1].name}
-                        </Row>
-                    </Col>
-                    <Col className='narrow'>
-                        <div className='userhr' />
-                    </Col>
-                    <Col style={{minWidth: "86px"}}>
-                        <Row style={{ paddingLeft: "28px" }}>
-                            <Pill
-                                kind={selectedTabIndex >= 2 ? 'discrete' : 'other'}
-                                style={{ height: "30px", width: "30px", minWidth: "unset", borderColor: selectedTabIndex >=2 ? "rgb(73,150,178)" : "#d4d4d4" }}
-                            >3</Pill>
-                        </Row>
-                        <Row className='noMargin'>
-                            {page[2].name}
-                        </Row>
-                    </Col>
-                    <Col className='narrow'>
-                        <div className='userhr' />
-                    </Col>
-                    <Col style={{minWidth: "86px"}}>
-                        <Row style={{ paddingLeft: "28px" }}>
-
-                            <Pill
-                                kind={selectedTabIndex >= 3 ? 'discrete' : 'other'}
-                                style={{ height: "30px", width: "30px", minWidth: "unset", borderColor: selectedTabIndex >=3 ? "rgb(73,150,178)" : "#d4d4d4"}}
-                            >4</Pill>
-                        </Row>
-                        <Row className='noMargin'>
-                            {page[3].name}
-                        </Row>
-                    </Col>
-
-
-                </Row>
-            </Container>
-            <Alert isOpen={data.options.warningEnabled} color='primary' toggle={onDismissWarning}>
-                This app requires specific setup instructions.  Please read the documentation (https://github.com/tableau/extension-hierarchy-navigator-sandboxed) before use.
-            </Alert>
-            <Alert color='warning' isOpen={isError} toggle={onDismiss}>
-                {errorStr}
-            </Alert>
-            {returnPage(selectedTabIndex)}
-            <div className='d-flex flex-row-reverse' style={{ position: 'absolute', bottom: '10px', width: '100%' }}>
-                <div className='p-2'>
-                    {[1, 2, 3].includes(selectedTabIndex) &&
-                        <Button
-                            kind='outline'
-                            onClick={changeTabPrevious}>
-                            Previous
-                        </Button>
+            <nav className='config-progress' aria-label='Configuration progress'>
+                <ol className='config-steps'>
+                    {page.map((pageItem, index) => (
+                        <li
+                            className={`config-step ${selectedTabIndex===index?'config-step--active':''} ${isStepComplete(index)?'config-step--complete':''}`}
+                            key={pageItem.name}
+                        >
+                            <button type='button' onClick={() => setSelectedTabIndex(index)} aria-current={selectedTabIndex===index?'step':undefined}>
+                                <span className='config-step-number'>{isStepComplete(index)?'✓':index+1}</span>
+                                <span className='config-step-copy'>
+                                    <strong>{pageItem.name}</strong>
+                                    <small>{pageItem.description}</small>
+                                </span>
+                            </button>
+                        </li>
+                    ))}
+                </ol>
+            </nav>
+            <main className='config-main'>
+                <Alert isOpen={data.options.warningEnabled} color='primary' toggle={onDismissWarning}>
+                    New to the extension? Follow the four steps below. The source hierarchy should live on its own worksheet; it can be hidden after setup.
+                </Alert>
+                <Alert color='warning' isOpen={isError} toggle={onDismiss}>
+                    {errorStr}
+                </Alert>
+                {returnPage(selectedTabIndex)}
+            </main>
+            <footer className='config-footer'>
+                <span className='config-footer-status'>
+                    {selectedTabIndex===3&&!sourceComplete?'Complete the required source fields before saving.':''}
+                </span>
+                <div className='config-footer-actions'>
+                    {selectedTabIndex>0&&
+                        <Button kind='outline' onClick={changeTabPrevious}>Previous</Button>
                     }
-                    {[0, 1, 2].includes(selectedTabIndex) &&
-                        <Button
-                            kind='outline'
-                            onClick={changeTabNext}>
-                            Next
-                        </Button>
+                    {selectedTabIndex<3&&
+                        <Button kind='primary' onClick={changeTabNext}>Continue</Button>
                     }
-
-                    {selectedTabIndex === 3 &&
-                        <Button kind={data.configComplete ? 'filledGreen' : 'outline'} onClick={submit}>{data.configComplete ? 'Submit' : 'Cancel'} </Button>
+                    {selectedTabIndex===3&&
+                        <Button kind='primary' disabled={!sourceComplete} onClick={submit}>Save configuration</Button>
                     }
                 </div>
-            </div>
-        </>
+            </footer>
+        </div>
     );
 }
 

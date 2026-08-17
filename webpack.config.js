@@ -1,8 +1,18 @@
 const path = require('path');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
+const MinimizerPlugin = require('minimizer-webpack-plugin');
 
 module.exports = {
   mode: 'development',
+  optimization: {
+    minimizer: [
+      new MinimizerPlugin({
+        minimizerOptions: {
+          keep_fnames: true,
+        },
+      }),
+    ],
+  },
   entry: {
     splash: './src/components/Home.tsx',
     config: './src/components/config/Config.tsx',
@@ -36,6 +46,9 @@ module.exports = {
       {
         test: /\.html$/i,
         loader: "html-loader",
+        options: {
+          sources: false,
+        },
       },
 
     ]
@@ -47,18 +60,21 @@ module.exports = {
     new HtmlWebpackPlugin({
       title: "Splash Page",
       template: './src/index.html',
+      hash: true,
       chunks: ['splash']
     }),
     new HtmlWebpackPlugin({
       title: "Hierarchy Navigator",
       template: './src/hierarchynavigator.html',
       filename: 'hierarchynavigator.html',
+      hash: true,
       chunks: ['hier']
     }),
     new HtmlWebpackPlugin({
       title: "Config Page",
       template: './src/config.html',
       filename: 'config.html',
+      hash: true,
       chunks: ['config']
     })
   ],

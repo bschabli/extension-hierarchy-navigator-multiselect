@@ -49,6 +49,8 @@ export interface AvailableProps {
     parameters: string[], // all available dashboard parameters
     flatParameters: string[], // parameters available for flat hierarchy child label (excludes level, id, field+suffix array)
     worksheets: string[]; // list of available worksheets 
+    targetWorksheets: string[];
+    allWorksheetItems: { [worksheetName: string]: AvailableWorksheet };
     allCurrentWorksheetItems: AvailableWorksheet;
 }
 export interface AvailableWorksheet {
@@ -66,6 +68,8 @@ export interface SelectedWorksheet {
     enableMarkSelection: boolean;
     fields: string[]; // used for flat hierarchy
     status: Status;
+    targetFilter: string;
+    targetName: string;
 }
 
 export const defaultSelectedProps: HierarchyProps={
@@ -77,7 +81,9 @@ export const defaultSelectedProps: HierarchyProps={
         },
         flatParameters: [],
         parameters: [],
+        targetWorksheets: [],
         worksheets: [],
+        allWorksheetItems: {},
     },
     options: {
         bgColor: '#F3F3F3',
@@ -122,6 +128,8 @@ export const defaultSelectedProps: HierarchyProps={
         filterEnabled: false,
         name: '',
         parentId: '',
-        status: Status.notpossible
+        status: Status.notpossible,
+        targetFilter: '',
+        targetName: ''
     }
 };
