@@ -1,7 +1,8 @@
 import { Checkbox } from '@tableau/tableau-ui';
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { HierarchyProps, Status } from '../API/Interfaces';
 import { Selector } from '../shared/Selector';
+import { TargetFilterControls } from './TargetFilterControls';
 
 interface Props {
     data: HierarchyProps;
@@ -12,25 +13,6 @@ interface Props {
 }
 
 export function Page3Recursive(props: Props) {
-    const [filterList, setFilterList]=useState<string[]>([]);
-
-    useEffect(() => {
-        const { filters }=props.data.dashboardItems.allCurrentWorksheetItems;
-        const res=filters.filter(filter => {
-            return (filter===props.data.worksheet.childId||filter===props.data.worksheet.childLabel);
-        });
-        if (res.length && props.data.worksheet.filter !== props.data.worksheet.childId && props.data.worksheet.filter !== props.data.worksheet.childLabel) { 
-            props.setUpdates({type: 'SET_FILTER_FIELD', data: res[0]})
-        }
-        setFilterList(res);
-
-    }, [props.data.worksheet.childId, props.data.dashboardItems.allCurrentWorksheetItems.filters]);
-
-    const changeFilter=(e: React.ChangeEvent<HTMLSelectElement>): void => {
-        props.setUpdates({ type: 'SET_FILTER_FIELD', data: e.target.value });
-    };
-
-
     // PARAMETERS CONTENT
     return (
         <>
@@ -71,35 +53,7 @@ export function Page3Recursive(props: Props) {
                     />
                 </div>
             </div>
-            <div className='sectionStyle mb-2'>
-                <b>Sheet Interactions</b>
-                <div style={{ marginLeft: '9px' }}>
-                    <Checkbox
-                        // for filter field
-                        disabled={filterList.length===0}
-                        checked={props.data.worksheet.filterEnabled}
-                        onChange={props.changeEnabled}
-                        data-type='filter'
-                    >Filter {!filterList.length? ` (to enable, add a filter on Child ID  or Child Label field on the source sheet)`:''}
-                    </Checkbox>
-                    <br />
-                    <div style={filterList.length? {}:{ display: 'none' }}>
-                        <Selector
-                            status={filterList.length>0? Status.set:Status.notset}
-                            onChange={changeFilter}
-                            list={filterList}
-                            selected={props.data.worksheet.filter}
-                            type='filter'
-                        />
-                    </div>
-                    <Checkbox
-                        checked={props.data.worksheet.enableMarkSelection}
-                        onChange={props.changeEnabled}
-                        data-type='mark'
-                    >Enable Mark Selection
-                </Checkbox>
-                </div>
-            </div>
+            <TargetFilterControls {...props} />
         </>
     );
 }

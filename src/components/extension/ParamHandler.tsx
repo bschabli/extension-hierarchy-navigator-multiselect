@@ -1,7 +1,7 @@
 import { Dashboard, Parameter, Worksheet } from '@tableau/extensions-api-types';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { debugOverride, HierarchyProps, HierType } from '../API/Interfaces';
-import Hierarchy from './Hierarchy';
+import Hierarchy, { HierarchySelectionPayload } from './Hierarchy';
 
 interface Props {
     data: HierarchyProps;
@@ -12,7 +12,8 @@ function ParamHandler(props: Props) {
     const [lastUpdated, setLastUpdated]=useState<Date>(new Date());
     const [currentId, setCurrentId]=useState<string>('');
     const [currentLabel, setCurrentLabel]=useState<string>('');
-    const [dataFromExtension, setDataFromExtension]=useState<any>();
+    const [dataFromExtension, setDataFromExtension]=useState<HierarchySelectionPayload>();
+    const filterQueue=useRef<Promise<void>>(Promise.resolve());
     const temporaryEventHandlers: { childId?: () => {}, childLabel?: () => {}; }={ childId: undefined, childLabel: undefined }; // not using useState here because state was having trouble holding functions and executing them later
     const {debug=false||debugOverride} = props.data.options;
 
@@ -23,7 +24,9 @@ function ParamHandler(props: Props) {
         if(props.data.configComplete) {
             if(debug) { console.log(`SETPARAMDATAFROMEXTENSION: ${ JSON.stringify(dataFromExtension) }`); }
             if(typeof (dataFromExtension)!=='undefined') {
-                setParamDataFromExtension(dataFromExtension);
+                filterQueue.current=filterQueue.current
+                    .then(() => setParamDataFromExtension(dataFromExtension))
+                    .catch(error => console.error('Unable to apply hierarchy selection.', error));
             }
         }
     }, [dataFromExtension]);
@@ -80,6 +83,13 @@ function ParamHandler(props: Props) {
         // return ws;
         if(debug&&typeof ws==='undefined') { console.log(`fW: No worksheets found that match ${ props.data.worksheet.name }`); }
         return ws;
+    }
+
+    // Kept as an array so adding multiple configured targets does not require
+    // changing the filter application logic.
+    function findTargetWorksheets(): Worksheet[] {
+        const targetName=props.data.worksheet.targetName||props.data.worksheet.name;
+        return props.dashboard.worksheets.filter((worksheet: Worksheet) => worksheet.name===targetName);
     }
 
     // find parameters, if enabled, and returns an array 
@@ -171,16 +181,17 @@ function ParamHandler(props: Props) {
     async function clearFilterAndMarksAsync() {
         if(debug) { console.log(`begin clearFilterAndMarksAsync`); }
         try {
+            if(props.data.worksheet.filterEnabled) {
+                const targetField=props.data.worksheet.targetFilter||props.data.worksheet.filter;
+                await asyncForEach(findTargetWorksheets(), async (targetWorksheet: Worksheet) => {
+                    if(targetField!=='') { await targetWorksheet.clearFilterAsync(targetField); }
+                });
+            }
             const worksheet=await findWorksheet();
             if(typeof worksheet==='undefined') { return; }
-            // await asyncForEach(props.dashboard.worksheets, async (worksheet: Worksheet) => {
-            if(props.data.worksheet.filterEnabled) {
-                if(debug) { console.log(`clearing filter props.data.worksheet.filter: ${ props.data.worksheet.filter }`); }
-                await worksheet.clearFilterAsync(props.data.worksheet.filter);
-            }
             if(debug) { console.log(`worksheet: ${ props.data.worksheet.name } for childId: ${ props.data.worksheet.childId }`); }
             // clear all marks selection
-            if(props.data.worksheet.childId!==null||props.data.worksheet.childId!=='') {
+            if(props.data.worksheet.childId!=='') {
                 await worksheet.selectMarksByValueAsync([{
                     fieldName: props.data.worksheet.childId,
                     value: []
@@ -212,7 +223,7 @@ function ParamHandler(props: Props) {
         setCurrentLabel(cl!.currentValue.value);
     };
 
-    async function setParamDataFromExtension(incomingData: { currentId: string, currentLabel: string, childrenById?: string[], childrenByLabel?: string[]; }) {
+    async function setParamDataFromExtension(incomingData: HierarchySelectionPayload) {
 
         setCurrentId(incomingData.currentId);
         setCurrentLabel(incomingData.currentLabel);
@@ -257,7 +268,8 @@ function ParamHandler(props: Props) {
             if(debug) { console.log(`can't set childLabel param: ${ e.message }`); }
         }
         if(props.data.type===HierType.FLAT) {
-            const currentLevel=(incomingData.currentId.match(new RegExp(escapeRegex(props.data.separator), 'g'))?.length||0)+1;
+            const currentLevel=incomingData.currentLevel||
+                (incomingData.currentId.match(new RegExp(escapeRegex(props.data.separator), 'g'))?.length||0)+1;
             try {
                 if(typeof level!=='undefined'&&level.dataType===tableau.DataType.Int) { level.changeValueAsync(currentLevel); }
             }
@@ -265,13 +277,13 @@ function ParamHandler(props: Props) {
                 if(debug) { console.log(`can't set level param: ${ e.message }`); }
             }
 
-            const fieldVals=incomingData.currentId.split(props.data.separator);
+            const fieldVals=incomingData.currentFieldValues||incomingData.currentId.split(props.data.separator);
             if(typeof fields!=='undefined'&&fieldVals.length>0) {
                 for(let i=0;i<fields.length;i++) {
                     try {
                         if(typeof fields==='undefined') { continue; }
                         if(fields[i].dataType===tableau.DataType.Int) {
-                            const converted=parseInt(fieldVals[i], 10);
+                            const converted=parseInt(fieldVals[i]||'', 10);
                             if(!isNaN(converted)) { fields[i].changeValueAsync(converted); };
                         }
                         else {
@@ -285,23 +297,30 @@ function ParamHandler(props: Props) {
             }
         }
 
-        // if we don't pass children, we are resetting the data 
-        // and should skip setting the filter/mark selection
-        if(incomingData.childrenById&&incomingData.childrenByLabel) {
-            const worksheet=await findWorksheet();
-            if(typeof worksheet==='undefined') { return; }
-            if(props.data.worksheet.filterEnabled) {
-                // determine if the current filter is based off Id or Label
-                const replaceArr=props.data.worksheet.filter===props.data.worksheet.childId? incomingData.childrenById:incomingData.childrenByLabel;
-
-                if(debug) { console.log(`replacing filter (${ props.data.worksheet.filter }) with values ${ JSON.stringify(replaceArr) }`); }
-                await worksheet.applyFilterAsync(props.data.worksheet.filter, replaceArr, tableau.FilterUpdateType.Replace, { isExcludeMode: false });
+        if(typeof incomingData.selectedLeafValues!=='undefined') {
+            const selectedValues=incomingData.selectedLeafValues;
+            const targetField=props.data.worksheet.targetFilter||props.data.worksheet.filter;
+            if(targetField!==''&&(props.data.worksheet.filterEnabled||selectedValues.length===0)) {
+                await asyncForEach(findTargetWorksheets(), async (targetWorksheet: Worksheet) => {
+                    if(selectedValues.length===0) {
+                        await targetWorksheet.clearFilterAsync(targetField);
+                    }
+                    else {
+                        await targetWorksheet.applyFilterAsync(
+                            targetField,
+                            selectedValues,
+                            tableau.FilterUpdateType.Replace,
+                            { isExcludeMode: false }
+                        );
+                    }
+                });
             }
             if(props.data.worksheet.enableMarkSelection) {
-                {
+                const worksheet=await findWorksheet();
+                if(worksheet) {
                     await worksheet.selectMarksByValueAsync([{
                         fieldName: props.data.worksheet.childId,
-                        value: incomingData.childrenById
+                        value: selectedValues
                     }], tableau.SelectionUpdateType.Replace);
                 }
             }

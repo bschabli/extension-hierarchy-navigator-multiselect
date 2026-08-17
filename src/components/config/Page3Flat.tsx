@@ -5,6 +5,7 @@ import React, { useEffect, useState } from 'react';
 import { debugOverride, HierarchyProps, Status } from '../API/Interfaces';
 import { withHTMLSpaces } from '../API/Utils';
 import { Selector } from '../shared/Selector';
+import { TargetFilterControls } from './TargetFilterControls';
 
 interface Props {
     data: HierarchyProps;
@@ -16,7 +17,6 @@ interface Props {
 
 export function Page3Flat(props: Props) {
     const [levelParam, setLevelParam]=useState<boolean>(false);
-    const [filterList, setFilterList]=useState<string[]>([]);
     const {debug=false||debugOverride} = props.data.options;
     // check level param upon page load
     useEffect(() => {
@@ -28,17 +28,6 @@ export function Page3Flat(props: Props) {
             props.setUpdates({type: 'SET_FIELDS', data: props.data.worksheet.fields});
         }
     }, []);
-
-    // set the available filter that matches the childId field
-    useEffect(() => {
-        const { filters }=props.data.dashboardItems.allCurrentWorksheetItems;
-        const res=filters.filter(filter => {
-            return (filter===props.data.worksheet.childId);
-        });
-        if (res.length && props.data.worksheet.filter !== res[0]) {props.setUpdates({type: 'SET_FILTER_FIELD', data: res[0]})};
-        setFilterList(res);
-
-    }, [props.data.worksheet.childId, props.data.dashboardItems.allCurrentWorksheetItems.filters]);
 
     // Is there a parameter that exists that matches the name/type?
     // This is used on Page3Flat to check if the Level parameter of type int is present
@@ -136,26 +125,7 @@ export function Page3Flat(props: Props) {
                 </div>
             </div>
 
-            <div className='sectionStyle mb-2'>
-                <b>Sheet Interactions</b>
-                <div style={{ marginLeft: '9px' }}>
-                    <Checkbox
-                        // for filter field
-                        disabled={!filterList.length}
-                        checked={props.data.worksheet.filterEnabled}
-                        onChange={props.changeEnabled}
-                        data-type='filter'
-                    >Filter {!filterList.length? ` (to enable, add a filter on ID field on the source sheet)`:` for ${ props.data.worksheet.filter }`}
-                    </Checkbox>
-                    <br />
-                    <Checkbox
-                        checked={props.data.worksheet.enableMarkSelection}
-                        onChange={props.changeEnabled}
-                        data-type='mark'
-                    >Enable Mark Selection
-                </Checkbox>
-                </div>
-            </div>
+            <TargetFilterControls {...props} />
         </>
     );
 }

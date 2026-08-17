@@ -168,6 +168,7 @@ const hierarchyAPI=(): any => {
                 }
             case 'SET_CHILD_ID_FIELD':
                 {
+                    const previousChildId=payload.worksheet.childId;
                     // update childId from UI
                     // if childId = new parentId then switch values
                     if(payload.worksheet.parentId===action.data) {
@@ -176,6 +177,10 @@ const hierarchyAPI=(): any => {
                     if(payload.type===HierType.FLAT) { payload.parameters.childId=`${ action.data }${ payload.paramSuffix }`; }
                     if (debug) console.log(`PARAM CHILD ID set to ${ payload.parameters.childId }`);
                     payload.worksheet.childId=action.data;
+                    if(payload.worksheet.targetName===payload.worksheet.name&&
+                        (payload.worksheet.targetFilter===''||payload.worksheet.targetFilter===previousChildId)) {
+                        payload.worksheet.targetFilter=action.data;
+                    }
                     return dispatch({ type: 'FETCH_SUCCESS', data: payload });
                 }
             case 'SET_CHILD_LABEL_FIELD':
@@ -257,6 +262,23 @@ const hierarchyAPI=(): any => {
             case 'SET_FILTER_FIELD':
                 {
                     // update filter name from UI
+                    payload.worksheet.filter=action.data;
+                    return dispatch({ type: 'FETCH_SUCCESS', data: payload });
+                }
+            case 'SET_TARGET_WORKSHEET':
+                {
+                    payload.worksheet.targetName=action.data;
+                    const targetItems=payload.dashboardItems.allWorksheetItems[action.data];
+                    const targetFields=targetItems? Array.from(new Set(targetItems.fields.concat(targetItems.filters))):[];
+                    if(!targetFields.includes(payload.worksheet.targetFilter)) {
+                        payload.worksheet.targetFilter=targetFields[0]||'';
+                    }
+                    return dispatch({ type: 'FETCH_SUCCESS', data: payload });
+                }
+            case 'SET_TARGET_FILTER_FIELD':
+                {
+                    payload.worksheet.targetFilter=action.data;
+                    // Keep legacy settings populated for backwards compatibility.
                     payload.worksheet.filter=action.data;
                     return dispatch({ type: 'FETCH_SUCCESS', data: payload });
                 }
@@ -432,18 +454,31 @@ const hierarchyAPI=(): any => {
                 setCurrentWorksheetName(_initialData.worksheet.name);
                 // step 2: get current worksheet object
                 await asyncForEach(window.tableau.extensions.dashboardContent!.dashboard.worksheets, async (worksheet: Worksheet) => {
+                    const fields=await getWorksheetFieldsAsync(worksheet);
+                    const filters=await getWorksheetFilters(worksheet);
+                    _initialData.dashboardItems.allWorksheetItems[worksheet.name]={ fields, filters };
+                    if((fields.length>0||filters.length>0)&&_initialData.dashboardItems.targetWorksheets.indexOf(worksheet.name)===-1) {
+                        _initialData.dashboardItems.targetWorksheets.push(worksheet.name);
+                    }
                     if(worksheet.name===_initialData.worksheet.name) {
                         if(debug) {
                             console.log(`worksheet: vvv`);
                             console.log(worksheet);
                         }
-                        _initialData.dashboardItems.allCurrentWorksheetItems.fields=await getWorksheetFieldsAsync(worksheet);;
-
-                        _initialData.dashboardItems.allCurrentWorksheetItems.filters=await getWorksheetFilters(worksheet);
+                        _initialData.dashboardItems.allCurrentWorksheetItems={ fields, filters };
                     }
-                    if(_initialData.dashboardItems.worksheets.indexOf(worksheet.name)===-1) { _initialData.dashboardItems.worksheets.push(worksheet.name); }
+                    if(fields.length>=2&&_initialData.dashboardItems.worksheets.indexOf(worksheet.name)===-1) {
+                        _initialData.dashboardItems.worksheets.push(worksheet.name);
+                    }
 
                 });
+
+                if(_initialData.worksheet.targetName==='') {
+                    _initialData.worksheet.targetName=_initialData.worksheet.name;
+                }
+                if(_initialData.worksheet.targetFilter==='') {
+                    _initialData.worksheet.targetFilter=_initialData.worksheet.filter||_initialData.worksheet.childId;
+                }
 
 
                 // check to see if params were previously blank but now exist
@@ -505,6 +540,11 @@ const hierarchyAPI=(): any => {
                         console.log(worksheet);
                     }
                     const _fields=await getWorksheetFieldsAsync(worksheet);
+                    const _filters=await getWorksheetFilters(worksheet);
+                    payload.dashboardItems.allWorksheetItems[worksheet.name]={ fields: _fields, filters: _filters };
+                    if((_fields.length>0||_filters.length>0)&&payload.dashboardItems.targetWorksheets.indexOf(worksheet.name)===-1) {
+                        payload.dashboardItems.targetWorksheets.push(worksheet.name);
+                    }
                     // need at least 2 fields (parent/child or flat tree) to use this sheet.  filters are optional
                     if(_fields.length<2) {
                         if(debug) { console.log(` --- skipping ${ worksheet.name }; not enough fields`); }
@@ -521,15 +561,15 @@ const hierarchyAPI=(): any => {
                         }
                         if(worksheet.name===payload.worksheet.name) {
                             // step 3: set current fields
-                            payload.dashboardItems.allCurrentWorksheetItems.fields=await getWorksheetFieldsAsync(worksheet);;
-
-                            payload.dashboardItems.allCurrentWorksheetItems.filters=await getWorksheetFilters(worksheet);
+                            payload.dashboardItems.allCurrentWorksheetItems={ fields: _fields, filters: _filters };
 
                             // step 5: set childid/childlabel/parentid; reset selected fields and disable filter
                             payload.worksheet.childId=payload.dashboardItems.allCurrentWorksheetItems.fields[1];
                             payload.worksheet.childLabel=payload.dashboardItems.allCurrentWorksheetItems.fields[0];
                             payload.worksheet.parentId=payload.dashboardItems.allCurrentWorksheetItems.fields[0];
                             payload.worksheet.filter=payload.dashboardItems.allCurrentWorksheetItems.filters[0]||'';
+                            if(payload.worksheet.targetName==='') { payload.worksheet.targetName=worksheet.name; }
+                            if(payload.worksheet.targetFilter==='') { payload.worksheet.targetFilter=payload.worksheet.childId; }
                             payload.worksheet.fields=[];
                             payload.worksheet.filterEnabled=false;
                         }
@@ -604,18 +644,16 @@ const hierarchyAPI=(): any => {
                 const dataTable: any=await worksheet.getSummaryDataAsync();
                 // todo: does maxRows work with summary data or just underlying data?
                 // const dataTable: any=await worksheet.getSummaryDataAsync({ maxRows: 1 });
-                if(dataTable.columns.length>=2) {
-                    dataTable.columns.forEach((column: any) => {
-                        if(debug) {
-                            console.log(`dataTable: vvv`);
-                            console.log(dataTable);
-                        }
-                        // only allow string values
-                        if(column.dataType===tableau.DataType.String||column.dataType===tableau.DataType.Int) {
-                            tempFields.push(column.fieldName);
-                        }
-                    });
-                }
+                dataTable.columns.forEach((column: any) => {
+                    if(debug) {
+                        console.log(`dataTable: vvv`);
+                        console.log(dataTable);
+                    }
+                    // Tableau categorical filters accept string and integer fields.
+                    if(column.dataType===tableau.DataType.String||column.dataType===tableau.DataType.Int) {
+                        tempFields.push(column.fieldName);
+                    }
+                });
                 resolve(tempFields);
             }
             catch(err) {
@@ -674,12 +712,12 @@ const hierarchyAPI=(): any => {
         });
     };
 
-    // if we have a worksheet, childId/parentId (for recursive) or fields.length>2 (for flat) we can set configComplete to true
+    // A Flat hierarchy needs one or more ordered level fields plus its ID field.
     const evalConfigComplete=(data: HierarchyProps): boolean => {
         if(data.worksheet.name===''||data.worksheet.childId==='') {
             return false;
         }
-        if(data.type===HierType.FLAT&&data.worksheet.fields.length>=2) {
+        if(data.type===HierType.FLAT&&data.worksheet.fields.length>=1) {
             return true;
         }
         else if(data.type===HierType.RECURSIVE&&data.worksheet.childLabel!==''&&data.worksheet.parentId!=='') {
@@ -800,16 +838,17 @@ const hierarchyAPI=(): any => {
                 d.parameters.childLabel=d.dashboardItems.parameters[1]||d.dashboardItems.parameters[0]||'';
             }
 
-            // Check filter
-            if(d.worksheet.filterEnabled&&!d.dashboardItems.allCurrentWorksheetItems.filters.includes(d.worksheet.filter)) {
-                modifiedStr.push(`Filter '${ d.worksheet.filter }' no longer present.`);
-                d.worksheet.filter=d.dashboardItems.allCurrentWorksheetItems.filters[0]||'';
+            // Migrate and validate the independently configurable filter target.
+            if(d.worksheet.targetName==='') { d.worksheet.targetName=d.worksheet.name; }
+            if(d.worksheet.targetFilter==='') { d.worksheet.targetFilter=d.worksheet.filter||d.worksheet.childId; }
+            const targetItems=d.dashboardItems.allWorksheetItems[d.worksheet.targetName];
+            const targetFields=targetItems? Array.from(new Set(targetItems.fields.concat(targetItems.filters))):[];
+            if(d.worksheet.filterEnabled&&!targetFields.includes(d.worksheet.targetFilter)) {
+                modifiedStr.push(`Target filter field '${ d.worksheet.targetFilter }' is no longer present.`);
+                d.worksheet.targetFilter=targetFields[0]||'';
                 d.worksheet.filterEnabled=false;
             }
-            // if filter added/changed, assign it
-            if(d.worksheet.filter==='') {
-                d.worksheet.filter=d.dashboardItems.allCurrentWorksheetItems.filters[0]||'';
-            }
+            d.worksheet.filter=d.worksheet.targetFilter;
 
             if(debug) { console.log(`successfully completed validate fields`); }
 

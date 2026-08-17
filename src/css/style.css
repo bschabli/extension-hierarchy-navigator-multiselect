@@ -12,6 +12,56 @@ body {
     /* overflow-y: auto; */
 }
 
+.hierarchy-toolbar {
+    align-items: center;
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 6px;
+}
+
+.hierarchy-checkbox-item {
+    align-items: center;
+    display: flex;
+    min-height: 28px;
+    padding-bottom: 0;
+    padding-right: 8px;
+    padding-top: 0;
+}
+
+.hierarchy-checkbox-item input[type="checkbox"] {
+    flex: 0 0 auto;
+    margin: 0 6px 0 2px;
+}
+
+.hierarchy-toggle,
+.hierarchy-node-label {
+    background: transparent;
+    border: 0;
+    color: inherit;
+    cursor: pointer;
+    font: inherit;
+    padding: 0;
+}
+
+.hierarchy-toggle {
+    align-items: center;
+    display: inline-flex;
+    height: 24px;
+    justify-content: center;
+    width: 20px;
+}
+
+.hierarchy-toggle--empty {
+    cursor: default;
+}
+
+.hierarchy-node-label {
+    overflow: hidden;
+    text-align: left;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 /* * { 
     -moz-box-sizing: border-box; 
     -webkit-box-sizing: border-box; 
