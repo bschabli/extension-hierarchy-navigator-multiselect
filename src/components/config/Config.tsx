@@ -16,6 +16,7 @@ import { Page2Recursive } from './Page2Recursive';
 import { Page3Flat } from './Page3Flat';
 import { Page3Recursive } from './Page3Recursive';
 import { Page4 } from './Page4';
+import { useHierarchyValidation } from './useHierarchyValidation';
 
 declare global {
     interface Window { tableau: { extensions: Extensions; }; }
@@ -92,10 +93,6 @@ function Configure(props: any) {
     };
 
 
-    const submit = () => {
-        setUpdates({ type: 'SUBMIT' });
-    };
-
     const page: Array<{ name: string, description: string, content: React.ReactFragment; }> = [
         { name: 'Hierarchy format', description: 'Choose the shape of your data', content: (<div />) },
         { name: 'Source data', description: 'Map the worksheet and fields', content: (<div />) },
@@ -106,6 +103,19 @@ function Configure(props: any) {
         (data.type===HierType.FLAT&&data.worksheet.fields.length>0)||
         (data.type===HierType.RECURSIVE&&data.worksheet.parentId!==''&&data.worksheet.childLabel!=='')
     );
+    const { retry: retryValidation, state: validation }=useHierarchyValidation(
+        data,
+        sourceComplete
+    );
+    const saveReady=sourceComplete&&validation.status==='complete'&&Boolean(validation.result?.valid);
+    const submit = () => {
+        if(saveReady) { setUpdates({ type: 'SUBMIT' }); }
+    };
+    const saveStatus=!sourceComplete?'Complete the required source fields before saving.':
+        validation.status==='loading'?'Checking the source worksheet before saving…':
+        validation.status==='error'?'Validation must finish successfully before saving.':
+        validation.status==='complete'&&!validation.result?.valid?'Fix the data issues shown above before saving.':
+        validation.status==='idle'?'Waiting to validate the source worksheet…':'';
     const stepComplete=[true, sourceComplete, false, false];
     const isStepComplete=(index: number): boolean => stepComplete[index]||(index>1&&selectedTabIndex>index);
 
@@ -197,6 +207,8 @@ function Configure(props: any) {
             case 3:
                 return <Page4
                     data={data}
+                    validation={validation}
+                    onRetryValidation={retryValidation}
                     setUpdates={setUpdates}
                 />
             default:
@@ -254,7 +266,7 @@ function Configure(props: any) {
             </main>
             <footer className='config-footer'>
                 <span className='config-footer-status'>
-                    {selectedTabIndex===3&&!sourceComplete?'Complete the required source fields before saving.':''}
+                    {selectedTabIndex===3?saveStatus:''}
                 </span>
                 <div className='config-footer-actions'>
                     {selectedTabIndex>0&&
@@ -264,7 +276,7 @@ function Configure(props: any) {
                         <Button kind='primary' onClick={changeTabNext}>Continue</Button>
                     }
                     {selectedTabIndex===3&&
-                        <Button kind='primary' disabled={!sourceComplete} onClick={submit}>Save configuration</Button>
+                        <Button kind='primary' disabled={!saveReady} onClick={submit}>Save configuration</Button>
                     }
                 </div>
             </footer>

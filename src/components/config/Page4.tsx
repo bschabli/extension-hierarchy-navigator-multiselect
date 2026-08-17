@@ -4,10 +4,14 @@ import React, { useEffect, useState } from 'react';
 import { resolveFilterTargets } from '../API/FilterTargets';
 import { HierarchyProps, HierType } from '../API/Interfaces';
 import { ConfigSection, ConfigStatus, ConfigStepIntro } from './ConfigPrimitives';
+import { DataValidationPreview } from './DataValidationPreview';
+import { HierarchyValidationState } from './useHierarchyValidation';
 
 interface Props {
     data: HierarchyProps;
+    onRetryValidation: () => void;
     setUpdates: (obj: { type: string, data: any; }) => void;
+    validation: HierarchyValidationState;
 }
 
 export function Page4(props: Props) {
@@ -238,6 +242,11 @@ export function Page4(props: Props) {
     const filterSummary=props.data.worksheet.filterEnabled&&filterTargets.length?
         `${filterTargets.length} worksheet${filterTargets.length===1?'':'s'} · ${filterTargets.map(target => target.worksheetName).join(', ')}`:
         'Off';
+    const validationPassed=props.validation.status==='complete'&&Boolean(props.validation.result?.valid);
+    const validationStatusLabel=!sourceComplete?'Source mapping is incomplete':
+        props.validation.status==='loading'?'Checking source data':
+        props.validation.status==='error'?'Validation could not finish':
+        props.validation.status==='complete'?'Data issues need attention':'Validation has not run';
     const colorPickerValue=(value: string, fallback: string): string => /^#[0-9a-f]{6}$/i.test(value)?value:fallback;
 
     return (
@@ -250,9 +259,9 @@ export function Page4(props: Props) {
             <ConfigSection title='Configuration summary'>
                 <div className='config-review-heading'>
                     <ConfigStatus
-                        complete={sourceComplete}
+                        complete={validationPassed}
                         completeLabel='Ready to save'
-                        incompleteLabel='Source mapping is incomplete'
+                        incompleteLabel={validationStatusLabel}
                     />
                 </div>
                 <dl className='config-review-grid'>
@@ -264,6 +273,7 @@ export function Page4(props: Props) {
                     <div><dt>Source mark selection</dt><dd>{props.data.worksheet.enableMarkSelection?'On':'Off'}</dd></div>
                 </dl>
             </ConfigSection>
+            <DataValidationPreview validation={props.validation} onRetry={props.onRetryValidation} />
             <ConfigSection
                 title='Display'
                 description='These defaults work well in most dashboards and can be changed later.'
