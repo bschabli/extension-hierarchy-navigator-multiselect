@@ -50,18 +50,21 @@ module.exports = {
     new HtmlWebpackPlugin({
       title: "Splash Page",
       template: './src/index.html',
+      hash: true,
       chunks: ['splash']
     }),
     new HtmlWebpackPlugin({
       title: "Hierarchy Navigator",
       template: './src/hierarchynavigator.html',
       filename: 'hierarchynavigator.html',
+      hash: true,
       chunks: ['hier']
     }),
     new HtmlWebpackPlugin({
       title: "Config Page",
       template: './src/config.html',
       filename: 'config.html',
+      hash: true,
       chunks: ['config']
     })
   ],
