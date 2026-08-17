@@ -3,6 +3,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import {
     FilterTarget,
     resolveFilterTargets,
+    resolveFilterTargetsExcludingWorksheet,
     shouldUpdateFilterTargets,
     updateFilterTargets
 } from '../API/FilterTargets';
@@ -14,6 +15,11 @@ interface Props {
     dashboard: Dashboard;
 }
 
+interface ParameterEventHandlers {
+    childId?: () => void;
+    childLabel?: () => void;
+}
+
 function ParamHandler(props: Props) {
     const [reapplySelectionsVersion, setReapplySelectionsVersion]=useState(0);
     const [refreshVersion, setRefreshVersion]=useState(0);
@@ -22,7 +28,12 @@ function ParamHandler(props: Props) {
     const [dataFromExtension, setDataFromExtension]=useState<HierarchySelectionPayload>();
     const filterQueue=useRef<Promise<void>>(Promise.resolve());
     const appliedFilterTargets=useRef<FilterTarget[]>([]);
-    const temporaryEventHandlers: { childId?: () => {}, childLabel?: () => {}; }={ childId: undefined, childLabel: undefined }; // not using useState here because state was having trouble holding functions and executing them later
+    const appliedMarkTarget=useRef<FilterTarget>();
+    const parameterEventHandlers=useRef<ParameterEventHandlers>({});
+    const listenerSetupVersion=useRef(0);
+    const configurationVersion=useRef(0);
+    const currentIdRef=useRef('');
+    const currentLabelRef=useRef('');
     const {debug=false||debugOverride} = props.data.options;
 
 
@@ -32,8 +43,11 @@ function ParamHandler(props: Props) {
         if(props.data.configComplete) {
             if(debug) { console.log(`SETPARAMDATAFROMEXTENSION: ${ JSON.stringify(dataFromExtension) }`); }
             if(typeof (dataFromExtension)!=='undefined') {
+                const selectionConfigurationVersion=configurationVersion.current;
                 filterQueue.current=filterQueue.current
-                    .then(() => setParamDataFromExtension(dataFromExtension))
+                    .then(() => selectionConfigurationVersion===configurationVersion.current?
+                        setParamDataFromExtension(dataFromExtension):Promise.resolve()
+                    )
                     .catch(error => console.error('Unable to apply hierarchy selection.', error));
             }
         }
@@ -43,16 +57,22 @@ function ParamHandler(props: Props) {
     // decides whether the source definition changed or this is a refresh whose UI
     // state should be retained.
     useEffect(() => {
-        async function clear() {
-            // if data changes, clear event handlers
-            if(debug) { console.log(`clearing events/filters/marks...`); }
-            await clearFilterAndMarksAsync();
-            if(debug) { console.log(`done clearing events/filters/marks...`); }
-            setReapplySelectionsVersion(current => current+1);
-            setRefreshVersion(current => current+1);
+        const nextConfigurationVersion=++configurationVersion.current;
+        let active=true;
+        if(props.data.configComplete) {
+            filterQueue.current=filterQueue.current
+                .then(async () => {
+                    if(debug) { console.log(`clearing events/filters/marks...`); }
+                    await clearFilterAndMarksAsync();
+                    if(debug) { console.log(`done clearing events/filters/marks...`); }
+                    if(active&&nextConfigurationVersion===configurationVersion.current) {
+                        setReapplySelectionsVersion(current => current+1);
+                        setRefreshVersion(current => current+1);
+                    }
+                })
+                .catch(error => console.error('Unable to reset hierarchy outputs after configuration changed.', error));
         }
-        if(props.data.configComplete) { clear(); }
-
+        return () => { active=false; };
     }, [props.data]);
 
     // Refresh the source hierarchy when Tableau reports new summary data. The
@@ -80,15 +100,23 @@ function ParamHandler(props: Props) {
 
     // if any of the parameters change via configure, (re)set event listeners
     useEffect(() => {
-        if(props.data.configComplete) { setEventListeners(); }
-        return () => {
-            async function run() {
-                clearEventHandlers();
-                await clearFilterAndMarksAsync();
-            }
-            run();
-        };
-    }, [props.data.parameters.childId, props.data.parameters.childIdEnabled, props.data.parameters.childLabel, props.data.parameters.childLabelEnabled]);
+        if(props.data.configComplete) {
+            setEventListeners().catch(error => console.error('Unable to configure parameter listeners.', error));
+        }
+        else {
+            clearEventHandlers();
+        }
+        return clearEventHandlers;
+    }, [
+        props.dashboard,
+        props.data.configComplete,
+        props.data.options.dashboardListenersEnabled,
+        props.data.parameters.childId,
+        props.data.parameters.childIdEnabled,
+        props.data.parameters.childLabel,
+        props.data.parameters.childLabelEnabled,
+        props.data.type
+    ]);
 
     // solve forEach with promise issue - https://codeburst.io/javascript-async-await-with-foreach-b6ba62bbf404
     async function asyncForEach(array: any[], callback: any) {
@@ -165,17 +193,31 @@ function ParamHandler(props: Props) {
 
     // sets event listeners so they can be called later and released
     async function setEventListeners() {
+        const setupVersion=++listenerSetupVersion.current;
+        removeEventHandlers();
         if (props.data.options.dashboardListenersEnabled){
-            const { childId, childLabel }=await (findParameters());
-            clearEventHandlers(); // just in case.
+            const { childId, childLabel }=await findParameters();
+            if(setupVersion!==listenerSetupVersion.current) { return; }
             if(props.data.parameters.childIdEnabled||props.data.parameters.childLabelEnabled) {
                 if(debug) { console.log(`setEventHandleListeners`); }
                 if(debug) { console.log(`setting event handle listeners`); }
                 if(childLabel) {
-                    temporaryEventHandlers.childLabel=childLabel.addEventListener(tableau.TableauEventType.ParameterChanged, eventDashboardChangeLabel);
+                    parameterEventHandlers.current.childLabel=childLabel.addEventListener(
+                        tableau.TableauEventType.ParameterChanged,
+                        () => {
+                            eventDashboardChangeLabel()
+                                .catch(error => console.error('Unable to process the label parameter change.', error));
+                        }
+                    );
                 }
                 if(childId) {
-                    temporaryEventHandlers.childId=childId.addEventListener(tableau.TableauEventType.ParameterChanged, eventDashboardChangeId);
+                    parameterEventHandlers.current.childId=childId.addEventListener(
+                        tableau.TableauEventType.ParameterChanged,
+                        () => {
+                            eventDashboardChangeId()
+                                .catch(error => console.error('Unable to process the ID parameter change.', error));
+                        }
+                    );
                 }
                 if(debug) { console.log(`done setting event handle listeners`); }
             }
@@ -190,16 +232,19 @@ function ParamHandler(props: Props) {
 
     // clear any event handlers that have been set
     function clearEventHandlers() {
+        listenerSetupVersion.current+=1;
+        removeEventHandlers();
+    }
+
+    function removeEventHandlers() {
         if(debug) { console.log(`clearing event handle listeners`); }
-        // Object.keys(_temporaryEventHandlers).forEach(function(fn){ fn()});
-        // _temporaryEventHandlers=[];
-        if(temporaryEventHandlers.childId) {
-            temporaryEventHandlers.childId();
-            temporaryEventHandlers.childId=undefined;
+        if(parameterEventHandlers.current.childId) {
+            parameterEventHandlers.current.childId();
+            parameterEventHandlers.current.childId=undefined;
         }
-        if(temporaryEventHandlers.childLabel) {
-            temporaryEventHandlers.childLabel();
-            temporaryEventHandlers.childLabel=undefined;
+        if(parameterEventHandlers.current.childLabel) {
+            parameterEventHandlers.current.childLabel();
+            parameterEventHandlers.current.childLabel=undefined;
         }
     }
 
@@ -221,15 +266,16 @@ function ParamHandler(props: Props) {
                 );
                 appliedFilterTargets.current=[];
             }
-            const worksheet=await findWorksheet();
-            if(typeof worksheet==='undefined') { return; }
-            if(debug) { console.log(`worksheet: ${ props.data.worksheet.name } for childId: ${ props.data.worksheet.childId }`); }
-            // clear all marks selection
-            if(props.data.worksheet.childId!=='') {
-                await worksheet.selectMarksByValueAsync([{
-                    fieldName: props.data.worksheet.childId,
-                    value: []
-                }], tableau.SelectionUpdateType.Replace);
+            const markTarget=appliedMarkTarget.current;
+            if(markTarget) {
+                const worksheet=props.dashboard.worksheets.find(candidate => candidate.name===markTarget.worksheetName);
+                if(worksheet) {
+                    await worksheet.selectMarksByValueAsync([{
+                        fieldName: markTarget.fieldName,
+                        value: []
+                    }], tableau.SelectionUpdateType.Replace);
+                }
+                appliedMarkTarget.current=undefined;
             }
         }
 
@@ -250,15 +296,25 @@ function ParamHandler(props: Props) {
         else {
             cp=await props.dashboard.findParameterAsync(props.data.parameters.childId);
         }
-        setCurrentId(cp!.currentValue.value);
+        if(!cp) { return; }
+        const nextId=String(cp.currentValue.value??'');
+        if(nextId===currentIdRef.current) { return; }
+        currentIdRef.current=nextId;
+        setCurrentId(nextId);
     };
     async function eventDashboardChangeLabel() {
         const cl=await props.dashboard.findParameterAsync(props.data.parameters.childLabel);
-        setCurrentLabel(cl!.currentValue.value);
+        if(!cl) { return; }
+        const nextLabel=String(cl.currentValue.value??'');
+        if(nextLabel===currentLabelRef.current) { return; }
+        currentLabelRef.current=nextLabel;
+        setCurrentLabel(nextLabel);
     };
 
     async function setParamDataFromExtension(incomingData: HierarchySelectionPayload) {
 
+        currentIdRef.current=incomingData.currentId;
+        currentLabelRef.current=incomingData.currentLabel;
         setCurrentId(incomingData.currentId);
         setCurrentLabel(incomingData.currentLabel);
 
@@ -272,10 +328,10 @@ function ParamHandler(props: Props) {
             if(typeof childId!=='undefined' && (props.data.parameters.childIdEnabled || props.data.type === HierType.FLAT)) {
                 if(childId.dataType===tableau.DataType.Int) {
                     const converted=parseInt(incomingData.currentId, 10);
-                    if(!isNaN(converted)) { childId.changeValueAsync(converted); };
+                    if(!isNaN(converted)) { await childId.changeValueAsync(converted); };
                 }
                 else {
-                    childId.changeValueAsync(incomingData.currentId);
+                    await childId.changeValueAsync(incomingData.currentId);
                 }
             }
         }
@@ -286,7 +342,7 @@ function ParamHandler(props: Props) {
             if(typeof childLabel!=='undefined' && props.data.parameters.childLabelEnabled) {
                 if(childLabel.dataType===tableau.DataType.Int) {
                     const converted=parseInt(incomingData.currentLabel, 10);
-                    if(!isNaN(converted)) { childLabel.changeValueAsync(converted); };
+                    if(!isNaN(converted)) { await childLabel.changeValueAsync(converted); };
                 }
                 else {
                     if(debug) {
@@ -294,7 +350,7 @@ function ParamHandler(props: Props) {
                         console.log(childLabel);
                         console.log(`to ${ incomingData.currentLabel }`);
                     }
-                    childLabel.changeValueAsync(incomingData.currentLabel);
+                    await childLabel.changeValueAsync(incomingData.currentLabel);
                 }
             }
         }
@@ -305,7 +361,9 @@ function ParamHandler(props: Props) {
             const currentLevel=incomingData.currentLevel||
                 (incomingData.currentId.match(new RegExp(escapeRegex(props.data.separator), 'g'))?.length||0)+1;
             try {
-                if(typeof level!=='undefined'&&level.dataType===tableau.DataType.Int) { level.changeValueAsync(currentLevel); }
+                if(typeof level!=='undefined'&&level.dataType===tableau.DataType.Int) {
+                    await level.changeValueAsync(currentLevel);
+                }
             }
             catch(e) {
                 if(debug) { console.log(`can't set level param: ${ e.message }`); }
@@ -318,10 +376,10 @@ function ParamHandler(props: Props) {
                         if(typeof fields==='undefined') { continue; }
                         if(fields[i].dataType===tableau.DataType.Int) {
                             const converted=parseInt(fieldVals[i]||'', 10);
-                            if(!isNaN(converted)) { fields[i].changeValueAsync(converted); };
+                            if(!isNaN(converted)) { await fields[i].changeValueAsync(converted); };
                         }
                         else {
-                            fields[i].changeValueAsync(fieldVals[i]||'Null');
+                            await fields[i].changeValueAsync(fieldVals[i]||'Null');
                         }
                     }
                     catch(e) {
@@ -333,7 +391,10 @@ function ParamHandler(props: Props) {
 
         if(typeof incomingData.selectedLeafValues!=='undefined') {
             const selectedValues=incomingData.selectedLeafValues;
-            const configuredTargets=resolveFilterTargets(props.data.worksheet);
+            const configuredTargets=resolveFilterTargetsExcludingWorksheet(
+                props.data.worksheet,
+                props.data.worksheet.name
+            );
             if(shouldUpdateFilterTargets(props.data.worksheet.filterEnabled, configuredTargets)) {
                 const successfulTargets=await updateFilterTargets(
                     configuredTargets,
@@ -351,10 +412,13 @@ function ParamHandler(props: Props) {
                         fieldName: props.data.worksheet.childId,
                         value: selectedValues
                     }], tableau.SelectionUpdateType.Replace);
+                    appliedMarkTarget.current=selectedValues.length?{
+                        worksheetName: worksheet.name,
+                        fieldName: props.data.worksheet.childId
+                    }:undefined;
                 }
             }
         }
-        setEventListeners();
     }
 
     return (

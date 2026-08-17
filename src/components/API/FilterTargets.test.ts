@@ -3,6 +3,7 @@ import {
     findNextFilterTargetWorksheet,
     replaceFilterTargetField,
     resolveFilterTargets,
+    resolveFilterTargetsExcludingWorksheet,
     shouldUpdateFilterTargets,
     syncLegacyFilterTarget,
     updateFilterTargets
@@ -31,6 +32,19 @@ async function run(): Promise<void> {
     });
     assert(normalized.length===2, 'Duplicate and incomplete filter targets should be removed.');
 
+    const externalTargets=resolveFilterTargetsExcludingWorksheet({
+        filterTargets: [
+            { worksheetName: 'Hierarchy Source', fieldName: 'Product Path' },
+            { worksheetName: 'Sales', fieldName: 'Product Path' },
+            { worksheetName: 'Profit', fieldName: 'Product ID' }
+        ]
+    }, 'Hierarchy Source');
+    assert(externalTargets.length===2, 'The hierarchy source worksheet must be excluded from filter targets.');
+    assert(
+        externalTargets.every(target => target.worksheetName!=='Hierarchy Source'),
+        'No resolved external target may point back to the hierarchy source worksheet.'
+    );
+
     const settings={
         filter: 'Old Field',
         filterTargets: normalized,
@@ -53,6 +67,13 @@ async function run(): Promise<void> {
         worksheetName => worksheetName!=='Empty sheet'
     );
     assert(nextWorksheet==='Profit', 'Adding a target should skip empty and already configured worksheets.');
+
+    const nextExternalWorksheet=findNextFilterTargetWorksheet(
+        ['Hierarchy Source', 'Sales'],
+        [],
+        worksheetName => worksheetName!=='Hierarchy Source'
+    );
+    assert(nextExternalWorksheet==='Sales', 'Adding a target should skip the hierarchy source worksheet.');
 
     const renamedTargets=replaceFilterTargetField(
         [

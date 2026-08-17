@@ -34,6 +34,14 @@ export function resolveFilterTargets(settings: FilterTargetSettings): FilterTarg
     });
 }
 
+/** Resolve targets while excluding a worksheet that must not be filtered. */
+export function resolveFilterTargetsExcludingWorksheet(
+    settings: FilterTargetSettings,
+    excludedWorksheetName: string
+): FilterTarget[] {
+    return resolveFilterTargets(settings).filter(target => target.worksheetName!==excludedWorksheetName);
+}
+
 /** Store normalized targets and mirror the first one into legacy settings. */
 export function syncLegacyFilterTarget(settings: FilterTargetSettings, targets?: FilterTarget[]): void {
     const normalized=typeof targets==='undefined'?

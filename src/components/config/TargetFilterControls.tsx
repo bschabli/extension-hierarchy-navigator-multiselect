@@ -1,6 +1,6 @@
 import { Button, Checkbox } from '@tableau/tableau-ui';
 import React from 'react';
-import { resolveFilterTargets } from '../API/FilterTargets';
+import { resolveFilterTargetsExcludingWorksheet } from '../API/FilterTargets';
 import { HierarchyProps, Status } from '../API/Interfaces';
 import { useTranslation } from '../localization/I18n';
 import { Selector } from '../shared/Selector';
@@ -15,9 +15,10 @@ interface Props {
 /** Render the shared target worksheet/filter configuration for both modes. */
 export function TargetFilterControls(props: Props) {
     const {t}=useTranslation();
-    const targets=resolveFilterTargets(props.data.worksheet);
+    const targets=resolveFilterTargetsExcludingWorksheet(props.data.worksheet, props.data.worksheet.name);
     const usedWorksheetNames=new Set(targets.map(target => target.worksheetName));
     const worksheetsWithFields=props.data.dashboardItems.targetWorksheets.filter(name => {
+        if(name===props.data.worksheet.name) { return false; }
         const items=props.data.dashboardItems.allWorksheetItems[name];
         return Boolean(items&&(items.fields.length||items.filters.length));
     });

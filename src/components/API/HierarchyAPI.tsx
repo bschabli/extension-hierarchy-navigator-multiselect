@@ -8,6 +8,7 @@ import {
     findNextFilterTargetWorksheet,
     replaceFilterTargetField,
     resolveFilterTargets,
+    resolveFilterTargetsExcludingWorksheet,
     syncLegacyFilterTarget
 } from './FilterTargets';
 import { isSelectionBehavior, resolveSavedSelectionBehavior } from './SelectionBehavior';
@@ -187,7 +188,7 @@ const hierarchyAPI=(): any => {
         };
         const makeTarget=(worksheetName: string): FilterTarget|undefined => {
             const fields=targetFieldsFor(worksheetName);
-            if(worksheetName===''||!fields.length) { return undefined; }
+            if(worksheetName===''||worksheetName===payload.worksheet.name||!fields.length) { return undefined; }
             return {
                 worksheetName,
                 fieldName: fields.includes(payload.worksheet.childId)?payload.worksheet.childId:fields[0]
@@ -220,7 +221,7 @@ const hierarchyAPI=(): any => {
                         payload.worksheet.targetFilter=action.data;
                     }
                     const updatedTargets=replaceFilterTargetField(
-                        resolveFilterTargets(payload.worksheet),
+                        resolveFilterTargetsExcludingWorksheet(payload.worksheet, payload.worksheet.name),
                         previousChildId,
                         action.data
                     );
@@ -318,7 +319,7 @@ const hierarchyAPI=(): any => {
                 }
             case 'SET_TARGET_WORKSHEET':
                 {
-                    const targets=resolveFilterTargets(payload.worksheet);
+                    const targets=resolveFilterTargetsExcludingWorksheet(payload.worksheet, payload.worksheet.name);
                     const replacement=makeTarget(action.data);
                     if(replacement) { targets[0]=replacement; }
                     syncLegacyFilterTarget(payload.worksheet, targets);
@@ -326,18 +327,18 @@ const hierarchyAPI=(): any => {
                 }
             case 'SET_TARGET_FILTER_FIELD':
                 {
-                    const targets=resolveFilterTargets(payload.worksheet);
+                    const targets=resolveFilterTargetsExcludingWorksheet(payload.worksheet, payload.worksheet.name);
                     if(targets[0]) { targets[0]={ ...targets[0], fieldName: action.data }; }
                     syncLegacyFilterTarget(payload.worksheet, targets);
                     return dispatch({ type: 'FETCH_SUCCESS', data: payload });
                 }
             case 'ADD_FILTER_TARGET':
                 {
-                    const targets=resolveFilterTargets(payload.worksheet);
+                    const targets=resolveFilterTargetsExcludingWorksheet(payload.worksheet, payload.worksheet.name);
                     const worksheetName=action.data?.worksheetName||findNextFilterTargetWorksheet(
                         payload.dashboardItems.targetWorksheets,
                         targets,
-                        name => targetFieldsFor(name).length>0
+                        name => name!==payload.worksheet.name&&targetFieldsFor(name).length>0
                     );
                     const newTarget=makeTarget(worksheetName);
                     if(newTarget) { targets.push(newTarget); }
@@ -346,14 +347,15 @@ const hierarchyAPI=(): any => {
                 }
             case 'REMOVE_FILTER_TARGET':
                 {
-                    const targets=resolveFilterTargets(payload.worksheet).filter((target, index) => index!==action.data.index);
+                    const targets=resolveFilterTargetsExcludingWorksheet(payload.worksheet, payload.worksheet.name)
+                        .filter((target, index) => index!==action.data.index);
                     syncLegacyFilterTarget(payload.worksheet, targets);
                     if(!targets.length) { payload.worksheet.filterEnabled=false; }
                     return dispatch({ type: 'FETCH_SUCCESS', data: payload });
                 }
             case 'SET_FILTER_TARGET_WORKSHEET':
                 {
-                    const targets=resolveFilterTargets(payload.worksheet);
+                    const targets=resolveFilterTargetsExcludingWorksheet(payload.worksheet, payload.worksheet.name);
                     const replacement=makeTarget(action.data.worksheetName);
                     if(replacement&&targets[action.data.index]) { targets[action.data.index]=replacement; }
                     syncLegacyFilterTarget(payload.worksheet, targets);
@@ -361,7 +363,7 @@ const hierarchyAPI=(): any => {
                 }
             case 'SET_FILTER_TARGET_FIELD':
                 {
-                    const targets=resolveFilterTargets(payload.worksheet);
+                    const targets=resolveFilterTargetsExcludingWorksheet(payload.worksheet, payload.worksheet.name);
                     if(targets[action.data.index]) {
                         targets[action.data.index]={ ...targets[action.data.index], fieldName: action.data.fieldName };
                     }
@@ -372,8 +374,10 @@ const hierarchyAPI=(): any => {
                 {
                     // update filter enabled/disabled from UI
                     payload.worksheet.filterEnabled=action.data;
-                    if(action.data&&!resolveFilterTargets(payload.worksheet).length) {
-                        const firstTargetWorksheet=payload.dashboardItems.targetWorksheets.find(name => targetFieldsFor(name).length)||'';
+                    if(action.data&&!resolveFilterTargetsExcludingWorksheet(payload.worksheet, payload.worksheet.name).length) {
+                        const firstTargetWorksheet=payload.dashboardItems.targetWorksheets.find(
+                            name => name!==payload.worksheet.name&&targetFieldsFor(name).length>0
+                        )||'';
                         const firstTarget=makeTarget(firstTargetWorksheet);
                         syncLegacyFilterTarget(payload.worksheet, firstTarget?[firstTarget]:[]);
                     }
@@ -576,12 +580,6 @@ const hierarchyAPI=(): any => {
 
                 });
 
-                if(_initialData.worksheet.targetName==='') {
-                    _initialData.worksheet.targetName=_initialData.worksheet.name;
-                }
-                if(_initialData.worksheet.targetFilter==='') {
-                    _initialData.worksheet.targetFilter=_initialData.worksheet.filter||_initialData.worksheet.childId;
-                }
                 syncLegacyFilterTarget(_initialData.worksheet);
 
 
@@ -672,14 +670,15 @@ const hierarchyAPI=(): any => {
                             payload.worksheet.childLabel=payload.dashboardItems.allCurrentWorksheetItems.fields[0];
                             payload.worksheet.parentId=payload.dashboardItems.allCurrentWorksheetItems.fields[0];
                             payload.worksheet.filter=payload.dashboardItems.allCurrentWorksheetItems.filters[0]||'';
-                            if(payload.worksheet.targetName==='') { payload.worksheet.targetName=worksheet.name; }
-                            if(payload.worksheet.targetFilter==='') { payload.worksheet.targetFilter=payload.worksheet.childId; }
                             payload.worksheet.fields=[];
                             payload.worksheet.filterEnabled=false;
                         }
                     }
                 });
-                syncLegacyFilterTarget(payload.worksheet);
+                syncLegacyFilterTarget(
+                    payload.worksheet,
+                    resolveFilterTargetsExcludingWorksheet(payload.worksheet, payload.worksheet.name)
+                );
                 if(payload.type===HierType.RECURSIVE) {
                     payload.parameters.childId=payload.dashboardItems.parameters[0]||'';
                     console.log(`setting PARAM CHILDLABEL to one of: ${ _initialData.dashboardItems.parameters.find(p => p!==payload.parameters.childId) } or ''`);
@@ -959,13 +958,11 @@ const hierarchyAPI=(): any => {
             }
 
             // Migrate and validate all independently configurable filter targets.
-            if(d.worksheet.targetName==='') { d.worksheet.targetName=d.worksheet.name; }
-            if(d.worksheet.targetFilter==='') { d.worksheet.targetFilter=d.worksheet.filter||d.worksheet.childId; }
             const validTargets: FilterTarget[]=[];
             for(const target of resolveFilterTargets(d.worksheet)) {
                 const targetItems=d.dashboardItems.allWorksheetItems[target.worksheetName];
                 const targetFields=targetItems?Array.from(new Set(targetItems.fields.concat(targetItems.filters))):[];
-                if(!targetFields.includes(target.fieldName)) {
+                if(target.worksheetName===d.worksheet.name||!targetFields.includes(target.fieldName)) {
                     modifiedMessages.push({
                         message: 'Filter target ({target}) is no longer available.',
                         values: {target: `${ target.worksheetName } · ${ target.fieldName }`}
