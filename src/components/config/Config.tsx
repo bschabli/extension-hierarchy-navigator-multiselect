@@ -174,7 +174,8 @@ function Configure(props: any) {
     };
     return (
         <>
-            {!doneLoading ? (<div aria-busy='true' className='overlay'><div className='centerOnPage'><div className='spinnerBg centerOnPage'>{ }</div><Spinner color='light' /></div></div>) : undefined}
+            {!doneLoading ? (<div aria-busy='true' className='overlay'><div className='centerOnPage'><div className='spinnerBg centerOnPage'>{ }</div><Spinner color='light'
+            alt="Loading..." /></div></div>) : undefined}
             <div className='headerStyle' >
                 Hierarchy Navigator
             </div>
