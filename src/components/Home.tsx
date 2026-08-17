@@ -25,13 +25,13 @@ class AHome extends React.Component<any, any> {
 								<li>Select or clear an entire parent subtree.</li>
 								<li>See checked and indeterminate parent states.</li>
 								<li>Handle incomplete Flat paths without visible NULL nodes.</li>
-								<li>Apply the complete selection directly to a configured Tableau filter.</li>
+								<li>Apply the complete selection to filters on multiple Tableau worksheets.</li>
 							</ul>
 							<h4 className='big'>Test the Extension</h4>
 							<ol>
 								<li><a href='./hierarchynavigator-multiselect.trex'>Download the multiselect test manifest</a>.</li>
 								<li>In Tableau, add an Extension and choose <b>My Extensions</b>, then select the downloaded manifest.</li>
-								<li>Configure the hierarchy source worksheet, ordered fields or recursive IDs, and the target worksheet/filter field.</li>
+								<li>Configure the hierarchy source worksheet, ordered fields or recursive IDs, and one or more target worksheet/filter mappings.</li>
 								<li>Use the included <a href='./Hierarchy%20Navigator%20Extension%20v2.twbx'>sample workbook</a> as a starting point if needed.</li>
 							</ol>
 							<p><b>Testing note:</b> This is a proof-of-concept build hosted from the multiselect feature branch.</p>

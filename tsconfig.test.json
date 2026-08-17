@@ -4,11 +4,13 @@
     "lib": ["ES2020", "DOM"],
     "module": "commonjs",
     "outDir": "/tmp/hierarchy-navigator-tests",
-    "rootDir": "src/components/extension",
+    "rootDir": "src/components",
     "strict": true,
     "target": "ES2020"
   },
   "include": [
+    "src/components/API/FilterTargets.ts",
+    "src/components/API/FilterTargets.test.ts",
     "src/components/extension/TreeModel.ts",
     "src/components/extension/TreeModel.test.ts"
   ]

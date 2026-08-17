@@ -1,4 +1,6 @@
 /*  tslint:disable:max-classes-per-file */
+import { FilterTarget } from './FilterTargets';
+export { FilterTarget } from './FilterTargets';
 export {debugOverride} from './DebugOverride';
 export enum HierType {
     FLAT='flat',
@@ -62,6 +64,7 @@ export interface SelectedWorksheet {
     name: string,
     filter: string,
     filterEnabled: boolean,
+    filterTargets: FilterTarget[];
     parentId: string,
     childId: string,
     childLabel: string;
@@ -126,6 +129,7 @@ export const defaultSelectedProps: HierarchyProps={
         fields: [],
         filter: '',
         filterEnabled: false,
+        filterTargets: [],
         name: '',
         parentId: '',
         status: Status.notpossible,

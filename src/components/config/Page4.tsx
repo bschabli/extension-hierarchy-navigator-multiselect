@@ -1,6 +1,7 @@
 import { Checkbox, Stepper, TextField, TextArea, TextFieldProps, TextAreaProps, DropdownSelect, DropdownSelectProps } from '@tableau/tableau-ui';
 import { InputAttrs, TextAreaAttrs } from '@tableau/tableau-ui/lib/src/utils/NativeProps';
 import React, { useEffect, useState } from 'react';
+import { resolveFilterTargets } from '../API/FilterTargets';
 import { HierarchyProps, HierType } from '../API/Interfaces';
 import { ConfigSection, ConfigStatus, ConfigStepIntro } from './ConfigPrimitives';
 
@@ -233,6 +234,10 @@ export function Page4(props: Props) {
         props.data.worksheet.fields.join(' → '):
         `${props.data.worksheet.parentId||'Parent ID'} → ${props.data.worksheet.childId||'Child ID'}`;
     const parameterEnabled=props.data.parameters.childIdEnabled||props.data.parameters.childLabelEnabled;
+    const filterTargets=resolveFilterTargets(props.data.worksheet);
+    const filterSummary=props.data.worksheet.filterEnabled&&filterTargets.length?
+        `${filterTargets.length} worksheet${filterTargets.length===1?'':'s'} · ${filterTargets.map(target => target.worksheetName).join(', ')}`:
+        'Off';
     const colorPickerValue=(value: string, fallback: string): string => /^#[0-9a-f]{6}$/i.test(value)?value:fallback;
 
     return (
@@ -254,7 +259,7 @@ export function Page4(props: Props) {
                     <div><dt>Hierarchy format</dt><dd>{props.data.type===HierType.FLAT?'Separate level columns':'Parent and child rows'}</dd></div>
                     <div><dt>Source worksheet</dt><dd>{props.data.worksheet.name||'Not selected'}</dd></div>
                     <div><dt>Hierarchy fields</dt><dd>{hierarchyFields||'Not selected'}</dd></div>
-                    <div><dt>Dashboard filter</dt><dd>{props.data.worksheet.filterEnabled?`${props.data.worksheet.targetName} · ${props.data.worksheet.targetFilter}`:'Off'}</dd></div>
+                    <div><dt>Dashboard filters</dt><dd>{filterSummary}</dd></div>
                     <div><dt>Parameter output</dt><dd>{parameterEnabled?'On':'Off'}</dd></div>
                     <div><dt>Source mark selection</dt><dd>{props.data.worksheet.enableMarkSelection?'On':'Off'}</dd></div>
                 </dl>

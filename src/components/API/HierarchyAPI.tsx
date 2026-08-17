@@ -3,6 +3,7 @@ import { Parameter, Worksheet } from '@tableau/extensions-api-types';
 import { useEffect, useReducer, useRef, useState } from 'react';
 import * as React from 'react';
 import { debugOverride, defaultSelectedProps, HierarchyProps, HierType, SelectedParameters, Status } from './Interfaces';
+import { FilterTarget, resolveFilterTargets, syncLegacyFilterTarget } from './FilterTargets';
 import { withHTMLSpaces } from './Utils';
 
 const extend=require('extend');
@@ -159,6 +160,18 @@ const hierarchyAPI=(): any => {
 
     const setUpdates=(action: { type: string, data: any; }): void => {
         const payload: HierarchyProps=extend(true, {}, state.data);
+        const targetFieldsFor=(worksheetName: string): string[] => {
+            const targetItems=payload.dashboardItems.allWorksheetItems[worksheetName];
+            return targetItems?Array.from(new Set(targetItems.fields.concat(targetItems.filters))):[];
+        };
+        const makeTarget=(worksheetName: string): FilterTarget|undefined => {
+            const fields=targetFieldsFor(worksheetName);
+            if(worksheetName===''||!fields.length) { return undefined; }
+            return {
+                worksheetName,
+                fieldName: fields.includes(payload.worksheet.childId)?payload.worksheet.childId:fields[0]
+            };
+        };
         switch(action.type) {
             case 'SET_PARENT_ID_FIELD':
                 {
@@ -186,6 +199,12 @@ const hierarchyAPI=(): any => {
                         (payload.worksheet.targetFilter===''||payload.worksheet.targetFilter===previousChildId)) {
                         payload.worksheet.targetFilter=action.data;
                     }
+                    const updatedTargets=resolveFilterTargets(payload.worksheet).map(target => (
+                        target.worksheetName===payload.worksheet.name&&target.fieldName===previousChildId?
+                            { ...target, fieldName: action.data }:
+                            target
+                    ));
+                    syncLegacyFilterTarget(payload.worksheet, updatedTargets);
                     payload.configComplete=evalConfigComplete(payload);
                     return dispatch({ type: 'FETCH_SUCCESS', data: payload });
                 }
@@ -274,25 +293,62 @@ const hierarchyAPI=(): any => {
                 }
             case 'SET_TARGET_WORKSHEET':
                 {
-                    payload.worksheet.targetName=action.data;
-                    const targetItems=payload.dashboardItems.allWorksheetItems[action.data];
-                    const targetFields=targetItems? Array.from(new Set(targetItems.fields.concat(targetItems.filters))):[];
-                    if(!targetFields.includes(payload.worksheet.targetFilter)) {
-                        payload.worksheet.targetFilter=targetFields[0]||'';
-                    }
+                    const targets=resolveFilterTargets(payload.worksheet);
+                    const replacement=makeTarget(action.data);
+                    if(replacement) { targets[0]=replacement; }
+                    syncLegacyFilterTarget(payload.worksheet, targets);
                     return dispatch({ type: 'FETCH_SUCCESS', data: payload });
                 }
             case 'SET_TARGET_FILTER_FIELD':
                 {
-                    payload.worksheet.targetFilter=action.data;
-                    // Keep legacy settings populated for backwards compatibility.
-                    payload.worksheet.filter=action.data;
+                    const targets=resolveFilterTargets(payload.worksheet);
+                    if(targets[0]) { targets[0]={ ...targets[0], fieldName: action.data }; }
+                    syncLegacyFilterTarget(payload.worksheet, targets);
+                    return dispatch({ type: 'FETCH_SUCCESS', data: payload });
+                }
+            case 'ADD_FILTER_TARGET':
+                {
+                    const targets=resolveFilterTargets(payload.worksheet);
+                    const usedWorksheetNames=new Set(targets.map(target => target.worksheetName));
+                    const worksheetName=action.data?.worksheetName||payload.dashboardItems.targetWorksheets.find(name => !usedWorksheetNames.has(name))||'';
+                    const newTarget=makeTarget(worksheetName);
+                    if(newTarget) { targets.push(newTarget); }
+                    syncLegacyFilterTarget(payload.worksheet, targets);
+                    return dispatch({ type: 'FETCH_SUCCESS', data: payload });
+                }
+            case 'REMOVE_FILTER_TARGET':
+                {
+                    const targets=resolveFilterTargets(payload.worksheet).filter((target, index) => index!==action.data.index);
+                    syncLegacyFilterTarget(payload.worksheet, targets);
+                    if(!targets.length) { payload.worksheet.filterEnabled=false; }
+                    return dispatch({ type: 'FETCH_SUCCESS', data: payload });
+                }
+            case 'SET_FILTER_TARGET_WORKSHEET':
+                {
+                    const targets=resolveFilterTargets(payload.worksheet);
+                    const replacement=makeTarget(action.data.worksheetName);
+                    if(replacement&&targets[action.data.index]) { targets[action.data.index]=replacement; }
+                    syncLegacyFilterTarget(payload.worksheet, targets);
+                    return dispatch({ type: 'FETCH_SUCCESS', data: payload });
+                }
+            case 'SET_FILTER_TARGET_FIELD':
+                {
+                    const targets=resolveFilterTargets(payload.worksheet);
+                    if(targets[action.data.index]) {
+                        targets[action.data.index]={ ...targets[action.data.index], fieldName: action.data.fieldName };
+                    }
+                    syncLegacyFilterTarget(payload.worksheet, targets);
                     return dispatch({ type: 'FETCH_SUCCESS', data: payload });
                 }
             case 'TOGGLE_FILTER_ENABLED':
                 {
                     // update filter enabled/disabled from UI
                     payload.worksheet.filterEnabled=action.data;
+                    if(action.data&&!resolveFilterTargets(payload.worksheet).length) {
+                        const firstTargetWorksheet=payload.dashboardItems.targetWorksheets.find(name => targetFieldsFor(name).length)||'';
+                        const firstTarget=makeTarget(firstTargetWorksheet);
+                        syncLegacyFilterTarget(payload.worksheet, firstTarget?[firstTarget]:[]);
+                    }
                     return dispatch({ type: 'FETCH_SUCCESS', data: payload });
                 }
             case 'TOGGLE_MARKSELECTION_ENABLED':
@@ -486,6 +542,7 @@ const hierarchyAPI=(): any => {
                 if(_initialData.worksheet.targetFilter==='') {
                     _initialData.worksheet.targetFilter=_initialData.worksheet.filter||_initialData.worksheet.childId;
                 }
+                syncLegacyFilterTarget(_initialData.worksheet);
 
 
                 // check to see if params were previously blank but now exist
@@ -582,6 +639,7 @@ const hierarchyAPI=(): any => {
                         }
                     }
                 });
+                syncLegacyFilterTarget(payload.worksheet);
                 if(payload.type===HierType.RECURSIVE) {
                     payload.parameters.childId=payload.dashboardItems.parameters[0]||'';
                     console.log(`setting PARAM CHILDLABEL to one of: ${ _initialData.dashboardItems.parameters.find(p => p!==payload.parameters.childId) } or ''`);
@@ -845,17 +903,22 @@ const hierarchyAPI=(): any => {
                 d.parameters.childLabel=d.dashboardItems.parameters[1]||d.dashboardItems.parameters[0]||'';
             }
 
-            // Migrate and validate the independently configurable filter target.
+            // Migrate and validate all independently configurable filter targets.
             if(d.worksheet.targetName==='') { d.worksheet.targetName=d.worksheet.name; }
             if(d.worksheet.targetFilter==='') { d.worksheet.targetFilter=d.worksheet.filter||d.worksheet.childId; }
-            const targetItems=d.dashboardItems.allWorksheetItems[d.worksheet.targetName];
-            const targetFields=targetItems? Array.from(new Set(targetItems.fields.concat(targetItems.filters))):[];
-            if(d.worksheet.filterEnabled&&!targetFields.includes(d.worksheet.targetFilter)) {
-                modifiedStr.push(`Target filter field '${ d.worksheet.targetFilter }' is no longer present.`);
-                d.worksheet.targetFilter=targetFields[0]||'';
-                d.worksheet.filterEnabled=false;
+            const validTargets: FilterTarget[]=[];
+            for(const target of resolveFilterTargets(d.worksheet)) {
+                const targetItems=d.dashboardItems.allWorksheetItems[target.worksheetName];
+                const targetFields=targetItems?Array.from(new Set(targetItems.fields.concat(targetItems.filters))):[];
+                if(!targetFields.includes(target.fieldName)) {
+                    modifiedStr.push(`Filter target '${ target.worksheetName } · ${ target.fieldName }' is no longer available.`);
+                }
+                else {
+                    validTargets.push(target);
+                }
             }
-            d.worksheet.filter=d.worksheet.targetFilter;
+            syncLegacyFilterTarget(d.worksheet, validTargets);
+            if(d.worksheet.filterEnabled&&!validTargets.length) { d.worksheet.filterEnabled=false; }
 
             if(debug) { console.log(`successfully completed validate fields`); }
 
