@@ -1,6 +1,7 @@
 import { Checkbox } from '@tableau/tableau-ui';
 import React from 'react';
 import { HierarchyProps, Status } from '../API/Interfaces';
+import { useTranslation } from '../localization/I18n';
 import { Selector } from '../shared/Selector';
 import { ConfigSection, ConfigStepIntro } from './ConfigPrimitives';
 import { SelectionBehaviorControls } from './SelectionBehaviorControls';
@@ -15,26 +16,27 @@ interface Props {
 }
 
 export function Page3Recursive(props: Props) {
+    const {t}=useTranslation();
     // PARAMETERS CONTENT
     return (
         <div className='config-page'>
             <ConfigStepIntro
-                eyebrow='Step 3 of 4'
-                title='Choose what a selection controls'
-                description='Filtering is the usual choice. Parameters and source mark selection are optional integrations for more advanced dashboards.'
+                eyebrow={t('Step {current} of {total}', { current: 3, total: 4 })}
+                title={t('Choose what a selection controls')}
+                description={t('Filtering is the usual choice. Parameters and source mark selection are optional integrations for more advanced dashboards.')}
             />
             <SelectionBehaviorControls data={props.data} setUpdates={props.setUpdates} />
             <TargetFilterControls {...props} />
             <details className='config-advanced' open={props.data.parameters.childIdEnabled||props.data.parameters.childLabelEnabled}>
                 <summary>
                     <span>
-                        <strong>Advanced: write values to parameters</strong>
-                        <small>Expose the selected item to calculations and parameter actions.</small>
+                        <strong>{t('Advanced: write values to parameters')}</strong>
+                        <small>{t('Expose the selected item to calculations and parameter actions.')}</small>
                     </span>
                 </summary>
                 <ConfigSection
-                    title='Parameter outputs'
-                    description='Create string parameters in Tableau first, then map them here. Leave these off if filtering is all you need.'
+                    title={t('Parameter outputs')}
+                    description={t('Create string parameters in Tableau first, then map them here. Leave these off if filtering is all you need.')}
                     optional={true}
                 >
                     <div className='config-toggle-field'>
@@ -43,11 +45,11 @@ export function Page3Recursive(props: Props) {
                         checked={props.data.parameters.childIdEnabled}
                         onChange={props.changeEnabled}
                         data-type='id'
-                        aria-label='Write selected child ID to a parameter'
-                    >Write selected item ID to a parameter</Checkbox>
+                        aria-label={t('Write selected child ID to a parameter')}
+                    >{t('Write selected item ID to a parameter')}</Checkbox>
                     {props.data.parameters.childIdEnabled&&
                         <Selector
-                            title='Item ID parameter'
+                            title={t('Item ID parameter')}
                             status={props.data.dashboardItems.parameters.length? Status.set:Status.notpossible}
                             onChange={props.changeParam}
                             list={props.data.dashboardItems.parameters}
@@ -62,11 +64,11 @@ export function Page3Recursive(props: Props) {
                         checked={props.data.parameters.childLabelEnabled}
                         onChange={props.changeEnabled}
                         data-type='label'
-                        aria-label='Write selected child label to a parameter'
-                    >Write selected item label to a parameter</Checkbox>
+                        aria-label={t('Write selected child label to a parameter')}
+                    >{t('Write selected item label to a parameter')}</Checkbox>
                     {props.data.parameters.childLabelEnabled&&
                         <Selector
-                            title='Item label parameter'
+                            title={t('Item label parameter')}
                             status={props.data.dashboardItems.parameters.length? Status.set:Status.notpossible}
                             onChange={props.changeParam}
                             list={props.data.dashboardItems.parameters}
@@ -76,7 +78,7 @@ export function Page3Recursive(props: Props) {
                     }
                     </div>
                     {!props.data.dashboardItems.parameters.length&&
-                        <p className='config-muted-note'>No compatible string or integer parameters were found on this dashboard.</p>
+                        <p className='config-muted-note'>{t('No compatible string or integer parameters were found on this dashboard.')}</p>
                     }
                 </ConfigSection>
             </details>

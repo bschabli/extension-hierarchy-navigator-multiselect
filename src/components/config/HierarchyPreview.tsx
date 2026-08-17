@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { HierarchyProps, Options } from '../API/Interfaces';
 import { SelectionBehavior, getSelectionBehaviorLabel } from '../API/SelectionBehavior';
+import { useTranslation } from '../localization/I18n';
 import { HighlightedHierarchyLabel } from '../shared/HighlightedHierarchyLabel';
 import {
     CheckboxState,
@@ -30,6 +31,7 @@ const EMPTY_TREE: NormalizedTreeNode[]=[];
 const MAX_VISIBLE_ROWS=100;
 
 function PreviewCheckbox(props: PreviewCheckboxProps) {
+    const {t}=useTranslation();
     const checkboxRef=useRef<HTMLInputElement>(null);
     useEffect(() => {
         if(checkboxRef.current) { checkboxRef.current.indeterminate=props.state==='some'; }
@@ -41,7 +43,7 @@ function PreviewCheckbox(props: PreviewCheckboxProps) {
             type='checkbox'
             checked={props.state==='all'}
             disabled={props.disabled}
-            aria-label={`Select ${ props.label } in preview`}
+            aria-label={t('Select {label} in preview', { label: props.label })}
             onChange={props.onChange}
         />
     );
@@ -81,6 +83,7 @@ function getInitialExpandedKeys(tree: readonly NormalizedTreeNode[]): Set<string
 
 /** Show a safe, interactive rendering of the configured hierarchy. */
 export function HierarchyPreview(props: Props) {
+    const {locale, t}=useTranslation();
     const tree=props.validation.previewTree||EMPTY_TREE;
     const selectionBehavior=props.data.options.selectionBehavior||SelectionBehavior.TERMINAL;
     const autoExpandSearch=props.data.options.searchAutoExpand!==false;
@@ -136,17 +139,17 @@ export function HierarchyPreview(props: Props) {
 
     return (
         <ConfigSection
-            title='Live hierarchy preview'
-            description='Try search, expand branches, and select items before saving. Preview interactions never change the dashboard.'
+            title={t('Live hierarchy preview')}
+            description={t('Try search, expand branches, and select items before saving. Preview interactions never change the dashboard.')}
         >
             {!previewReady&&
                 <div className='config-preview-placeholder' aria-live='polite'>
-                    {props.validation.status==='loading'?'Building the preview from the source worksheet…':
+                    {props.validation.status==='loading'?t('Building the preview from the source worksheet…'):
                         props.validation.status==='complete'&&!props.validation.result?.valid?
-                            'Fix the validation issues above to unlock the live preview.':
+                            t('Fix the validation issues above to unlock the live preview.'):
                             props.validation.status==='error'?
-                                'The preview is unavailable because the source data could not be read.':
-                                'Complete the source mapping to build the live preview.'}
+                                t('The preview is unavailable because the source data could not be read.'):
+                                t('Complete the source mapping to build the live preview.')}
                 </div>
             }
             {previewReady&&
@@ -158,8 +161,10 @@ export function HierarchyPreview(props: Props) {
                             }
                             <span className='config-preview-selection-status' role='status' aria-live='polite'>
                                 {selectedLeafValues.size===0?
-                                    'All values shown (no filter)':
-                                    `${ selectedLeafValues.size } preview value${ selectedLeafValues.size===1?'':'s' } selected`}
+                                    t('All values shown (no filter)'):
+                                    t(selectedLeafValues.size===1?'{count} preview value selected':'{count} preview values selected', {
+                                        count: selectedLeafValues.size
+                                    })}
                             </span>
                         </div>
                         <div className='config-preview-actions'>
@@ -167,36 +172,38 @@ export function HierarchyPreview(props: Props) {
                                 type='button'
                                 disabled={allSelected||allSelectableFilterValues.length===0}
                                 onClick={() => setSelectedLeafValues(new Set(allSelectableFilterValues))}
-                            >Select all</button>
+                            >{t('Select all')}</button>
                             <button
                                 type='button'
                                 disabled={selectedLeafValues.size===0}
                                 onClick={() => setSelectedLeafValues(new Set<string>())}
-                            >Reset preview</button>
+                            >{t('Reset preview')}</button>
                         </div>
                     </div>
                     {props.data.options.searchEnabled&&
                         <label className='config-preview-search'>
                             <span className='config-preview-search-icon' aria-hidden='true'>⌕</span>
-                            <span className='config-visually-hidden'>Search preview hierarchy</span>
+                            <span className='config-visually-hidden'>{t('Search preview hierarchy')}</span>
                             <input
                                 type='search'
-                                placeholder='Type and search'
+                                placeholder={t('Type and search')}
                                 value={searchTerm}
                                 onChange={event => setSearchTerm(event.target.value)}
                             />
                             {searchActive&&
                                 <span className='config-preview-search-count' role='status'>
-                                    {visibleRows.matchCount} match{visibleRows.matchCount===1?'':'es'}
+                                    {t(visibleRows.matchCount===1?'{count} match':'{count} matches', {
+                                        count: visibleRows.matchCount
+                                    })}
                                 </span>
                             }
                         </label>
                     }
                     <div className='config-preview-tree-scroll'>
                         {visibleRows.rows.length===0&&
-                            <div className='config-preview-empty'>No hierarchy items match “{searchTerm}”.</div>
+                            <div className='config-preview-empty'>{t('No hierarchy items match “{term}”.', { term: searchTerm })}</div>
                         }
-                        <ul className='config-preview-tree' role='tree' aria-label='Hierarchy preview'>
+                        <ul className='config-preview-tree' role='tree' aria-label={t('Hierarchy preview')}>
                             {visibleRows.rows.map(row => {
                                 const hasChildren=row.node.nodes.length>0;
                                 const checkboxState=getSelectionState(row.node, selectedLeafValues, selectionBehavior);
@@ -215,7 +222,7 @@ export function HierarchyPreview(props: Props) {
                                             type='button'
                                             disabled={!hasChildren||(searchActive&&autoExpandSearch)}
                                             aria-label={hasChildren?
-                                                (row.expanded?`Collapse ${ row.node.label }`:`Expand ${ row.node.label }`):
+                                                t(row.expanded?'Collapse {label}':'Expand {label}', { label: row.node.label }):
                                                 undefined}
                                             onClick={() => toggleExpanded(row.node)}
                                         >
@@ -240,9 +247,12 @@ export function HierarchyPreview(props: Props) {
                         </ul>
                     </div>
                     <div className='config-preview-footer'>
-                        <span>{getSelectionBehaviorLabel(selectionBehavior)} · {allSelectableFilterValues.length.toLocaleString()} selectable value{allSelectableFilterValues.length===1?'':'s'}</span>
-                        <span>Preview only</span>
-                        {visibleRows.truncated&&<span>Showing the first {MAX_VISIBLE_ROWS} visible items</span>}
+                        <span>{t(getSelectionBehaviorLabel(selectionBehavior))} · {t(
+                            allSelectableFilterValues.length===1?'{count} selectable value':'{count} selectable values',
+                            { count: allSelectableFilterValues.length.toLocaleString(locale) }
+                        )}</span>
+                        <span>{t('Preview only')}</span>
+                        {visibleRows.truncated&&<span>{t('Showing the first {count} visible items', { count: MAX_VISIBLE_ROWS })}</span>}
                     </div>
                 </div>
             }

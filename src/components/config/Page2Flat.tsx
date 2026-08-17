@@ -7,6 +7,7 @@ import { Button as RSButton } from 'reactstrap';
 import dragHandle from '../../images/Drag-handle-01.png';  //'. /src/images/Drag-handle-01.png';
 import { HierarchyProps, Status } from '../API/Interfaces';
 import { withHTMLSpaces } from '../API/Utils';
+import { useTranslation } from '../localization/I18n';
 import { Selector } from '../shared/Selector';
 import { ConfigSection, ConfigStatus, ConfigStepIntro } from './ConfigPrimitives';
 const extend=require('extend');
@@ -19,6 +20,7 @@ interface Props {
 }
 
 export function Page2Flat(props: Props) {
+    const {t}=useTranslation();
     // availFields are fields on worksheet that are not added to hierarchy (aka worksheet.fields); used for childID selector
     const [availFields, setAvailFields]=useState<string[]>([]);
     // sans child is all available fields except child id field; used for left ul
@@ -55,23 +57,23 @@ export function Page2Flat(props: Props) {
     const worksheetTitle=() => {
         switch(props.data.worksheet.status) {
             case Status.notpossible:
-                return 'No valid sheets on the dashboard';
+                return t('No valid sheets on the dashboard');
             case Status.set:
             case Status.notset:
-                return 'Select the sheet with the hierarchy data';
+                return t('Select the sheet with the hierarchy data');
             default:
                 return '';
         }
     };
     const DragHandle=(() => <img src={dragHandle} width='20px' height='20px' alt='' />);
     const SortableItem=SortableElement(({ value }: any) => <li value={value} className='config-sortable-item'>
-        <span className='config-drag-handle' title='Drag to reorder'><DragHandle /></span>
+        <span className='config-drag-handle' title={t('Drag to reorder')}><DragHandle /></span>
         <span>{withHTMLSpaces(value)}</span>
-        <RSButton value={value} onClick={removeFromList} color='link' size='sm' aria-label={`Remove ${withHTMLSpaces(value)}`}>Remove</RSButton>
+        <RSButton value={value} onClick={removeFromList} color='link' size='sm' aria-label={t('Remove {label}', { label: withHTMLSpaces(value) })}>{t('Remove')}</RSButton>
     </li>);
 
     const SortableList=SortableContainer(({ items }: any) => {
-        if(!items) { return (<li>No items</li>); }
+        if(!items) { return (<li>{t('No items')}</li>); }
         return (
             <ul className='sortableList'>
                 {items.map((value: any, index: any) => (
@@ -83,11 +85,11 @@ export function Page2Flat(props: Props) {
 
     const StaticFieldsItem=SortableElement(({ value }: any) => <li value={value} className='config-sortable-item'>
         <span>{withHTMLSpaces(value)}</span>
-        <RSButton value={value} onClick={addToList} color='link' size='sm'>Add</RSButton>
+        <RSButton value={value} onClick={addToList} color='link' size='sm'>{t('Add')}</RSButton>
     </li>);
 
     const StaticFieldsList=SortableContainer(({ items }: any) => {
-        if(!items) { return (<li>No items</li>); }
+        if(!items) { return (<li>{t('No items')}</li>); }
         return (
             <ul className='sortableList'>
                 {items.map((value: any, index: any) => (
@@ -130,7 +132,7 @@ export function Page2Flat(props: Props) {
     const inputProps: TextFieldProps & InputAttrs & React.RefAttributes<HTMLInputElement>={
         message: undefined,
         kind: 'line' as 'line'|'outline'|'search',
-        label: 'Path separator',
+        label: t('Path separator'),
         onChange: (e: any) => {
             props.setUpdates({ type: 'SET_SEPARATOR', data: e.target.value });
         },
@@ -155,13 +157,13 @@ export function Page2Flat(props: Props) {
     return (
         <div className='config-page'>
             <ConfigStepIntro
-                eyebrow='Step 2 of 4'
-                title='Map the source worksheet'
-                description='Choose the hierarchy worksheet, then build the hierarchy from broadest level to most detailed level.'
+                eyebrow={t('Step {current} of {total}', { current: 2, total: 4 })}
+                title={t('Map the source worksheet')}
+                description={t('Choose the hierarchy worksheet, then build the hierarchy from broadest level to most detailed level.')}
             />
             <ConfigSection
-                title='Source worksheet'
-                description='This worksheet supplies the hierarchy values. It may be hidden on the finished dashboard.'
+                title={t('Source worksheet')}
+                description={t('This worksheet supplies the hierarchy values. It may be hidden on the finished dashboard.')}
             >
                 <Selector
                     title={worksheetTitle()}
@@ -173,13 +175,13 @@ export function Page2Flat(props: Props) {
                 />
             </ConfigSection>
             <ConfigSection
-                title='Hierarchy levels'
-                description='Add fields to the left column and drag them into order. Start with the root level.'
+                title={t('Hierarchy levels')}
+                description={t('Add fields to the left column and drag them into order. Start with the root level.')}
             >
                 <div className='config-field-order'>
                     <div className='config-field-list config-field-list--selected'>
                         <div className='config-field-list-heading'>
-                            <strong>Selected levels</strong>
+                            <strong>{t('Selected levels')}</strong>
                             <span>{props.data.worksheet.fields.length}</span>
                         </div>
                         {props.data.worksheet.fields&&props.data.worksheet.fields.length?
@@ -189,29 +191,29 @@ export function Page2Flat(props: Props) {
                                 lockAxis='y'
                                 helperClass='draggingSort'
                             />:
-                            <p className='config-empty-state'>No levels selected yet.</p>
+                            <p className='config-empty-state'>{t('No levels selected yet.')}</p>
                         }
                     </div>
                     <div className='config-field-list'>
                         <div className='config-field-list-heading'>
-                            <strong>Available fields</strong>
-                            <RSButton onClick={addToList} color='link' size='sm' disabled={!availFieldsSansChildId.length}>Add all</RSButton>
+                            <strong>{t('Available fields')}</strong>
+                            <RSButton onClick={addToList} color='link' size='sm' disabled={!availFieldsSansChildId.length}>{t('Add all')}</RSButton>
                         </div>
                         {availFieldsSansChildId.length>0?
                             <StaticFieldsList items={availFieldsSansChildId} lockAxis='y' />:
-                            <p className='config-empty-state'>{allFields.length?'All available fields are selected.':'No fields available.'}</p>
+                            <p className='config-empty-state'>{allFields.length?t('All available fields are selected.'):t('No fields available.')}</p>
                         }
                     </div>
                 </div>
             </ConfigSection>
             <ConfigSection
-                title='Unique path ID'
-                description='The extension uses one calculated field to distinguish identical labels that appear under different parents.'
+                title={t('Unique path ID')}
+                description={t('The extension uses one calculated field to distinguish identical labels that appear under different parents.')}
             >
                 <div className='config-field-grid config-field-grid--two'>
                     <Selector
-                        title='Unique path ID field'
-                        description='Choose the calculated field that contains the full hierarchy path.'
+                        title={t('Unique path ID field')}
+                        description={t('Choose the calculated field that contains the full hierarchy path.')}
                         required={true}
                         status={availFields.length>0? Status.set:Status.hidden}
                         list={availFields}
@@ -221,15 +223,17 @@ export function Page2Flat(props: Props) {
                     <div className='config-text-field'><TextField {...inputProps} /></div>
                 </div>
                 <div className='config-formula'>
-                    <strong>Expected Tableau formula</strong>
-                    <p>Create or update <b>{withHTMLSpaces(props.data.worksheet.childId)||'the ID field'}</b> with this formula, then reopen configuration if needed.</p>
-                    <code>{formula()||'Select at least one hierarchy level to generate the formula.'}</code>
+                    <strong>{t('Expected Tableau formula')}</strong>
+                    <p>{t('Create or update {field} with this formula, then reopen configuration if needed.', {
+                        field: withHTMLSpaces(props.data.worksheet.childId)||t('the ID field')
+                    })}</p>
+                    <code>{formula()||t('Select at least one hierarchy level to generate the formula.')}</code>
                 </div>
                 <div className='config-inline-status'>
                     <ConfigStatus
                         complete={Boolean(props.data.worksheet.name&&props.data.worksheet.childId&&props.data.worksheet.fields.length)}
-                        completeLabel='Required source fields are mapped'
-                        incompleteLabel='Choose a worksheet, at least one level, and an ID field'
+                        completeLabel={t('Required source fields are mapped')}
+                        incompleteLabel={t('Choose a worksheet, at least one level, and an ID field')}
                     />
                 </div>
             </ConfigSection>

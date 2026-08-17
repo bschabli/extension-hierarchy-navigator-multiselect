@@ -3,6 +3,7 @@ import * as React from 'react';
 import '../../css/style.css';
 import {Status} from '../API/Interfaces';
 import {withHTMLSpaces} from '../API/Utils';
+import { useTranslation } from '../localization/I18n';
 export interface SelectorProps {
     title?: string;
     description?: string;
@@ -18,6 +19,7 @@ export interface SelectorProps {
 // Shows if setting has not yet been configured
 // tslint:disable-next-line variable-name
 export const Selector: React.SFC<SelectorProps> = (props) => {
+    const {t}=useTranslation();
     const dropdownSelectProps: DropdownSelectProps = {
         className: 'dropdown-select',
         disabled: props.status!==Status.set,
@@ -34,7 +36,7 @@ export const Selector: React.SFC<SelectorProps> = (props) => {
     };
     const showButton = ():React.ReactFragment => {
         if (typeof props.onClick === 'function'){
-            return (<Button {...buttonProps}>Set</Button>);
+            return (<Button {...buttonProps}>{t('Set')}</Button>);
         }
         else {
             return (<div />)
@@ -51,7 +53,7 @@ export const Selector: React.SFC<SelectorProps> = (props) => {
             {props.title&&
                 <label className='config-field-label'>
                     {props.title}
-                    {props.required&&<span className='config-required'>Required</span>}
+                    {props.required&&<span className='config-required'>{t('Required')}</span>}
                 </label>
             }
             {props.description&&<p className='config-field-help'>{props.description}</p>}

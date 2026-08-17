@@ -5,6 +5,7 @@ import { createRoot } from 'react-dom/client';
 import '../../css/style.css';
 import { debugOverride, defaultSelectedProps, HierarchyProps } from '../API/Interfaces';
 import { getLegacySelectionBehavior, isSelectionBehavior } from '../API/SelectionBehavior';
+import { LocalizationProvider, useTranslation } from '../localization/I18n';
 import ParamHandler from './ParamHandler';
 var extend = require('extend');
 
@@ -18,6 +19,7 @@ function hydrateSavedSettings(settingsData: any): HierarchyProps {
 }
 
 function HierarchyNavigator() {
+    const {t}=useTranslation();
     const [dashboard, setDashboard] = useState({});
     const [doneLoading, setDoneLoading] = useState(false);
     const [data, setData] = useState<HierarchyProps>(defaultSelectedProps);
@@ -26,7 +28,7 @@ function HierarchyNavigator() {
     const describeError = (error: any): string => {
         if (error && typeof error.message === 'string') { return error.message; }
         if (error && typeof error.toString === 'function') { return error.toString(); }
-        return 'Unknown Tableau Extensions API error.';
+        return t('Unknown Tableau Extensions API error.');
     };
 
     // Pops open the configure page if extension isn't configured
@@ -103,6 +105,7 @@ function HierarchyNavigator() {
                     tableau.extensions.initializeAsync({ configure }),
                     timeout
                 ]);
+                window.dispatchEvent(new Event('hierarchy-locale-ready'));
 
                 if (typeof timeoutId !== 'undefined') { window.clearTimeout(timeoutId); }
                 setDashboard(tableau.extensions.dashboardContent!.dashboard);
@@ -186,19 +189,19 @@ function HierarchyNavigator() {
     return (
         <>
             {!doneLoading ? (<div aria-busy='true' className='overlay'><div className='centerOnPage'><div className='spinnerBg centerOnPage'>{ }</div><Spinner color='light'
-            alt="Loading..." /></div></div>) : undefined}
+            alt={t('Loading…')} /></div></div>) : undefined}
             {initializationError ? (
                 <div className='extension-status' role='alert'>
-                    <h2>Hierarchy Navigator could not start</h2>
+                    <h2>{t('Hierarchy Navigator could not start')}</h2>
                     <p>{initializationError}</p>
-                    <p>Reload the extension after confirming that its exact URL is enabled in Tableau Settings → Extensions.</p>
-                    <button type='button' onClick={() => window.location.reload()}>Reload Extension</button>
+                    <p>{t('Reload the extension after confirming that its exact URL is enabled in Tableau Settings → Extensions.')}</p>
+                    <button type='button' onClick={() => window.location.reload()}>{t('Reload Extension')}</button>
                 </div>
             ) : doneLoading&&!data.configComplete ? (
                 <div className='extension-status'>
-                    <h2>Configure Hierarchy Navigator</h2>
-                    <p>Select the source hierarchy and any target worksheet filters before using the extension.</p>
-                    <button type='button' onClick={configure}>Configure</button>
+                    <h2>{t('Configure Hierarchy Navigator')}</h2>
+                    <p>{t('Select the source hierarchy and any target worksheet filters before using the extension.')}</p>
+                    <button type='button' onClick={configure}>{t('Configure')}</button>
                 </div>
             ) : doneLoading ? (
                 <div>
@@ -215,4 +218,4 @@ function HierarchyNavigator() {
 
 const container = document.getElementById('app') as HTMLElement;
 const root = createRoot(container);
-root.render(<HierarchyNavigator />);
+root.render(<LocalizationProvider><HierarchyNavigator /></LocalizationProvider>);

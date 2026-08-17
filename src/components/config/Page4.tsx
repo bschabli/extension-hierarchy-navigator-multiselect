@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { resolveFilterTargets } from '../API/FilterTargets';
 import { HierarchyProps, HierType } from '../API/Interfaces';
 import { SelectionBehavior, getSelectionBehaviorLabel } from '../API/SelectionBehavior';
+import { useTranslation } from '../localization/I18n';
 import { ConfigSection, ConfigStatus, ConfigStepIntro } from './ConfigPrimitives';
 import { DataValidationPreview } from './DataValidationPreview';
 import { HierarchyPreview } from './HierarchyPreview';
@@ -17,9 +18,10 @@ interface Props {
 }
 
 export function Page4(props: Props) {
+    const {t}=useTranslation();
     const setTitleInputProps: TextFieldProps & InputAttrs & React.RefAttributes<HTMLInputElement> = {
         disabled: !props.data.options.titleEnabled,
-        label: 'Title text',
+        label: t('Title text'),
         message: undefined,
         kind: 'line' as 'line' | 'outline' | 'search',
         onChange: (e: any) => {
@@ -32,7 +34,7 @@ export function Page4(props: Props) {
         value: props.data.options.title
     };
     const setFontFamilyInputProps: TextAreaProps & TextAreaAttrs & React.RefAttributes<HTMLTextAreaElement> = {
-        label: "Font Family",
+        label: t('Font family'),
         message: undefined,
         onChange: (e: any) => {
             props.setUpdates({ type: 'SET_FONT_FAMILY', data: e.target.value });
@@ -42,7 +44,7 @@ export function Page4(props: Props) {
         rows: 3
     };
     const setFontSizeInputProps: TextFieldProps & InputAttrs & React.RefAttributes<HTMLInputElement> = {
-        label: "Font Size",
+        label: t('Font size'),
         message: undefined,
         kind: 'line' as 'line' | 'outline' | 'search',
         onChange: (e: any) => {
@@ -58,7 +60,7 @@ export function Page4(props: Props) {
     const [itemCSSValid, setItemCSSValid] = useState(true);
     const [itemCSSMessage, setItemCSSMessage] = useState(<br />)
     const setItemCSSInputProps: TextAreaProps & TextAreaAttrs & React.RefAttributes<HTMLTextAreaElement> = {
-        label: "CSS for Items",
+        label: t('CSS for items'),
         message: itemCSSValid ? <br /> : itemCSSMessage,
         valid: itemCSSValid ? undefined : itemCSSValid,
         onChange: (e: any) => {
@@ -74,7 +76,7 @@ export function Page4(props: Props) {
             catch (err) {
                 console.log(err.message);
                 setItemCSSValid(false);
-                setItemCSSMessage(<>Invalid JSON: {err.message}</>);
+                setItemCSSMessage(<>{t('Invalid JSON: {message}', { message: err.message })}</>);
             }
         },
 
@@ -97,11 +99,11 @@ export function Page4(props: Props) {
         { value: 'Base64 Image' },
         { value: 'Ascii' }
     ]
-    const makeOption = (item: any, index: number) => <option disabled={item.disabled || item.separator} key={index} value={item.value}>{item.value}</option>;
+    const makeOption = (item: any, index: number) => <option disabled={item.disabled || item.separator} key={index} value={item.value}>{t(item.value)}</option>;
     const [openedIconState, setOpenedIconState] = useState({ value: props.data.options.openedIconType });
     const [closedIconState, setClosedIconState] = useState({ value: props.data.options.closedIconType });
     const setOpenedIconInputProps: TextAreaProps & TextAreaAttrs & React.RefAttributes<HTMLTextAreaElement> = {
-        label: props.data.options.openedIconType === 'Default' ? undefined : props.data.options.openedIconType === 'Base64 Image' ? 'Paste a Base64 image string below' : 'Use any ascii character(s)',
+        label: props.data.options.openedIconType === 'Default' ? undefined : props.data.options.openedIconType === 'Base64 Image' ? t('Paste a Base64 image string below') : t('Use any ASCII character(s)'),
         onChange: (e: any) => {
             if (props.data.options.openedIconType === 'Base64 Image') {
                 props.setUpdates({ type: 'SET_OPENED_ICON_BASE64IMAGE', data: e.target.value });
@@ -115,7 +117,7 @@ export function Page4(props: Props) {
         rows: props.data.options.openedIconType === 'Base64 Image' ? 3 : 1
     };
     const setClosedIconInputProps: TextAreaProps & TextAreaAttrs & React.RefAttributes<HTMLTextAreaElement> = {
-        label: props.data.options.closedIconType === 'Default' ? undefined : props.data.options.closedIconType === 'Base64 Image' ? 'Paste a Base64 image string below' : 'Use any ascii character(s)',
+        label: props.data.options.closedIconType === 'Default' ? undefined : props.data.options.closedIconType === 'Base64 Image' ? t('Paste a Base64 image string below') : t('Use any ASCII character(s)'),
         onChange: (e: any) => {
             if (props.data.options.closedIconType === 'Base64 Image') {
                 props.setUpdates({ type: 'SET_CLOSED_ICON_BASE64IMAGE', data: e.target.value });
@@ -134,7 +136,7 @@ export function Page4(props: Props) {
             setOpenedIconPreview(defaultOpenedIcon);
         }
         else if (props.data.options.openedIconType === 'Base64 Image') {
-            setOpenedIconPreview(<img src={props.data.options.openedIconBase64Image} width="12px" height="12px" />);
+            setOpenedIconPreview(<img src={props.data.options.openedIconBase64Image} width="12px" height="12px" alt='' />);
         }
         else if (props.data.options.openedIconType === 'Ascii') {
             setOpenedIconPreview(<span  style={{color: props.data.options.fontColor}}>{props.data.options.openedIconAscii}</span>);
@@ -143,7 +145,7 @@ export function Page4(props: Props) {
             setClosedIconPreview(defaultClosedIcon);
         }
         else if (props.data.options.closedIconType === 'Base64 Image') {
-            setClosedIconPreview(<img src={props.data.options.closedIconBase64Image}width="12px" height="12px" />);
+            setClosedIconPreview(<img src={props.data.options.closedIconBase64Image}width="12px" height="12px" alt='' />);
         }
         else if (props.data.options.closedIconType === 'Ascii') {
             setClosedIconPreview(<span  style={{color: props.data.options.fontColor}}>{props.data.options.closedIconAscii}</span>);
@@ -155,7 +157,7 @@ export function Page4(props: Props) {
             setOpenedIconState({ value: e.target.value as 'Default' | 'Base64 Image' | 'Ascii' })
             props.setUpdates({ type: 'SET_OPENED_ICON_TYPE', data: e.target.value });
         },
-        label: 'Open Icon Type',
+        label: t('Open icon type'),
         kind: 'line'
     };
     const setClosedIconInputPropsDropdown: DropdownSelectProps & React.RefAttributes<HTMLSelectElement> = {
@@ -163,11 +165,11 @@ export function Page4(props: Props) {
             setClosedIconState({ value: e.target.value as 'Default' | 'Base64 Image' | 'Ascii' })
             props.setUpdates({ type: 'SET_CLOSED_ICON_TYPE', data: e.target.value });
         },
-        label: 'Closed Icon Type',
+        label: t('Closed icon type'),
         kind: 'line'
     };
     const setBGColorInputProps: TextFieldProps & InputAttrs & React.RefAttributes<HTMLInputElement> = {
-        label: "Background Color",
+        label: t('Background color'),
         message: undefined,
         kind: 'line' as 'line' | 'outline' | 'search',
         onChange: (e: any) => {
@@ -180,7 +182,7 @@ export function Page4(props: Props) {
         value: props.data.options.bgColor
     };
     const setFontColorInputProps: TextFieldProps & InputAttrs & React.RefAttributes<HTMLInputElement> = {
-        label: "Font Color",
+        label: t('Font color'),
         message: undefined,
         kind: 'line' as 'line' | 'outline' | 'search',
         onChange: (e: any) => {
@@ -193,7 +195,7 @@ export function Page4(props: Props) {
         value: props.data.options.fontColor
     };
     const setHighlightColorInputProps: TextFieldProps & InputAttrs & React.RefAttributes<HTMLInputElement> = {
-        label: "Highlight Color",
+        label: t('Highlight color'),
         message: undefined,
         kind: 'line' as 'line' | 'outline' | 'search',
         onChange: (e: any) => {
@@ -241,94 +243,95 @@ export function Page4(props: Props) {
     );
     const hierarchyFields=props.data.type===HierType.FLAT?
         props.data.worksheet.fields.join(' → '):
-        `${props.data.worksheet.parentId||'Parent ID'} → ${props.data.worksheet.childId||'Child ID'}`;
+        `${props.data.worksheet.parentId||t('Parent ID')} → ${props.data.worksheet.childId||t('Child ID')}`;
     const parameterEnabled=props.data.parameters.childIdEnabled||props.data.parameters.childLabelEnabled;
-    const selectionBehaviorLabel=getSelectionBehaviorLabel(
+    const selectionBehaviorLabel=t(getSelectionBehaviorLabel(
         props.data.options.selectionBehavior||SelectionBehavior.TERMINAL
-    );
+    ));
     const filterTargets=resolveFilterTargets(props.data.worksheet);
     const filterSummary=props.data.worksheet.filterEnabled&&filterTargets.length?
-        `${filterTargets.length} worksheet${filterTargets.length===1?'':'s'} · ${filterTargets.map(target => target.worksheetName).join(', ')}`:
-        'Off';
+        `${ t(filterTargets.length===1?'{count} worksheet':'{count} worksheets', { count: filterTargets.length }) } · ${filterTargets.map(target => target.worksheetName).join(', ')}`:
+        t('Off');
     const validationPassed=props.validation.status==='complete'&&Boolean(props.validation.result?.valid);
-    const validationStatusLabel=!sourceComplete?'Source mapping is incomplete':
-        props.validation.status==='loading'?'Checking source data':
-        props.validation.status==='error'?'Validation could not finish':
-        props.validation.status==='complete'?'Data issues need attention':'Validation has not run';
+    const validationStatusLabel=!sourceComplete?t('Source mapping is incomplete'):
+        props.validation.status==='loading'?t('Checking source data'):
+        props.validation.status==='error'?t('Validation could not finish'):
+        props.validation.status==='complete'?t('Data issues need attention'):t('Validation has not run');
     const colorPickerValue=(value: string, fallback: string): string => /^#[0-9a-f]{6}$/i.test(value)?value:fallback;
 
     return (
         <div className='config-page'>
             <ConfigStepIntro
-                eyebrow='Step 4 of 4'
-                title='Review and finish'
-                description='Confirm the data mapping and interactions, then choose the display options users will see.'
+                eyebrow={t('Step {current} of {total}', { current: 4, total: 4 })}
+                title={t('Review and finish')}
+                description={t('Confirm the data mapping and interactions, then choose the display options users will see.')}
             />
-            <ConfigSection title='Configuration summary'>
+            <ConfigSection title={t('Configuration summary')}>
                 <div className='config-review-heading'>
                     <ConfigStatus
                         complete={validationPassed}
-                        completeLabel='Ready to save'
+                        completeLabel={t('Ready to save')}
                         incompleteLabel={validationStatusLabel}
                     />
                 </div>
                 <dl className='config-review-grid'>
-                    <div><dt>Hierarchy format</dt><dd>{props.data.type===HierType.FLAT?'Separate level columns':'Parent and child rows'}</dd></div>
-                    <div><dt>Source worksheet</dt><dd>{props.data.worksheet.name||'Not selected'}</dd></div>
-                    <div><dt>Hierarchy fields</dt><dd>{hierarchyFields||'Not selected'}</dd></div>
-                    <div><dt>Selection behavior</dt><dd>{selectionBehaviorLabel}</dd></div>
-                    <div><dt>Dashboard filters</dt><dd>{filterSummary}</dd></div>
-                    <div><dt>Search</dt><dd>{props.data.options.searchEnabled?
-                        `On · auto-expand ${props.data.options.searchAutoExpand===false?'off':'on'}`:'Off'}</dd></div>
-                    <div><dt>Parameter output</dt><dd>{parameterEnabled?'On':'Off'}</dd></div>
-                    <div><dt>Source mark selection</dt><dd>{props.data.worksheet.enableMarkSelection?'On':'Off'}</dd></div>
+                    <div><dt>{t('Hierarchy format')}</dt><dd>{t(props.data.type===HierType.FLAT?'Separate level columns':'Parent and child rows')}</dd></div>
+                    <div><dt>{t('Source worksheet')}</dt><dd>{props.data.worksheet.name||t('Not selected')}</dd></div>
+                    <div><dt>{t('Hierarchy fields')}</dt><dd>{hierarchyFields||t('Not selected')}</dd></div>
+                    <div><dt>{t('Selection behavior')}</dt><dd>{selectionBehaviorLabel}</dd></div>
+                    <div><dt>{t('Dashboard filters')}</dt><dd>{filterSummary}</dd></div>
+                    <div><dt>{t('Search')}</dt><dd>{props.data.options.searchEnabled?
+                        `${ t('On') } · ${ t('auto-expand {state}', { state: t(props.data.options.searchAutoExpand===false?'off':'on') }) }`:
+                        t('Off')}</dd></div>
+                    <div><dt>{t('Parameter output')}</dt><dd>{t(parameterEnabled?'On':'Off')}</dd></div>
+                    <div><dt>{t('Source mark selection')}</dt><dd>{t(props.data.worksheet.enableMarkSelection?'On':'Off')}</dd></div>
                 </dl>
             </ConfigSection>
             <DataValidationPreview validation={props.validation} onRetry={props.onRetryValidation} />
             <HierarchyPreview data={props.data} validation={props.validation} />
             <ConfigSection
-                title='Display'
-                description='These defaults work well in most dashboards and can be changed later.'
+                title={t('Display')}
+                description={t('These defaults work well in most dashboards and can be changed later.')}
             >
                 <div className='config-display-options'>
                     <div className='config-option-row'>
-                        <div><strong>Search box</strong><p>Let users quickly find items in larger hierarchies.</p></div>
-                        <Checkbox checked={props.data.options.searchEnabled} onChange={changeSearch} aria-label='Show search box' />
+                        <div><strong>{t('Search box')}</strong><p>{t('Let users quickly find items in larger hierarchies.')}</p></div>
+                        <Checkbox checked={props.data.options.searchEnabled} onChange={changeSearch} aria-label={t('Show search box')} />
                     </div>
                     {props.data.options.searchEnabled&&
                         <div className='config-option-row config-option-row--nested'>
                             <div>
-                                <strong>Automatically expand matching paths</strong>
-                                <p>Turn this off when users should open matching ancestor branches themselves.</p>
+                                <strong>{t('Automatically expand matching paths')}</strong>
+                                <p>{t('Turn this off when users should open matching ancestor branches themselves.')}</p>
                             </div>
                             <Checkbox
                                 checked={props.data.options.searchAutoExpand!==false}
                                 onChange={changeSearchAutoExpand}
-                                aria-label='Automatically expand matching search paths'
+                                aria-label={t('Automatically expand matching search paths')}
                             />
                         </div>
                     }
                     <div className='config-option-row config-option-row--stackable'>
-                        <div><strong>Extension title</strong><p>Show a short heading above the navigator.</p></div>
-                        <Checkbox checked={props.data.options.titleEnabled} onChange={changeTitleEnabled} aria-label='Show extension title' />
+                        <div><strong>{t('Extension title')}</strong><p>{t('Show a short heading above the navigator.')}</p></div>
+                        <Checkbox checked={props.data.options.titleEnabled} onChange={changeTitleEnabled} aria-label={t('Show extension title')} />
                     </div>
                     {props.data.options.titleEnabled&&<div className='config-title-field'><TextField {...setTitleInputProps} /></div>}
                 </div>
             </ConfigSection>
             <details className='config-advanced'>
                 <summary>
-                    <span><strong>Advanced appearance</strong><small>Colors, typography, row styles, and hierarchy icons.</small></span>
+                    <span><strong>{t('Advanced appearance')}</strong><small>{t('Colors, typography, row styles, and hierarchy icons.')}</small></span>
                 </summary>
-                <ConfigSection title='Colors and typography'>
+                <ConfigSection title={t('Colors and typography')}>
                     <div className='config-color-grid'>
-                        <div className='config-color-field'><TextField {...setBGColorInputProps} /><input aria-label='Choose background color' type='color' value={colorPickerValue(props.data.options.bgColor, '#f3f3f3')} onChange={bgChange} /></div>
-                        <div className='config-color-field'><TextField {...setHighlightColorInputProps} /><input aria-label='Choose highlight color' type='color' value={colorPickerValue(props.data.options.highlightColor, '#d1d1d1')} onChange={highlightColorChange} /></div>
-                        <div className='config-color-field'><TextField {...setFontColorInputProps} /><input aria-label='Choose font color' type='color' value={colorPickerValue(props.data.options.fontColor, '#222222')} onChange={fontColorChange} /></div>
+                        <div className='config-color-field'><TextField {...setBGColorInputProps} /><input aria-label={t('Choose background color')} type='color' value={colorPickerValue(props.data.options.bgColor, '#f3f3f3')} onChange={bgChange} /></div>
+                        <div className='config-color-field'><TextField {...setHighlightColorInputProps} /><input aria-label={t('Choose highlight color')} type='color' value={colorPickerValue(props.data.options.highlightColor, '#d1d1d1')} onChange={highlightColorChange} /></div>
+                        <div className='config-color-field'><TextField {...setFontColorInputProps} /><input aria-label={t('Choose font color')} type='color' value={colorPickerValue(props.data.options.fontColor, '#222222')} onChange={fontColorChange} /></div>
                         <div><TextField {...setFontSizeInputProps} /></div>
                     </div>
                     <div className='config-area-field'><TextArea {...setFontFamilyInputProps} /></div>
                 </ConfigSection>
-                <ConfigSection title='Hierarchy icons'>
+                <ConfigSection title={t('Hierarchy icons')}>
                     <div className='config-field-grid config-field-grid--two'>
                         <div className='config-area-field'>
                             <DropdownSelect {...openedIconState} {...setOpenedIconInputPropsDropdown}>{items.map(makeOption)}</DropdownSelect>
@@ -339,8 +342,8 @@ export function Page4(props: Props) {
                             <TextArea {...setClosedIconInputProps} />
                         </div>
                     </div>
-                    <div className='config-icon-preview' aria-label='Icon preview'>
-                        <strong>Preview</strong>
+                    <div className='config-icon-preview' aria-label={t('Icon preview')}>
+                        <strong>{t('Preview')}</strong>
                         <div>{openedIconPreview} Furniture</div>
                         <div className='config-icon-child'>Bookcases</div>
                         <div className='config-icon-child'>Chairs</div>
@@ -351,33 +354,35 @@ export function Page4(props: Props) {
             </details>
             <details className='config-advanced' open={props.data.options.dashboardListenersEnabled}>
                 <summary>
-                    <span><strong>Advanced dashboard synchronization</strong><small>Let dashboard parameters drive the navigator selection.</small></span>
+                    <span><strong>{t('Advanced dashboard synchronization')}</strong><small>{t('Let dashboard parameters drive the navigator selection.')}</small></span>
                 </summary>
                 <ConfigSection
-                    title='Listen for dashboard changes'
-                    description={`Enable this only when the dashboard should update the navigator from ${props.data.type===HierType.RECURSIVE?'item ID or label':'the selected label'} parameters.`}
+                    title={t('Listen for dashboard changes')}
+                    description={t('Enable this only when the dashboard should update the navigator from {parameterType} parameters.', {
+                        parameterType: t(props.data.type===HierType.RECURSIVE?'item ID or label':'the selected label')
+                    })}
                     optional={true}
                 >
                     <div className='config-option-row'>
-                        <div><strong>Enable parameter listeners</strong><p>Leave off when the navigator is the only component controlling these parameters.</p></div>
-                        <Checkbox checked={props.data.options.dashboardListenersEnabled} onChange={toggleDashboardListenersEnabled} aria-label='Enable dashboard parameter listeners' />
+                        <div><strong>{t('Enable parameter listeners')}</strong><p>{t('Leave off when the navigator is the only component controlling these parameters.')}</p></div>
+                        <Checkbox checked={props.data.options.dashboardListenersEnabled} onChange={toggleDashboardListenersEnabled} aria-label={t('Enable dashboard parameter listeners')} />
                     </div>
                     {props.data.options.dashboardListenersEnabled&&
                         <div className='config-stepper-field'>
-                            <label>Update delay (milliseconds)</label>
+                            <label>{t('Update delay (milliseconds)')}</label>
                             <Stepper min={100} max={10000} step={50} pageSteps={5} value={props.data.options.debounce} floatingPoint={false} onValueChange={changeDebounce} />
-                            <p>Increase this if the extension and dashboard repeatedly update one another or the dashboard responds slowly.</p>
+                            <p>{t('Increase this if the extension and dashboard repeatedly update one another or the dashboard responds slowly.')}</p>
                         </div>
                     }
                 </ConfigSection>
             </details>
             <details className='config-advanced' open={props.data.options.debug}>
                 <summary>
-                    <span><strong>Developer settings</strong><small>Custom item CSS and diagnostic logging.</small></span>
+                    <span><strong>{t('Developer settings')}</strong><small>{t('Custom item CSS and diagnostic logging.')}</small></span>
                 </summary>
-                <ConfigSection title='Developer settings' optional={true}>
+                <ConfigSection title={t('Developer settings')} optional={true}>
                     <div className='config-area-field'><TextArea {...setItemCSSInputProps} /></div>
-                    <Checkbox checked={props.data.options.debug} onChange={toggleDebug}>Enable debug logging</Checkbox>
+                    <Checkbox checked={props.data.options.debug} onChange={toggleDebug}>{t('Enable debug logging')}</Checkbox>
                 </ConfigSection>
             </details>
         </div>
