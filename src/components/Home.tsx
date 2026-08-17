@@ -31,6 +31,7 @@ class AHome extends React.Component<any, any> {
 								<li>Choose whether a parent selects terminal values, its entire subtree, or only its own direct ID.</li>
 								<li>Search with highlighted matches, retained ancestor context, and optional automatic path expansion.</li>
 								<li>Keep expanded branches, search text, and valid selections through dashboard data refreshes.</li>
+								<li>Navigate the hierarchy fully by keyboard with visible focus and screen-reader announcements.</li>
 							</ul>
 							<h4 className='big'>Test the Extension</h4>
 							<ol>
