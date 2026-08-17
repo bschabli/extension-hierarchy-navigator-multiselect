@@ -187,7 +187,7 @@ function HierarchyNavigator() {
             ) : doneLoading&&!data.configComplete ? (
                 <div className='extension-status'>
                     <h2>Configure Hierarchy Navigator</h2>
-                    <p>Select the source hierarchy and target filter before using the extension.</p>
+                    <p>Select the source hierarchy and any target worksheet filters before using the extension.</p>
                     <button type='button' onClick={configure}>Configure</button>
                 </div>
             ) : doneLoading ? (

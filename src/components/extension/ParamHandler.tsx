@@ -1,5 +1,6 @@
 import { Dashboard, Parameter, Worksheet } from '@tableau/extensions-api-types';
 import React, { useEffect, useRef, useState } from 'react';
+import { FilterTarget, resolveFilterTargets, updateFilterTargets } from '../API/FilterTargets';
 import { debugOverride, HierarchyProps, HierType } from '../API/Interfaces';
 import Hierarchy, { HierarchySelectionPayload } from './Hierarchy';
 
@@ -14,6 +15,7 @@ function ParamHandler(props: Props) {
     const [currentLabel, setCurrentLabel]=useState<string>('');
     const [dataFromExtension, setDataFromExtension]=useState<HierarchySelectionPayload>();
     const filterQueue=useRef<Promise<void>>(Promise.resolve());
+    const appliedFilterTargets=useRef<FilterTarget[]>([]);
     const temporaryEventHandlers: { childId?: () => {}, childLabel?: () => {}; }={ childId: undefined, childLabel: undefined }; // not using useState here because state was having trouble holding functions and executing them later
     const {debug=false||debugOverride} = props.data.options;
 
@@ -83,13 +85,6 @@ function ParamHandler(props: Props) {
         // return ws;
         if(debug&&typeof ws==='undefined') { console.log(`fW: No worksheets found that match ${ props.data.worksheet.name }`); }
         return ws;
-    }
-
-    // Kept as an array so adding multiple configured targets does not require
-    // changing the filter application logic.
-    function findTargetWorksheets(): Worksheet[] {
-        const targetName=props.data.worksheet.targetName||props.data.worksheet.name;
-        return props.dashboard.worksheets.filter((worksheet: Worksheet) => worksheet.name===targetName);
     }
 
     // find parameters, if enabled, and returns an array 
@@ -181,11 +176,18 @@ function ParamHandler(props: Props) {
     async function clearFilterAndMarksAsync() {
         if(debug) { console.log(`begin clearFilterAndMarksAsync`); }
         try {
-            if(props.data.worksheet.filterEnabled) {
-                const targetField=props.data.worksheet.targetFilter||props.data.worksheet.filter;
-                await asyncForEach(findTargetWorksheets(), async (targetWorksheet: Worksheet) => {
-                    if(targetField!=='') { await targetWorksheet.clearFilterAsync(targetField); }
+            if(props.data.worksheet.filterEnabled||appliedFilterTargets.current.length) {
+                const targets=resolveFilterTargets({
+                    filterTargets: resolveFilterTargets(props.data.worksheet).concat(appliedFilterTargets.current)
                 });
+                await updateFilterTargets(
+                    targets,
+                    props.dashboard.worksheets,
+                    [],
+                    tableau.FilterUpdateType.Replace,
+                    (target, error) => console.error(`Unable to clear hierarchy filter '${target.fieldName}' on '${target.worksheetName}'.`, error)
+                );
+                appliedFilterTargets.current=[];
             }
             const worksheet=await findWorksheet();
             if(typeof worksheet==='undefined') { return; }
@@ -299,21 +301,16 @@ function ParamHandler(props: Props) {
 
         if(typeof incomingData.selectedLeafValues!=='undefined') {
             const selectedValues=incomingData.selectedLeafValues;
-            const targetField=props.data.worksheet.targetFilter||props.data.worksheet.filter;
-            if(targetField!==''&&(props.data.worksheet.filterEnabled||selectedValues.length===0)) {
-                await asyncForEach(findTargetWorksheets(), async (targetWorksheet: Worksheet) => {
-                    if(selectedValues.length===0) {
-                        await targetWorksheet.clearFilterAsync(targetField);
-                    }
-                    else {
-                        await targetWorksheet.applyFilterAsync(
-                            targetField,
-                            selectedValues,
-                            tableau.FilterUpdateType.Replace,
-                            { isExcludeMode: false }
-                        );
-                    }
-                });
+            const configuredTargets=resolveFilterTargets(props.data.worksheet);
+            if(configuredTargets.length&&(props.data.worksheet.filterEnabled||selectedValues.length===0)) {
+                const successfulTargets=await updateFilterTargets(
+                    configuredTargets,
+                    props.dashboard.worksheets,
+                    selectedValues,
+                    tableau.FilterUpdateType.Replace,
+                    (target, error) => console.error(`Unable to update hierarchy filter '${target.fieldName}' on '${target.worksheetName}'.`, error)
+                );
+                appliedFilterTargets.current=selectedValues.length&&props.data.worksheet.filterEnabled?successfulTargets:[];
             }
             if(props.data.worksheet.enableMarkSelection) {
                 const worksheet=await findWorksheet();

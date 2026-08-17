@@ -1084,6 +1084,38 @@ select::-ms-expand {
     padding-top: 13px;
 }
 
+.config-filter-targets {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.config-filter-target {
+    background: #f8fafb;
+    border: 1px solid #dfe4e7;
+    border-radius: 4px;
+    padding: 12px;
+}
+
+.config-filter-target-heading {
+    align-items: center;
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 9px;
+}
+
+.config-add-target {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.config-add-target span {
+    color: var(--config-muted);
+    font-size: 10px;
+}
+
 .config-muted-note {
     background: #f6f7f8;
     margin-top: 12px;

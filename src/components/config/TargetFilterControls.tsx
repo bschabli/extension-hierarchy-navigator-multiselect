@@ -1,5 +1,6 @@
-import { Checkbox } from '@tableau/tableau-ui';
+import { Button, Checkbox } from '@tableau/tableau-ui';
 import React from 'react';
+import { resolveFilterTargets } from '../API/FilterTargets';
 import { HierarchyProps, Status } from '../API/Interfaces';
 import { Selector } from '../shared/Selector';
 import { ConfigSection } from './ConfigPrimitives';
@@ -12,22 +13,27 @@ interface Props {
 
 /** Render the shared target worksheet/filter configuration for both modes. */
 export function TargetFilterControls(props: Props) {
-    const targetItems=props.data.dashboardItems.allWorksheetItems[props.data.worksheet.targetName];
-    const targetFields=targetItems? Array.from(new Set(targetItems.fields.concat(targetItems.filters))):[];
+    const targets=resolveFilterTargets(props.data.worksheet);
+    const usedWorksheetNames=new Set(targets.map(target => target.worksheetName));
+    const worksheetsWithFields=props.data.dashboardItems.targetWorksheets.filter(name => {
+        const items=props.data.dashboardItems.allWorksheetItems[name];
+        return Boolean(items&&(items.fields.length||items.filters.length));
+    });
+    const availableWorksheetNames=worksheetsWithFields.filter(name => !usedWorksheetNames.has(name));
 
     return (
         <>
             <ConfigSection
-                title='Filter a dashboard worksheet'
-                description='When users change the hierarchy selection, apply the selected leaf values to another worksheet.'
+                title='Filter dashboard worksheets'
+                description='Apply the selected leaf values to one or more worksheets. Each worksheet can use its own matching filter field.'
             >
                 <div className='config-option-row'>
                     <div>
-                        <strong>Apply selection as a filter</strong>
-                        <p>Recommended when the navigator should control the visible marks in the dashboard.</p>
+                        <strong>Apply selection as filters</strong>
+                        <p>Recommended when the navigator should control visible marks across the dashboard.</p>
                     </div>
                 <Checkbox
-                    disabled={targetFields.length===0}
+                    disabled={!worksheetsWithFields.length}
                     checked={props.data.worksheet.filterEnabled}
                     onChange={props.changeEnabled}
                     data-type='filter'
@@ -35,25 +41,63 @@ export function TargetFilterControls(props: Props) {
                 />
                 </div>
                 {props.data.worksheet.filterEnabled?
-                    <div className='config-field-grid config-field-grid--two config-revealed-options'>
-                        <Selector
-                            title='Target worksheet'
-                            description='The worksheet that should react to hierarchy selections.'
-                            required={true}
-                            status={props.data.dashboardItems.targetWorksheets.length? Status.set:Status.notpossible}
-                            list={props.data.dashboardItems.targetWorksheets}
-                            selected={props.data.worksheet.targetName}
-                            onChange={(event) => props.setUpdates({ type: 'SET_TARGET_WORKSHEET', data: event.target.value })}
-                        />
-                        <Selector
-                            title='Target filter field'
-                            description='Usually the unique path ID or leaf-level field used by the target worksheet.'
-                            required={true}
-                            status={targetFields.length? Status.set:Status.notpossible}
-                            list={targetFields}
-                            selected={props.data.worksheet.targetFilter}
-                            onChange={(event) => props.setUpdates({ type: 'SET_TARGET_FILTER_FIELD', data: event.target.value })}
-                        />
+                    <div className='config-filter-targets config-revealed-options'>
+                        {targets.map((target, index) => {
+                            const targetItems=props.data.dashboardItems.allWorksheetItems[target.worksheetName];
+                            const targetFields=targetItems?Array.from(new Set(targetItems.fields.concat(targetItems.filters))):[];
+                            const worksheetChoices=worksheetsWithFields.filter(name => name===target.worksheetName||!usedWorksheetNames.has(name));
+                            return (
+                                <div className='config-filter-target' key={`${target.worksheetName}-${index}`}>
+                                    <div className='config-filter-target-heading'>
+                                        <strong>Filter target {index+1}</strong>
+                                        <Button
+                                            kind='lowEmphasis'
+                                            density='high'
+                                            onClick={() => props.setUpdates({ type: 'REMOVE_FILTER_TARGET', data: { index } })}
+                                        >Remove</Button>
+                                    </div>
+                                    <div className='config-field-grid config-field-grid--two'>
+                                        <Selector
+                                            title='Target worksheet'
+                                            description='A worksheet that should react to hierarchy selections.'
+                                            required={true}
+                                            status={worksheetChoices.length?Status.set:Status.notpossible}
+                                            list={worksheetChoices}
+                                            selected={target.worksheetName}
+                                            onChange={(event) => props.setUpdates({
+                                                type: 'SET_FILTER_TARGET_WORKSHEET',
+                                                data: { index, worksheetName: event.target.value }
+                                            })}
+                                        />
+                                        <Selector
+                                            title='Target filter field'
+                                            description='The field whose values match the selected hierarchy leaves.'
+                                            required={true}
+                                            status={targetFields.length?Status.set:Status.notpossible}
+                                            list={targetFields}
+                                            selected={target.fieldName}
+                                            onChange={(event) => props.setUpdates({
+                                                type: 'SET_FILTER_TARGET_FIELD',
+                                                data: { index, fieldName: event.target.value }
+                                            })}
+                                        />
+                                    </div>
+                                </div>
+                            );
+                        })}
+                        {!targets.length&&
+                            <p className='config-muted-note'>Add at least one worksheet to enable dashboard filtering.</p>
+                        }
+                        <div className='config-add-target'>
+                            <Button
+                                kind='outline'
+                                disabled={!availableWorksheetNames.length}
+                                onClick={() => props.setUpdates({ type: 'ADD_FILTER_TARGET', data: {} })}
+                            >Add another worksheet</Button>
+                            {!availableWorksheetNames.length&&targets.length>0&&
+                                <span>All available worksheets are already configured.</span>
+                            }
+                        </div>
                     </div>:
                     <p className='config-muted-note'>Filtering is off. The navigator will keep its selection internally unless another output below is enabled.</p>
                 }
