@@ -18,6 +18,8 @@
     "strictNullChecks": true,
     "suppressImplicitAnyIndexErrors": true,
     "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
     "typeRoots" : ["./node_modules/@types", "./node_modules/@tableau"],
     "types": ["node", "@tableau/extensions-api-types"],
     "esModuleInterop": true,

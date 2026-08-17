@@ -1,9 +1,9 @@
-/*  tslint:disable:max-classes-per-file */
+import { CSSProperties } from 'react';
 import { FilterTarget } from './FilterTargets';
 import { SelectionBehavior } from './SelectionBehavior';
 export { FilterTarget } from './FilterTargets';
 export { SelectionBehavior } from './SelectionBehavior';
-export {debugOverride} from './DebugOverride';
+export {debugOverride, isDebugEnabled} from './DebugOverride';
 export enum HierType {
     FLAT='flat',
     RECURSIVE='recursive'
@@ -19,7 +19,7 @@ export interface Options {
     fontColor: string;
     fontSize: string;
     highlightColor: string;
-    itemCSS: object;
+    itemCSS: CSSProperties;
     searchAutoExpand: boolean;
     searchEnabled: boolean;
     selectionBehavior: SelectionBehavior;
@@ -27,10 +27,10 @@ export interface Options {
     titleEnabled: boolean;
     warningEnabled: boolean;
     openedIconType: 'Default'|'Base64 Image'|'Ascii',
-    openedIconBase64Image: any;
+    openedIconBase64Image: string;
     openedIconAscii: string;
     closedIconType: 'Default'|'Base64 Image'|'Ascii',
-    closedIconBase64Image: any;
+    closedIconBase64Image: string;
     closedIconAscii: string;
 }
 export interface HierarchyProps {

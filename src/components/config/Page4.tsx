@@ -66,15 +66,13 @@ export function Page4(props: Props) {
         onChange: (e: any) => {
             setItemCSS(e.target.value);
             try {
-                console.log(`e.target.value: ${e.target.value}`)
-                let json = JSON.parse(e.target.value);
+                const json = JSON.parse(e.target.value);
                 props.setUpdates({ type: 'SET_ITEM_CSS', data: json });
 
                 setItemCSSMessage(<br />);
                 setItemCSSValid(true);
             }
             catch (err) {
-                console.log(err.message);
                 setItemCSSValid(false);
                 setItemCSSMessage(<>{t('Invalid JSON: {message}', { message: err.message })}</>);
             }

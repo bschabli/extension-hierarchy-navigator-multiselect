@@ -1,7 +1,7 @@
 import { Button, TextField } from '@tableau/tableau-ui';
-import React, { ReactFragment, useEffect, useMemo, useRef, useState } from 'react';
-import TreeMenu from 'react-simple-tree-menu';
-import { debugOverride, defaultSelectedProps, HierarchyProps, HierType } from '../API/Interfaces';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import TreeMenu, { TreeMenuItem } from 'react-simple-tree-menu';
+import { defaultSelectedProps, HierarchyProps, HierType, isDebugEnabled } from '../API/Interfaces';
 import { SelectionBehavior } from '../API/SelectionBehavior';
 import { loadSummaryDataset } from '../API/SummaryData';
 import { HighlightedHierarchyLabel } from '../shared/HighlightedHierarchyLabel';
@@ -62,7 +62,7 @@ interface CheckboxTreeItemProps {
     itemKey: string;
     label: string;
     level: number;
-    onClick: () => void;
+    onClick: React.MouseEventHandler<HTMLLIElement>;
     onFocus: () => void;
     onKeyDown: (event: React.KeyboardEvent<HTMLLIElement>) => void;
     openedIcon: React.ReactNode;
@@ -128,7 +128,7 @@ function CheckboxTreeItem(props: CheckboxTreeItemProps) {
 
 function Hierarchy(props: Props) {
     const {t}=useTranslation();
-    const { debug=false||debugOverride }=props.data.options;
+    const debug=isDebugEnabled(props.data.options.debug);
     const selectionBehavior=props.data.options.selectionBehavior||SelectionBehavior.TERMINAL;
     const autoExpandSearch=props.data.options.searchAutoExpand!==false;
     const hierarchyDefinitionSignature=JSON.stringify([
@@ -148,7 +148,7 @@ function Hierarchy(props: Props) {
         hierarchyDefinitionSignature
     );
     const [initialUiState]=useState(() => loadHierarchyUiState(getSessionStorage(), uiStorageKey));
-    const childRef=useRef<any>(null);
+    const childRef=useRef<TreeMenu|null>(null);
     const lastReappliedSelectionsVersionRef=useRef(0);
     const loadSequenceRef=useRef(0);
     const treeItemRefs=useRef<Map<string, HTMLLIElement>>(new Map());
@@ -177,8 +177,8 @@ function Hierarchy(props: Props) {
     const defaultOpenedIcon=<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24'>
         <path fill={props.data.options.fontColor} fillRule='evenodd' d='M12.7632424,17.6209712 L24.112,6.27186438 L22.698,4.85786438 L12.0561356,15.4996508 L1.414,4.85786438 L4.08562073e-14,6.27186438 L11.3490288,17.6209712 C11.7395531,18.0114954 12.3727181,18.0114954 12.7632424,17.6209712 Z' />
     </svg>;
-    const [openedIcon, setOpenedIcon]=useState<any>(defaultOpenedIcon);
-    const [closedIcon, setClosedIcon]=useState<any>(defaultClosedIcon);
+    const [openedIcon, setOpenedIcon]=useState<React.ReactNode>(defaultOpenedIcon);
+    const [closedIcon, setClosedIcon]=useState<React.ReactNode>(defaultClosedIcon);
 
     const nodeById=useMemo(() => {
         const result=new Map<string, NormalizedTreeNode>();
@@ -284,7 +284,7 @@ function Hierarchy(props: Props) {
         reapplySelectionsVersion: number
     ): Promise<void> {
         const worksheet=window.tableau.extensions.dashboardContent!.dashboard.worksheets.find(
-            (candidate: any) => candidate.name===props.data.worksheet.name
+            candidate => candidate.name===props.data.worksheet.name
         );
         if(typeof worksheet==='undefined') { return; }
         const dataTable=await loadSummaryDataset(worksheet);
@@ -294,7 +294,7 @@ function Hierarchy(props: Props) {
             );
         }
         const columnIndexes=new Map<string, number>();
-        dataTable.columns.forEach((column: any) => columnIndexes.set(column.fieldName, column.index));
+        dataTable.columns.forEach(column => columnIndexes.set(column.fieldName, column.index));
 
         let nextTree: NormalizedTreeNode[]=[];
         if(props.data.type===HierType.FLAT) {
@@ -448,8 +448,8 @@ function Hierarchy(props: Props) {
 
     function handleTreeItemKeyDown(
         event: React.KeyboardEvent<HTMLLIElement>,
-        item: any,
-        items: any[],
+        item: TreeMenuItem,
+        items: TreeMenuItem[],
         node: NormalizedTreeNode
     ): void {
         const keyboardItems: KeyboardTreeItem[]=items.map(candidate => ({
@@ -547,7 +547,7 @@ function Hierarchy(props: Props) {
         return t(count===1?'{count} value is selected.':'{count} values are selected.', { count });
     }
 
-    const debugState: ReactFragment=debug? (
+    const debugState: React.ReactNode=debug? (
         <div style={{ position: 'relative', top: 0, marginTop: '10px' }}>
             Debug: true<p />
             State: {`id:${ currentId } label:${ currentLabel } selected:${ selectedLeafValues.size }`}<p />
@@ -608,7 +608,7 @@ function Hierarchy(props: Props) {
                 data={visibleTree}
                 openNodes={effectiveOpenNodes}
                 hasSearch={false}
-                onClickItem={(item: any) => {
+                onClickItem={item => {
                     const nodeId=item.key.split('/').pop()||'';
                     const node=nodeById.get(nodeId);
                     if(node) { toggleSelection(node); }
@@ -617,7 +617,7 @@ function Hierarchy(props: Props) {
                 ref={childRef}
             >
                 {({ items }) => {
-                    const currentFocusPath=items.some((candidate: any) => candidate.key===focusedTreePath)?
+                    const currentFocusPath=items.some(candidate => candidate.key===focusedTreePath)?
                         focusedTreePath:items[0]?.key;
                     return (<>
                         <TextField
@@ -628,7 +628,7 @@ function Hierarchy(props: Props) {
                             aria-label={t('Search hierarchy')}
                             aria-controls='hierarchy-tree'
                             value={searchVal}
-                            onChange={(event: any) => {
+                            onChange={(event: React.ChangeEvent<HTMLInputElement>) => {
                                 setSearchVal(event.target.value);
                             }}
                             onClear={() => {
@@ -657,15 +657,19 @@ function Hierarchy(props: Props) {
                             aria-describedby='hierarchy-keyboard-help'
                             aria-multiselectable='true'
                         >
-                            {items.map((item: any) => {
+                            {items.map(item => {
                                 const nodeId=item.key.split('/').pop()||'';
                                 const node=nodeById.get(nodeId);
                                 if(!node) { return null; }
                                 return (
                                     <CheckboxTreeItem
                                         key={item.key}
-                                        {...item}
                                         itemKey={item.key}
+                                        hasNodes={item.hasNodes}
+                                        isOpen={item.isOpen}
+                                        label={item.label}
+                                        level={item.level}
+                                        onClick={item.onClick}
                                         checkboxState={getSelectionState(node, selectedLeafValues, selectionBehavior)}
                                         disabled={getNodeSelectionValues(node, selectionBehavior).length===0}
                                         onFocus={() => setFocusedTreePath(item.key)}

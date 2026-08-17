@@ -14,7 +14,7 @@ interface SettingProps {
     onClick?: () => void;
     selected: string;
 }
-export const Setting: React.SFC<SettingProps> = (props) => {
+export const Setting: React.FC<SettingProps> = (props) => {
 
     const { list, onChange, onClear, onClick, selected, title, status } = props;
 

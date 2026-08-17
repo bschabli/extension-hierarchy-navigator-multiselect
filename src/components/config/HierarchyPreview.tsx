@@ -116,7 +116,7 @@ export function HierarchyPreview(props: Props) {
     const previewReady=props.validation.status==='complete'&&
         Boolean(props.validation.result?.valid)&&tree.length>0;
     const fontFamily=props.data.options.fontFamily.replace(/\s*!important\s*$/i, '');
-    const itemStyle=props.data.options.itemCSS as React.CSSProperties;
+    const itemStyle=props.data.options.itemCSS;
     const previewStyle={
         '--preview-highlight': props.data.options.highlightColor,
         backgroundColor: props.data.options.bgColor,

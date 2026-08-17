@@ -7,7 +7,7 @@ import {
     shouldUpdateFilterTargets,
     updateFilterTargets
 } from '../API/FilterTargets';
-import { debugOverride, HierarchyProps, HierType } from '../API/Interfaces';
+import { HierarchyProps, HierType, isDebugEnabled } from '../API/Interfaces';
 import { useTranslation } from '../localization/I18n';
 import Hierarchy, { HierarchySelectionPayload } from './Hierarchy';
 
@@ -37,7 +37,7 @@ function ParamHandler(props: Props) {
     const configurationVersion=useRef(0);
     const currentIdRef=useRef('');
     const currentLabelRef=useRef('');
-    const {debug=false||debugOverride} = props.data.options;
+    const debug=isDebugEnabled(props.data.options.debug);
 
 
     // will be called with user selects new value in hierarchy
@@ -121,33 +121,19 @@ function ParamHandler(props: Props) {
         props.data.type
     ]);
 
-    // solve forEach with promise issue - https://codeburst.io/javascript-async-await-with-foreach-b6ba62bbf404
-    async function asyncForEach(array: any[], callback: any) {
-        for(let index=0;index<array.length;index++) {
-            await callback(array[index], index, array);
-        }
-    };
-
     // finds the worksheet in the dashboard that matches the user selected worksheet
     // returns the worksheet
-    async function findWorksheet(): Promise<Worksheet|undefined> {
+    function findWorksheet(): Worksheet|undefined {
         if(debug) { console.log(`findWorksheet: props.data.worksheet: ${ props.data.worksheet.name }`); }
-        let ws: Worksheet|undefined;
-        if(props.data.worksheet.name!=='') {
-            await asyncForEach(props.dashboard.worksheets, (currWorksheet: Worksheet) => {
-                if(currWorksheet.name===props.data.worksheet.name) {
-                    if(debug) {
-                        console.log(`fW: found worksheet : ${ currWorksheet.name }`);
-                        console.log(currWorksheet);
-                    }
-                    ws=currWorksheet;
-                }
-            });
-
+        const worksheet=props.dashboard.worksheets.find(
+            candidate => candidate.name===props.data.worksheet.name
+        );
+        if(debug&&worksheet) {
+            console.log(`fW: found worksheet : ${ worksheet.name }`);
+            console.log(worksheet);
         }
-        // return ws;
-        if(debug&&typeof ws==='undefined') { console.log(`fW: No worksheets found that match ${ props.data.worksheet.name }`); }
-        return ws;
+        if(debug&&!worksheet) { console.log(`fW: No worksheets found that match ${ props.data.worksheet.name }`); }
+        return worksheet;
     }
 
     // find parameters, if enabled, and returns an array 
@@ -174,7 +160,9 @@ function ParamHandler(props: Props) {
             else if(props.data.type===HierType.FLAT) {
                 res.level=await props.dashboard.findParameterAsync(props.data.parameters.level);
                 res.childId=await props.dashboard.findParameterAsync(props.data.parameters.childId);
-                console.log(`childLabel enabled (${ props.data.parameters.childLabelEnabled }) and looking for param -- ${ props.data.parameters.childLabel }`);
+                if(debug) {
+                    console.log(`childLabel enabled (${ props.data.parameters.childLabelEnabled }) and looking for param -- ${ props.data.parameters.childLabel }`);
+                }
                 if(props.data.parameters.childLabelEnabled) {
                     res.childLabel=await props.dashboard.findParameterAsync(props.data.parameters.childLabel);
                     if(debug) { console.log(`found childLabel: ${ res.childLabel }`); }
@@ -291,8 +279,6 @@ function ParamHandler(props: Props) {
 
         catch(err) {
             console.error(err);
-            console.log(`state.props`);
-            console.log(props);
         }
         if(debug) { console.log(`finished clearFilterAndMarksAsync`); }
     }
@@ -425,7 +411,7 @@ function ParamHandler(props: Props) {
                 }):'');
             }
             if(props.data.worksheet.enableMarkSelection) {
-                const worksheet=await findWorksheet();
+                const worksheet=findWorksheet();
                 if(worksheet) {
                     await worksheet.selectMarksByValueAsync([{
                         fieldName: props.data.worksheet.childId,
