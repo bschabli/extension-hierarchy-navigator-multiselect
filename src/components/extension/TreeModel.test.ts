@@ -1,4 +1,8 @@
-import { SelectionBehavior, getLegacySelectionBehavior } from '../API/SelectionBehavior';
+import {
+    SelectionBehavior,
+    getLegacySelectionBehavior,
+    resolveSavedSelectionBehavior
+} from '../API/SelectionBehavior';
 import {
     buildFlatTree,
     buildRecursiveTree,
@@ -172,6 +176,14 @@ function testSelectionBehaviors(): void {
         getLegacySelectionBehavior('recursive')===SelectionBehavior.TERMINAL,
         'Saved Recursive configurations should preserve the former terminal-descendants behavior.'
     );
+    assert(
+        resolveSavedSelectionBehavior(undefined, false, 'flat')===SelectionBehavior.TERMINAL,
+        'Incomplete configurations should keep the current terminal-value default.'
+    );
+    assert(
+        resolveSavedSelectionBehavior(undefined, true, 'flat')===SelectionBehavior.SUBTREE,
+        'Completed legacy Flat configurations should preserve their previous subtree behavior.'
+    );
 }
 
 function testMissingValueRules(): void {
@@ -182,6 +194,10 @@ function testMissingValueRules(): void {
     assert(
         isMissingHierarchyValue({ value: '%null%', nativeValue: null, formattedValue: 'Null' }),
         'Tableau native null should take precedence over its formatted label.'
+    );
+    assert(
+        isMissingHierarchyValue(new TableauGetterCell(null, 'Null')),
+        'Prototype getter-backed native nulls should take precedence over formatted labels.'
     );
     assert(!isMissingHierarchyValue('NULL'), 'The literal domain value NULL should remain valid.');
     assert(

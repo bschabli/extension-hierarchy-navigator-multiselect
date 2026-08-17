@@ -53,10 +53,10 @@ interface RecursiveRecord {
  */
 export function getHierarchyValue(cell: HierarchyCell): unknown {
     if(isTableauCell(cell)) {
-        if(Object.prototype.hasOwnProperty.call(cell, 'nativeValue')&&typeof cell.nativeValue!=='undefined') {
+        if('nativeValue' in cell&&typeof cell.nativeValue!=='undefined') {
             return cell.nativeValue;
         }
-        if(Object.prototype.hasOwnProperty.call(cell, 'value')) {
+        if('value' in cell) {
             return cell.value;
         }
         return cell.formattedValue;

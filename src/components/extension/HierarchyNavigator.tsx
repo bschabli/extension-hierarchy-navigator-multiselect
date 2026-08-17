@@ -4,7 +4,7 @@ import  React, { useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import '../../css/style.css';
 import { debugOverride, defaultSelectedProps, HierarchyProps } from '../API/Interfaces';
-import { getLegacySelectionBehavior, isSelectionBehavior } from '../API/SelectionBehavior';
+import { resolveSavedSelectionBehavior } from '../API/SelectionBehavior';
 import { LocalizationProvider, useTranslation } from '../localization/I18n';
 import ParamHandler from './ParamHandler';
 var extend = require('extend');
@@ -12,9 +12,11 @@ var extend = require('extend');
 function hydrateSavedSettings(settingsData: any): HierarchyProps {
     const savedSelectionBehavior=settingsData.options?.selectionBehavior;
     const hydrated=extend(true, {}, defaultSelectedProps, settingsData) as HierarchyProps;
-    if(!isSelectionBehavior(savedSelectionBehavior)) {
-        hydrated.options.selectionBehavior=getLegacySelectionBehavior(hydrated.type);
-    }
+    hydrated.options.selectionBehavior=resolveSavedSelectionBehavior(
+        savedSelectionBehavior,
+        hydrated.configComplete,
+        hydrated.type
+    );
     return hydrated;
 }
 
@@ -136,6 +138,7 @@ function HierarchyNavigator() {
                 document.body.style.backgroundColor = data.options.bgColor || defaultSelectedProps.options.bgColor;
             }
             catch (error) {
+                if (typeof timeoutId !== 'undefined') { window.clearTimeout(timeoutId); }
                 console.error('Unable to initialize Tableau extension.', error);
                 setInitializationError(describeError(error));
                 setDoneLoading(true);

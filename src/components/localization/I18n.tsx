@@ -121,6 +121,7 @@ const GERMAN_TRANSLATIONS: Record<string, string>={
     'Search preview hierarchy': 'Vorschauhierarchie durchsuchen',
     'Select all': 'Alle auswählen',
     'Select all hierarchy values': 'Alle Hierarchiewerte auswählen',
+    'Select an option': 'Option auswählen',
     'Select leaves across multiple branches.': 'Endknoten über mehrere Zweige hinweg auswählen.',
     'Select or clear an entire parent subtree.': 'Einen gesamten übergeordneten Teilbaum auswählen oder leeren.',
     'Select the downloaded manifest.': 'Wählen Sie das heruntergeladene Manifest aus.',
@@ -446,7 +447,7 @@ export function resolveInterfaceLocale(
 ): InterfaceLocale {
     const override=new URLSearchParams(search).get('lang')?.toLocaleLowerCase();
     if(override==='de'||override==='en') { return override; }
-    const locale=(tableauLocale||browserLocale||'en').toLocaleLowerCase();
+    const locale=(tableauLocale||browserLocale||'en').toLocaleLowerCase().replace(/_/g, '-');
     return locale==='de'||locale.startsWith('de-')?'de':'en';
 }
 
@@ -473,7 +474,10 @@ function detectInterfaceLocale(): InterfaceLocale {
 function interpolate(template: string, values?: TranslationValues): string {
     if(!values) { return template; }
     return Object.keys(values).reduce(
-        (result, key) => result.replace(new RegExp(`\\{${ key }\\}`, 'g'), String(values[key])),
+        (result, key) => result.replace(
+            new RegExp(`\\{${ key }\\}`, 'g'),
+            () => String(values[key])
+        ),
         template
     );
 }

@@ -111,6 +111,7 @@ export function HierarchyPreview(props: Props) {
     );
     const searchActive=searchTerm.trim()!=='';
     const allSelected=allSelectableFilterValues.length>0&&
+        allSelectableFilterValues.length===selectedLeafValues.size&&
         allSelectableFilterValues.every(value => selectedLeafValues.has(value));
     const previewReady=props.validation.status==='complete'&&
         Boolean(props.validation.result?.valid)&&tree.length>0;

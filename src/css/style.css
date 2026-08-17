@@ -700,6 +700,15 @@ select::-ms-expand {
     outline-offset: 1px;
 }
 
+.config-shell button:focus-visible,
+.config-shell input:focus-visible,
+.config-shell select:focus-visible,
+.config-shell textarea:focus-visible,
+.config-shell [tabindex]:focus-visible {
+    outline: 2px solid var(--config-accent);
+    outline-offset: 2px;
+}
+
 .config-step--active button {
     background: var(--config-accent-soft);
     border-color: #9ac6d4;

@@ -45,6 +45,38 @@ export function syncLegacyFilterTarget(settings: FilterTargetSettings, targets?:
     settings.filter=normalized[0]?.fieldName||'';
 }
 
+/** Return the first unused worksheet that exposes at least one filterable field. */
+export function findNextFilterTargetWorksheet(
+    worksheetNames: readonly string[],
+    configuredTargets: readonly FilterTarget[],
+    hasFilterableFields: (worksheetName: string) => boolean
+): string {
+    const usedWorksheetNames=new Set(configuredTargets.map(target => target.worksheetName));
+    return worksheetNames.find(
+        worksheetName => !usedWorksheetNames.has(worksheetName)&&hasFilterableFields(worksheetName)
+    )||'';
+}
+
+/** Replace a matching field in every configured worksheet target. */
+export function replaceFilterTargetField(
+    targets: readonly FilterTarget[],
+    previousFieldName: string,
+    nextFieldName: string
+): FilterTarget[] {
+    return targets.map(target => target.fieldName===previousFieldName?
+        { ...target, fieldName: nextFieldName }:
+        target
+    );
+}
+
+/** Return whether selection changes may mutate configured Tableau filters. */
+export function shouldUpdateFilterTargets(
+    filterEnabled: boolean,
+    targets: readonly FilterTarget[]
+): boolean {
+    return filterEnabled&&resolveFilterTargets({ filterTargets: Array.from(targets) }).length>0;
+}
+
 /** Apply or clear every target independently and return successfully applied targets. */
 export async function updateFilterTargets(
     targets: FilterTarget[],
