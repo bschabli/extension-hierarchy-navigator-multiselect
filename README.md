@@ -1,55 +1,74 @@
-# Hierarchy Navigator
-This extension allows you to visualize your flat/dimensional or recursive data in a Tree/Hierarchy Extension an a Tableau Dashboard. 
+# Hierarchy Navigator Multiselect
 
-## What does it do?
-* Creates a tree menu for selection from either flat or hierarchical data
-* Enables searching the tree
-* Allows for bi-directional parameter sync
-* Enables filtering of the original sheet without impacting the extension
-* Enables mark selection on the original sheet
-* With combinations of any of the above, you dashboard expansion possibilities are limitless!
+Hierarchy Navigator Multiselect is a Tableau dashboard extension for navigating flat/dimensional and recursive hierarchies with shared checkbox selection.
 
-![Animated Image](/src/images/AnimatedSample.gif)
+## Features
 
-## How to use an Extension
-This extension is available as a sandboxed extension: [sandboxed manifest file](https://tableau.github.io/extension-hierarchy-navigator-sandboxed/hierarchynavigator-1.0.sandboxed.trex).  
+- Flat hierarchies stored as ordered level columns
+- Recursive parent/child hierarchies
+- Multi-selection with selected, unselected, and partially selected parent states
+- Configurable parent selection behavior: terminal values, entire subtree, or direct node only
+- Filtering across multiple target worksheets with an independent field mapping for each worksheet
+- Optional parameter output and source-sheet mark selection
+- Data validation for duplicate IDs, orphaned children, cycles, blank labels, and malformed paths
+- Live hierarchy preview during configuration
+- Search highlighting, ancestor context, and automatic path expansion
+- Remembered expansion, search, and selection state across data refreshes
+- Keyboard navigation, screen-reader announcements, and English/German localization
 
-The landing page is hosted on <a href="https://tableau.github.io/extension-hierarchy-navigator-sandboxed">Github.io Pages</a>
+## Test the hosted extension
 
-## Instructions for use
+1. Open the [project test page](https://bschabli.github.io/extension-hierarchy-navigator-multiselect/).
+2. Download the [network-enabled manifest](https://bschabli.github.io/extension-hierarchy-navigator-multiselect/hierarchynavigator-multiselect.trex).
+3. In Tableau, add an Extension, choose **My Extensions**, and select the downloaded manifest.
+4. Configure the hierarchy source worksheet and any target worksheet/filter mappings.
 
-1. Download the [sample workbook with examples and directions (2018.3+ with Set Actions)](https://tableau.github.io/extension-hierarchy-navigator-sandboxed/Hierarchy%20Navigator%20Extension%20v2.twbx).
-2. Directions for setup are in the workbook on pages 10 and 11 of the story.
+The hosted extension URL is:
 
-### Customization
+`https://bschabli.github.io/extension-hierarchy-navigator-multiselect/hierarchynavigator.html`
 
-1. General Tab
-   * Show Search Box - show or disable the search box
-   * Show Title - Show or hide the title inside the extension
-   * Parameters should listen for dashboard changes - Check this box if you want other sheets to drive the selection of the hierarchy
-   * Enable debug - show debug information in the extension and add console.log statements to the Developer Console (in [debug](https://tableau.github.io/extensions-api/docs/trex_debugging.html) mode)
-2. Colors/Fonts
-   * Background Color* - Change the background color for the extension.  
-   * Font Color* - Change the color of the text
-   * Highhlight Color* - Change the color of the currently selected element
-      \* Accepts any valid CSS color (#ffffff, rgb(x,y,z), or string literal like 'green')
-   * Font Size - Accepts any valid CSS font size (12px, 2rem, etc)
-   * Font Family - Valid [fonts that are installed on your Tableau server](https://help.tableau.com/current/server/en-us/customize_fonts.htm)
-   * CSS for Items - Any valid React css (see [Styling React Using CSS](https://www.w3schools.com/react/react_css.asp)).  This will be applied to each entry in the tree and may override other properties on this page.  Property names are in camelCase, eg, `min-width` in a traditional file would be written as `minWidth` in React CSS.
-3. Icons
-   * Both the open icon and closed icon can be any of:
-      * Default - left facing and down angle brackets. (will respect the font color property)
-      * Base64 Image - Convert an image with a [Base64 image converter](https://www.base64-image.de/) and past the resulting string in the box.  Valid strings start with `data:image/xyz;base64,...`.  Images should be 12px tall if you are using the 12px font size.
-      * Ascii - any valid single/multiple ascii characters (will respect the font color property)
+Tableau Cloud and Tableau Server administrators must add that exact network-enabled URL to the site safe list and allow the required data access before the extension can run.
 
+The included [sample workbook](https://bschabli.github.io/extension-hierarchy-navigator-multiselect/Hierarchy%20Navigator%20Extension%20v2.twbx) can be used as a starting point.
 
+## Local development
 
-## Known Bugs/Limitations
-* There is a known issues in Tableau 2018.2 running on Mac computers where the native dropdown cannot be chosen with the mouse.  Please use the keyboard to select the parameter.
+Install Node.js 22.15 or newer, then install dependencies and start the development server:
 
-## Dev build notes
-For anyone that wants to build/modify/re-use this code here are some useful notes.
-* Build Scripts
-   1.  `npm start` - Run the local development environment (not sandboxed) with hot reload.  Use the `hierarchynavigator-1.0.local.trex` manifest.
-   1.  `npm run build` - Compile build files in the docs directory.
-   1.  `npm run sandbox` - Run the build files in the tabextsandbox environment. Use the `hierarchynavigator-1.0.local.sandboxed.trex` manifest.
+```sh
+npm install --legacy-peer-deps
+npm start
+```
+
+Use `src/hierarchynavigator-1.0.local.trex` with the local development server.
+
+Build and validate the project with:
+
+```sh
+npm run typecheck
+npm test
+npm run build
+```
+
+## Local Tableau sandbox testing
+
+The sandbox manifests are development manifests. They point to Tableau's local sandbox server and are not public hosted manifests.
+
+```sh
+npm run build
+npm run sandbox
+```
+
+Then load `src/hierarchynavigator-1.0.local.sandboxed.trex` in Tableau. The source URL matches the extension name and port in `sandbox-config.json`:
+
+`http://localhost:8765/sandbox/extension-hierarchy-navigator-multiselect/hierarchynavigator.html`
+
+A generally available sandboxed extension must be reviewed and hosted by Tableau. Until that publishing process is complete, use the GitHub Pages manifest as a network-enabled extension or use the local sandbox workflow above.
+
+## Deployment
+
+Pushes to `master` are built and deployed to GitHub Pages by `.github/workflows/pages.yml`. Pull requests run the type-check, test, manifest-validation, and production-build workflow before merging.
+
+## License
+
+See [LICENSE](LICENSE).

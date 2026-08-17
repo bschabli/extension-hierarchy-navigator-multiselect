@@ -1,11 +1,3 @@
-import {
-    Column,
-    DataTable,
-    DataTableReader,
-    DataValue,
-    GetSummaryDataOptions,
-    Worksheet
-} from '@tableau/extensions-api-types';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
     HierarchyValidationResult,
@@ -13,6 +5,7 @@ import {
     validateRecursiveHierarchy
 } from '../API/HierarchyValidation';
 import { HierarchyProps, HierType } from '../API/Interfaces';
+import { loadSummaryDataset } from '../API/SummaryData';
 import {
     NormalizedTreeNode,
     buildFlatTree,
@@ -31,22 +24,6 @@ export interface HierarchyValidationState {
 interface InternalHierarchyValidationState extends HierarchyValidationState {
     mappingSignature?: string;
 }
-
-interface SummaryDataset {
-    columns: Column[];
-    limited: boolean;
-    rows: DataValue[][];
-    totalRowCount: number;
-}
-
-interface ReaderCapableWorksheet {
-    getSummaryDataReaderAsync?: (
-        pageRowCount?: number,
-        options?: GetSummaryDataOptions
-    ) => Promise<DataTableReader>;
-}
-
-const PAGE_ROW_COUNT=10000;
 
 /** Load and validate the configured source worksheet whenever its mapping changes. */
 export function useHierarchyValidation(
@@ -161,44 +138,4 @@ export function useHierarchyValidation(
     const effectiveState: HierarchyValidationState=state.mappingSignature===mappingSignature?
         state:{ status: sourceComplete?'loading':'idle' };
     return { retry, state: effectiveState };
-}
-
-async function loadSummaryDataset(worksheet: Worksheet): Promise<SummaryDataset> {
-    const readerMethod=(worksheet as unknown as ReaderCapableWorksheet).getSummaryDataReaderAsync;
-    if(typeof readerMethod==='function') {
-        try {
-            const reader=await readerMethod.call(worksheet, PAGE_ROW_COUNT, { ignoreSelection: true });
-            const rows: DataValue[][]=[];
-            let columns: Column[]=[];
-            try {
-                for(let pageIndex=0;pageIndex<reader.pageCount;pageIndex++) {
-                    const page=await reader.getPageAsync(pageIndex);
-                    if(columns.length===0) { columns=page.columns; }
-                    rows.push(...page.data);
-                }
-                if(columns.length===0) { columns=await worksheet.getSummaryColumnsInfoAsync(); }
-                return {
-                    columns,
-                    limited: rows.length<reader.totalRowCount,
-                    rows,
-                    totalRowCount: reader.totalRowCount
-                };
-            }
-            finally {
-                try { await reader.releaseAsync(); }
-                catch(error) { console.warn('Unable to release the Tableau validation data reader.', error); }
-            }
-        }
-        catch(error) {
-            console.warn('Paged Tableau data validation was unavailable; using the compatibility API.', error);
-        }
-    }
-
-    const table: DataTable=await worksheet.getSummaryDataAsync({ ignoreSelection: true, maxRows: 0 });
-    return {
-        columns: table.columns,
-        limited: Boolean(table.isTotalRowCountLimited),
-        rows: table.data,
-        totalRowCount: table.totalRowCount
-    };
 }

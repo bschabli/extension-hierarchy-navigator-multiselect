@@ -8,6 +8,7 @@ import {
     updateFilterTargets
 } from '../API/FilterTargets';
 import { debugOverride, HierarchyProps, HierType } from '../API/Interfaces';
+import { useTranslation } from '../localization/I18n';
 import Hierarchy, { HierarchySelectionPayload } from './Hierarchy';
 
 interface Props {
@@ -21,11 +22,13 @@ interface ParameterEventHandlers {
 }
 
 function ParamHandler(props: Props) {
+    const {t}=useTranslation();
     const [reapplySelectionsVersion, setReapplySelectionsVersion]=useState(0);
     const [refreshVersion, setRefreshVersion]=useState(0);
     const [currentId, setCurrentId]=useState<string>('');
     const [currentLabel, setCurrentLabel]=useState<string>('');
     const [dataFromExtension, setDataFromExtension]=useState<HierarchySelectionPayload>();
+    const [outputError, setOutputError]=useState('');
     const filterQueue=useRef<Promise<void>>(Promise.resolve());
     const appliedFilterTargets=useRef<FilterTarget[]>([]);
     const appliedMarkTarget=useRef<FilterTarget>();
@@ -254,6 +257,7 @@ function ParamHandler(props: Props) {
         if(debug) { console.log(`begin clearFilterAndMarksAsync`); }
         try {
             if(props.data.worksheet.filterEnabled||appliedFilterTargets.current.length) {
+                const failedTargets: FilterTarget[]=[];
                 const targets=resolveFilterTargets({
                     filterTargets: resolveFilterTargets(props.data.worksheet).concat(appliedFilterTargets.current)
                 });
@@ -262,9 +266,15 @@ function ParamHandler(props: Props) {
                     props.dashboard.worksheets,
                     [],
                     tableau.FilterUpdateType.Replace,
-                    (target, error) => console.error(`Unable to clear hierarchy filter '${target.fieldName}' on '${target.worksheetName}'.`, error)
+                    (target, error) => {
+                        failedTargets.push(target);
+                        console.error(`Unable to clear hierarchy filter '${target.fieldName}' on '${target.worksheetName}'.`, error);
+                    }
                 );
-                appliedFilterTargets.current=[];
+                appliedFilterTargets.current=failedTargets;
+                setOutputError(failedTargets.length?t('Some dashboard filters could not be cleared: {targets}', {
+                    targets: describeFilterTargets(failedTargets)
+                }):'');
             }
             const markTarget=appliedMarkTarget.current;
             if(markTarget) {
@@ -396,14 +406,23 @@ function ParamHandler(props: Props) {
                 props.data.worksheet.name
             );
             if(shouldUpdateFilterTargets(props.data.worksheet.filterEnabled, configuredTargets)) {
+                const failedTargets: FilterTarget[]=[];
                 const successfulTargets=await updateFilterTargets(
                     configuredTargets,
                     props.dashboard.worksheets,
                     selectedValues,
                     tableau.FilterUpdateType.Replace,
-                    (target, error) => console.error(`Unable to update hierarchy filter '${target.fieldName}' on '${target.worksheetName}'.`, error)
+                    (target, error) => {
+                        failedTargets.push(target);
+                        console.error(`Unable to update hierarchy filter '${target.fieldName}' on '${target.worksheetName}'.`, error);
+                    }
                 );
-                appliedFilterTargets.current=selectedValues.length?successfulTargets:[];
+                appliedFilterTargets.current=selectedValues.length?resolveFilterTargets({
+                    filterTargets: successfulTargets.concat(failedTargets)
+                }):failedTargets;
+                setOutputError(failedTargets.length?t('Some dashboard filters could not be updated: {targets}', {
+                    targets: describeFilterTargets(failedTargets)
+                }):'');
             }
             if(props.data.worksheet.enableMarkSelection) {
                 const worksheet=await findWorksheet();
@@ -421,15 +440,27 @@ function ParamHandler(props: Props) {
         }
     }
 
+    function describeFilterTargets(targets: FilterTarget[]): string {
+        return targets.map(target => `${ target.worksheetName } · ${ target.fieldName }`).join(', ');
+    }
+
     return (
-        <Hierarchy
-            data={props.data}
-            reapplySelectionsVersion={reapplySelectionsVersion}
-            refreshVersion={refreshVersion}
-            setDataFromExtension={setDataFromExtension}
-            currentLabel={currentLabel}
-            currentId={currentId}
-        />
+        <>
+            {outputError&&
+                <div className='extension-output-error' role='alert'>
+                    <span>{outputError}</span>
+                    <button type='button' onClick={() => setOutputError('')} aria-label={t('Dismiss')}>×</button>
+                </div>
+            }
+            <Hierarchy
+                data={props.data}
+                reapplySelectionsVersion={reapplySelectionsVersion}
+                refreshVersion={refreshVersion}
+                setDataFromExtension={setDataFromExtension}
+                currentLabel={currentLabel}
+                currentId={currentId}
+            />
+        </>
     );
 }
 

@@ -52,6 +52,7 @@ const GERMAN_TRANSLATIONS: Record<string, string>={
     'Data validation': 'Datenprüfung',
     'Default': 'Standard',
     'Description': 'Beschreibung',
+    'Dismiss': 'Schließen',
     'Dimensional': 'Dimensional',
     'Direct node only': 'Nur direkter Knoten',
     'Download the multiselect test manifest': 'Multiselect-Testmanifest herunterladen',
@@ -300,6 +301,8 @@ const GERMAN_TRANSLATIONS: Record<string, string>={
     ,'Source mapping is incomplete': 'Quellzuordnung ist unvollständig'
     ,'Source mark selection': 'Markierungsauswahl im Quellarbeitsblatt'
     ,'Source worksheet': 'Quellarbeitsblatt'
+    ,'Some dashboard filters could not be cleared: {targets}': 'Einige Dashboard-Filter konnten nicht entfernt werden: {targets}'
+    ,'Some dashboard filters could not be updated: {targets}': 'Einige Dashboard-Filter konnten nicht aktualisiert werden: {targets}'
     ,'Suffix for all parameters': 'Suffix für alle Parameter'
     ,'Target filter field': 'Zielfilterfeld'
     ,'Tell the navigator which row identifies a hierarchy item, which row is its parent, and what users should see.': 'Legen Sie fest, welche Zeile einen Hierarchieeintrag bezeichnet, welche sein übergeordneter Eintrag ist und was Benutzer sehen sollen.'

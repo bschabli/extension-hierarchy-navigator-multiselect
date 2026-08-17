@@ -27,6 +27,10 @@ function HierarchyNavigator() {
     const [data, setData] = useState<HierarchyProps>(defaultSelectedProps);
     const [initializationError, setInitializationError] = useState('');
 
+    useEffect(() => {
+        window.dispatchEvent(new Event('hierarchy-app-ready'));
+    }, []);
+
     const describeError = (error: any): string => {
         if (error && typeof error.message === 'string') { return error.message; }
         if (error && typeof error.toString === 'function') { return error.toString(); }
