@@ -47,7 +47,7 @@ const dataFetchReducer=(state: HierarchyState, action: { type: string, data?: an
         case 'FETCH_FAILURE':
             return {
                 ...state,
-                doneLoading: false,
+                doneLoading: true,
                 errorStr: action.data,
                 isError: true,
                 isLoading: false
@@ -150,7 +150,11 @@ const hierarchyAPI=(): any => {
 
     // load initial extension and settings upon load
     useEffect(() => {
-        initAsync();
+        initAsync().catch((error: any) => {
+            const message=error&&typeof error.message==='string'? error.message:String(error);
+            console.error('Unable to initialize the configuration dialog.', error);
+            dispatch({ type: 'FETCH_FAILURE', data: `Unable to initialize the configuration dialog: ${ message }` });
+        });
     }, []);
 
     const setUpdates=(action: { type: string, data: any; }): void => {

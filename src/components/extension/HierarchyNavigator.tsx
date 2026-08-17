@@ -1,4 +1,3 @@
-import '../../resources/tableau.extensions.1.latest.js';
 import * as t from '@tableau/extensions-api-types';
 import { Spinner } from '@tableau/tableau-ui';
 import  React, { useEffect, useState } from 'react';
@@ -12,9 +11,16 @@ function HierarchyNavigator() {
     const [dashboard, setDashboard] = useState({});
     const [doneLoading, setDoneLoading] = useState(false);
     const [data, setData] = useState<HierarchyProps>(defaultSelectedProps);
+    const [initializationError, setInitializationError] = useState('');
+
+    const describeError = (error: any): string => {
+        if (error && typeof error.message === 'string') { return error.message; }
+        if (error && typeof error.toString === 'function') { return error.toString(); }
+        return 'Unknown Tableau Extensions API error.';
+    };
 
     // Pops open the configure page if extension isn't configured
-    const configure = (): any => {
+    const configure = async (): Promise<void> => {
         if (debugOverride) { console.log(`calling CONFIGURE`); }
 
         let popupUrl = `config.html`;
@@ -27,8 +33,12 @@ function HierarchyNavigator() {
             const href = window.location.href;
             popupUrl = window.location.href.substring(0, href.lastIndexOf('/')) + '/config.html';
         }
-        tableau.extensions.ui.displayDialogAsync(popupUrl, '', { height: 650, width: 500 }).then((closePayload: string) => {
-
+        try {
+            const closePayload = await tableau.extensions.ui.displayDialogAsync(
+                popupUrl,
+                '',
+                { height: 650, width: 500 }
+            );
             if (debugOverride) { console.log(`returning from Configure! ${closePayload}`); }
             if (closePayload === 'true') {
                 const settings = tableau.extensions.settings.getAll();
@@ -51,24 +61,47 @@ function HierarchyNavigator() {
                 }
                 setDoneLoading(true);
             }
-        }).catch((error: any) => {
+        }
+        catch (error) {
             switch (error.errorCode) {
                 case tableau.ErrorCodes.DialogClosedByUser:
                     if (debugOverride) { console.log('Dialog was closed by user.'); }
                     break;
                 default:
                     console.error(error.message);
-
+                    setInitializationError(`Unable to open the configuration dialog: ${describeError(error)}`);
             }
-        });
+        }
     };
 
     React.useEffect(() => {
-        tableau.extensions.initializeAsync({ configure }).then(() => {
-            setDashboard(tableau.extensions.dashboardContent!.dashboard);
-            const settings = tableau.extensions.settings.getAll();
-            if (typeof settings.data === 'undefined') { configure(); }
-            else {
+        let timeoutId: number|undefined;
+
+        const initialize = async (): Promise<void> => {
+            try {
+                if (!window.tableau || !window.tableau.extensions) {
+                    throw new Error('The Tableau Extensions API library did not load.');
+                }
+
+                const timeout = new Promise<never>((_resolve, reject) => {
+                    timeoutId = window.setTimeout(() => {
+                        reject(new Error('Tableau did not complete the extension handshake within 15 seconds.'));
+                    }, 15000);
+                });
+
+                await Promise.race([
+                    tableau.extensions.initializeAsync({ configure }),
+                    timeout
+                ]);
+
+                if (typeof timeoutId !== 'undefined') { window.clearTimeout(timeoutId); }
+                setDashboard(tableau.extensions.dashboardContent!.dashboard);
+                const settings = tableau.extensions.settings.getAll();
+                if (typeof settings.data === 'undefined') {
+                    setDoneLoading(true);
+                    await configure();
+                    return;
+                }
 
                 try {
                     let settingsData = {};
@@ -85,11 +118,21 @@ function HierarchyNavigator() {
                 catch (e) {
                     console.error(`Error loading getAll ${e}`);
                 }
+
+                setDoneLoading(true);
+                document.body.style.backgroundColor = data.options.bgColor || defaultSelectedProps.options.bgColor;
             }
-            setDoneLoading(true);
-            document.body.style.backgroundColor = data.options.highlightColor || defaultSelectedProps.options.highlightColor;
-            document.body.style.backgroundColor = data.options.bgColor || defaultSelectedProps.options.bgColor;
-        });
+            catch (error) {
+                console.error('Unable to initialize Tableau extension.', error);
+                setInitializationError(describeError(error));
+                setDoneLoading(true);
+            }
+        };
+
+        initialize();
+        return () => {
+            if (typeof timeoutId !== 'undefined') { window.clearTimeout(timeoutId); }
+        };
     }, []);
 
     useEffect(() => {
@@ -131,14 +174,28 @@ function HierarchyNavigator() {
         <>
             {!doneLoading ? (<div aria-busy='true' className='overlay'><div className='centerOnPage'><div className='spinnerBg centerOnPage'>{ }</div><Spinner color='light'
             alt="Loading..." /></div></div>) : undefined}
-            <div>
-                <p />
-                <ParamHandler
-                    data={data}
-                    dashboard={dashboard as t.Dashboard}
-
-                />
-            </div>
+            {initializationError ? (
+                <div className='extension-status' role='alert'>
+                    <h2>Hierarchy Navigator could not start</h2>
+                    <p>{initializationError}</p>
+                    <p>Reload the extension after confirming that its exact URL is enabled in Tableau Settings → Extensions.</p>
+                    <button type='button' onClick={() => window.location.reload()}>Reload Extension</button>
+                </div>
+            ) : doneLoading&&!data.configComplete ? (
+                <div className='extension-status'>
+                    <h2>Configure Hierarchy Navigator</h2>
+                    <p>Select the source hierarchy and target filter before using the extension.</p>
+                    <button type='button' onClick={configure}>Configure</button>
+                </div>
+            ) : doneLoading ? (
+                <div>
+                    <p />
+                    <ParamHandler
+                        data={data}
+                        dashboard={dashboard as t.Dashboard}
+                    />
+                </div>
+            ) : undefined}
         </>
     );
 }

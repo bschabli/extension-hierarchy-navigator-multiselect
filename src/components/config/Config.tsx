@@ -1,7 +1,6 @@
 /* tslint:disable:jsx-no-lambda */
 import '../../css/bootstrap.css';
 import '../../css/style.css';
-import '../../resources/tableau.extensions.1.latest.js';
 import { Extensions } from '@tableau/extensions-api-types';
 import { Button, Pill, Spinner } from '@tableau/tableau-ui';
 import React, { useEffect, useState } from 'react';
@@ -240,7 +239,7 @@ function Configure(props: any) {
                 </Row>
             </Container>
             <Alert isOpen={data.options.warningEnabled} color='primary' toggle={onDismissWarning}>
-                This app requires specific setup instructions.  Please read the documentation (https://github.com/tableau/extension-hierarchy-navigator-sandboxed) before use.
+                This app requires specific setup instructions. Please read the documentation (https://github.com/bschabli/extension-hierarchy-navigator-multiselect) before use.
             </Alert>
             <Alert color='warning' isOpen={isError} toggle={onDismiss}>
                 {errorStr}

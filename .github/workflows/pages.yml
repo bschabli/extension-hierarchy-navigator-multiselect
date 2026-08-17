@@ -36,11 +36,6 @@ jobs:
       - name: Build site
         run: npm run build
 
-      - name: Create GitHub Pages test manifest
-        run: |
-          cp docs/hierarchynavigator-1.0.trex docs/hierarchynavigator-multiselect.trex
-          sed -i 's#https://tableau.github.io/extension-hierarchy-navigator-sandboxed/hierarchynavigator.html#https://bschabli.github.io/extension-hierarchy-navigator-multiselect/hierarchynavigator.html#g' docs/hierarchynavigator-multiselect.trex
-
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
 
