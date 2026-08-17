@@ -1,7 +1,8 @@
-import { Checkbox, Stepper, TextField, TextArea, TextFieldProps, TextAreaProps, Tabs, DropdownSelect, DropdownSelectProps } from '@tableau/tableau-ui';
+import { Checkbox, Stepper, TextField, TextArea, TextFieldProps, TextAreaProps, DropdownSelect, DropdownSelectProps } from '@tableau/tableau-ui';
 import { InputAttrs, TextAreaAttrs } from '@tableau/tableau-ui/lib/src/utils/NativeProps';
 import React, { useEffect, useState } from 'react';
 import { HierarchyProps, HierType } from '../API/Interfaces';
+import { ConfigSection, ConfigStatus, ConfigStepIntro } from './ConfigPrimitives';
 
 interface Props {
     data: HierarchyProps;
@@ -11,6 +12,7 @@ interface Props {
 export function Page4(props: Props) {
     const setTitleInputProps: TextFieldProps & InputAttrs & React.RefAttributes<HTMLInputElement> = {
         disabled: !props.data.options.titleEnabled,
+        label: 'Title text',
         message: undefined,
         kind: 'line' as 'line' | 'outline' | 'search',
         onChange: (e: any) => {
@@ -28,7 +30,7 @@ export function Page4(props: Props) {
         onChange: (e: any) => {
             props.setUpdates({ type: 'SET_FONT_FAMILY', data: e.target.value });
         },
-        style: { paddingLeft: '9px', fontFamily: props.data.options.fontFamily, marginTop: '3px', width: "420px" },
+        style: { fontFamily: props.data.options.fontFamily, marginTop: '3px', width: '100%' },
         value: props.data.options.fontFamily,
         rows: 3
     };
@@ -69,7 +71,7 @@ export function Page4(props: Props) {
             }
         },
 
-        style: { paddingLeft: '9px', width: "420px" },
+        style: { width: '100%' },
         value: itemCSS,
         rows: 3
     };
@@ -101,7 +103,7 @@ export function Page4(props: Props) {
                 props.setUpdates({ type: 'SET_OPENED_ICON_ASCII', data: e.target.value });
             }
         },
-        style: { paddingLeft: '9px', width: "420px", display: props.data.options.openedIconType === 'Default' ? 'None' : '' },
+        style: { width: '100%', display: props.data.options.openedIconType === 'Default' ? 'none' : '' },
         value: props.data.options.openedIconType === 'Base64 Image' ? props.data.options.openedIconBase64Image : props.data.options.openedIconAscii,
         rows: props.data.options.openedIconType === 'Base64 Image' ? 3 : 1
     };
@@ -115,7 +117,7 @@ export function Page4(props: Props) {
                 props.setUpdates({ type: 'SET_CLOSED_ICON_ASCII', data: e.target.value });
             }
         },
-        style: { paddingLeft: '9px', width: "420px", display: props.data.options.closedIconType === 'Default' ? 'None' : '' },
+        style: { width: '100%', display: props.data.options.closedIconType === 'Default' ? 'none' : '' },
         value: props.data.options.closedIconType === 'Base64 Image' ? props.data.options.closedIconBase64Image : props.data.options.closedIconAscii,
         rows: props.data.options.closedIconType === 'Base64 Image' ? 3 : 1
     };
@@ -223,123 +225,121 @@ export function Page4(props: Props) {
     const toggleDashboardListenersEnabled = (e: React.ChangeEvent<HTMLInputElement>): void => {
         props.setUpdates({ type: 'TOGGLE_DASHBOARD_LISTENERS', data: e.target.checked });
     };
+    const sourceComplete=props.data.worksheet.name!==''&&props.data.worksheet.childId!==''&&(
+        (props.data.type===HierType.FLAT&&props.data.worksheet.fields.length>0)||
+        (props.data.type===HierType.RECURSIVE&&props.data.worksheet.parentId!==''&&props.data.worksheet.childLabel!=='')
+    );
+    const hierarchyFields=props.data.type===HierType.FLAT?
+        props.data.worksheet.fields.join(' → '):
+        `${props.data.worksheet.parentId||'Parent ID'} → ${props.data.worksheet.childId||'Child ID'}`;
+    const parameterEnabled=props.data.parameters.childIdEnabled||props.data.parameters.childLabelEnabled;
+    const colorPickerValue=(value: string, fallback: string): string => /^#[0-9a-f]{6}$/i.test(value)?value:fallback;
 
-
-
-
-    const [tabIndex, setTabIndex] = useState(0)
-    let tabs = [{ content: 'General' }, { content: 'Colors/Fonts' }, { content: 'Icons' }];
-    let tabContent = [];
-    let tab1 = <div>
-        <Checkbox
-            checked={props.data.options.searchEnabled}
-            onChange={changeSearch}
-        />     Show Search Box
-        <p />
-
-        <br />
-        <Checkbox
-            checked={props.data.options.titleEnabled}
-            onChange={changeTitleEnabled}
-        >Show Title
-
-        </Checkbox>
-        <TextField {...setTitleInputProps} />
-        <Checkbox
-            checked={props.data.options.dashboardListenersEnabled}
-            onChange={toggleDashboardListenersEnabled}
-        >
-            Parameters should listen for dashboard changes.  Only needed if the Extension should listen to changes coming from the dashboard for {props.data.type === HierType.RECURSIVE ? 'Child ID and Child Label' : 'Child Label'}.  EG - will the dashboard drive the selection of the hierarchy.
-        </Checkbox>
-        <div style={{ marginLeft: '18px', display: props.data.options.dashboardListenersEnabled ? '' : 'none' }}>
-            <Stepper min={100} max={10000} step={50} pageSteps={5} value={props.data.options.debounce} floatingPoint={false} onValueChange={changeDebounce} disabled={!props.data.options.dashboardListenersEnabled} className='mb-2' /> If the dashboard updates slowly when changing values and the Extension is listening to dashboard changes you may experience a circular loop where the Extension and dashboard are both trying to control the data.  In this case, increase the debounce time (in ms).
-        </div>
-
-        <p />
-        <Checkbox
-            checked={props.data.options.debug}
-            onChange={toggleDebug}
-        >
-            Enable Debug
-        </Checkbox>
-    </div>
-    let tab2 = <div>
-        <div style={{ color: "gray" }}> Note:  color picker pop-up may open behind this window.</div>
-        <div style={{ display: "flex", padding: "5px 0 5px 0" }}>
-            <div style={{ display: "flex", width: "50%" }}>
-                <TextField {...setBGColorInputProps} />
-                <div>
-
-                    <input type='color' value={props.data.options.bgColor} onChange={bgChange} style={{ backgroundColor: props.data.options.bgColor, "marginTop": "23px" }} className='mb-2' />
-                </div>
-            </div>
-            <div style={{ display: "flex", padding: "5px 0 5px 0" }}>
-                <TextField {...setHighlightColorInputProps} />
-                <div>
-
-                    <input type='color' value={props.data.options.highlightColor} onChange={highlightColorChange} style={{ backgroundColor: props.data.options.highlightColor, "marginTop": "23px" }} className='mb-2' />
-                </div>
-            </div>
-        </div>
-        <div style={{ display: "flex", padding: "5px 0 5px 0" }}>
-            <div style={{ display: "flex", width: "50%" }}>
-                <TextField {...setFontColorInputProps} />
-                <div>
-                    <input type='color' value={props.data.options.fontColor} onChange={fontColorChange} style={{ backgroundColor: props.data.options.fontColor, "marginTop": "23px" }} className='mb-2' />
-                </div>
-            </div>
-            <div>
-                <TextField {...setFontSizeInputProps} />
-            </div>
-        </div>
-        <div style={{ display: "flex", padding: "5px 0 5px 0" }}>
-            <TextArea {...setFontFamilyInputProps} />
-        </div>
-        <div style={{ display: "flex", padding: "5px 0 5px 0" }}>
-            <TextArea {...setItemCSSInputProps} />
-        </div>
-    </div>
-    let tab3 =
-        <div>
-            <div className="mb-4">
-
-                <DropdownSelect {...openedIconState} {...setOpenedIconInputPropsDropdown}>
-                    {items.map(makeOption)}
-                </DropdownSelect>
-                <TextArea {...setOpenedIconInputProps} />
-            </div>
-            <div className="mb-4">
-
-                <DropdownSelect {...closedIconState} {...setClosedIconInputPropsDropdown}>
-                    {items.map(makeOption)}
-                </DropdownSelect>
-                <TextArea {...setClosedIconInputProps} />
-            </div>
-
-            <div>
-                <label>Icon Preview</label>
-                <div className="mt-2">{openedIconPreview} Furniture</div>
-                <div style={{paddingLeft: "2rem"}}>Bookcases</div>
-                <div style={{paddingLeft: "2rem"}}>Chairs</div>
-                <div>{closedIconPreview} Office Supplies</div>
-                <div>{closedIconPreview} Technology</div>
-            </div>
-        </div>
-    tabContent.push(tab1, tab2, tab3);
-    // Options CONTENT
     return (
-        <div className='mb-2'>
-            <Tabs
-                onTabChange={(index) => {
-                    console.log(`onChange: ${index}`);
-                    setTabIndex(index);
-                }}
-                selectedTabIndex={tabIndex}
-                tabs={tabs}
+        <div className='config-page'>
+            <ConfigStepIntro
+                eyebrow='Step 4 of 4'
+                title='Review and finish'
+                description='Confirm the data mapping and interactions, then choose the display options users will see.'
+            />
+            <ConfigSection title='Configuration summary'>
+                <div className='config-review-heading'>
+                    <ConfigStatus
+                        complete={sourceComplete}
+                        completeLabel='Ready to save'
+                        incompleteLabel='Source mapping is incomplete'
+                    />
+                </div>
+                <dl className='config-review-grid'>
+                    <div><dt>Hierarchy format</dt><dd>{props.data.type===HierType.FLAT?'Separate level columns':'Parent and child rows'}</dd></div>
+                    <div><dt>Source worksheet</dt><dd>{props.data.worksheet.name||'Not selected'}</dd></div>
+                    <div><dt>Hierarchy fields</dt><dd>{hierarchyFields||'Not selected'}</dd></div>
+                    <div><dt>Dashboard filter</dt><dd>{props.data.worksheet.filterEnabled?`${props.data.worksheet.targetName} · ${props.data.worksheet.targetFilter}`:'Off'}</dd></div>
+                    <div><dt>Parameter output</dt><dd>{parameterEnabled?'On':'Off'}</dd></div>
+                    <div><dt>Source mark selection</dt><dd>{props.data.worksheet.enableMarkSelection?'On':'Off'}</dd></div>
+                </dl>
+            </ConfigSection>
+            <ConfigSection
+                title='Display'
+                description='These defaults work well in most dashboards and can be changed later.'
             >
-                <span>{tabContent[tabIndex]}</span>
-            </Tabs>
-
-        </div >
+                <div className='config-display-options'>
+                    <div className='config-option-row'>
+                        <div><strong>Search box</strong><p>Let users quickly find items in larger hierarchies.</p></div>
+                        <Checkbox checked={props.data.options.searchEnabled} onChange={changeSearch} aria-label='Show search box' />
+                    </div>
+                    <div className='config-option-row config-option-row--stackable'>
+                        <div><strong>Extension title</strong><p>Show a short heading above the navigator.</p></div>
+                        <Checkbox checked={props.data.options.titleEnabled} onChange={changeTitleEnabled} aria-label='Show extension title' />
+                    </div>
+                    {props.data.options.titleEnabled&&<div className='config-title-field'><TextField {...setTitleInputProps} /></div>}
+                </div>
+            </ConfigSection>
+            <details className='config-advanced'>
+                <summary>
+                    <span><strong>Advanced appearance</strong><small>Colors, typography, row styles, and hierarchy icons.</small></span>
+                </summary>
+                <ConfigSection title='Colors and typography'>
+                    <div className='config-color-grid'>
+                        <div className='config-color-field'><TextField {...setBGColorInputProps} /><input aria-label='Choose background color' type='color' value={colorPickerValue(props.data.options.bgColor, '#f3f3f3')} onChange={bgChange} /></div>
+                        <div className='config-color-field'><TextField {...setHighlightColorInputProps} /><input aria-label='Choose highlight color' type='color' value={colorPickerValue(props.data.options.highlightColor, '#d1d1d1')} onChange={highlightColorChange} /></div>
+                        <div className='config-color-field'><TextField {...setFontColorInputProps} /><input aria-label='Choose font color' type='color' value={colorPickerValue(props.data.options.fontColor, '#222222')} onChange={fontColorChange} /></div>
+                        <div><TextField {...setFontSizeInputProps} /></div>
+                    </div>
+                    <div className='config-area-field'><TextArea {...setFontFamilyInputProps} /></div>
+                </ConfigSection>
+                <ConfigSection title='Hierarchy icons'>
+                    <div className='config-field-grid config-field-grid--two'>
+                        <div className='config-area-field'>
+                            <DropdownSelect {...openedIconState} {...setOpenedIconInputPropsDropdown}>{items.map(makeOption)}</DropdownSelect>
+                            <TextArea {...setOpenedIconInputProps} />
+                        </div>
+                        <div className='config-area-field'>
+                            <DropdownSelect {...closedIconState} {...setClosedIconInputPropsDropdown}>{items.map(makeOption)}</DropdownSelect>
+                            <TextArea {...setClosedIconInputProps} />
+                        </div>
+                    </div>
+                    <div className='config-icon-preview' aria-label='Icon preview'>
+                        <strong>Preview</strong>
+                        <div>{openedIconPreview} Furniture</div>
+                        <div className='config-icon-child'>Bookcases</div>
+                        <div className='config-icon-child'>Chairs</div>
+                        <div>{closedIconPreview} Office Supplies</div>
+                        <div>{closedIconPreview} Technology</div>
+                    </div>
+                </ConfigSection>
+            </details>
+            <details className='config-advanced' open={props.data.options.dashboardListenersEnabled}>
+                <summary>
+                    <span><strong>Advanced dashboard synchronization</strong><small>Let dashboard parameters drive the navigator selection.</small></span>
+                </summary>
+                <ConfigSection
+                    title='Listen for dashboard changes'
+                    description={`Enable this only when the dashboard should update the navigator from ${props.data.type===HierType.RECURSIVE?'item ID or label':'the selected label'} parameters.`}
+                    optional={true}
+                >
+                    <div className='config-option-row'>
+                        <div><strong>Enable parameter listeners</strong><p>Leave off when the navigator is the only component controlling these parameters.</p></div>
+                        <Checkbox checked={props.data.options.dashboardListenersEnabled} onChange={toggleDashboardListenersEnabled} aria-label='Enable dashboard parameter listeners' />
+                    </div>
+                    {props.data.options.dashboardListenersEnabled&&
+                        <div className='config-stepper-field'>
+                            <label>Update delay (milliseconds)</label>
+                            <Stepper min={100} max={10000} step={50} pageSteps={5} value={props.data.options.debounce} floatingPoint={false} onValueChange={changeDebounce} />
+                            <p>Increase this if the extension and dashboard repeatedly update one another or the dashboard responds slowly.</p>
+                        </div>
+                    }
+                </ConfigSection>
+            </details>
+            <details className='config-advanced' open={props.data.options.debug}>
+                <summary>
+                    <span><strong>Developer settings</strong><small>Custom item CSS and diagnostic logging.</small></span>
+                </summary>
+                <ConfigSection title='Developer settings' optional={true}>
+                    <div className='config-area-field'><TextArea {...setItemCSSInputProps} /></div>
+                    <Checkbox checked={props.data.options.debug} onChange={toggleDebug}>Enable debug logging</Checkbox>
+                </ConfigSection>
+            </details>
+        </div>
     );
 }

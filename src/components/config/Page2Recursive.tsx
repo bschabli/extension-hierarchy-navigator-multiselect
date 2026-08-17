@@ -1,6 +1,7 @@
 import React from 'react';
 import { Selector } from '../shared/Selector';
 import { HierarchyProps, Status } from '../API/Interfaces';
+import { ConfigSection, ConfigStatus, ConfigStepIntro } from './ConfigPrimitives';
 
 interface Props {
     data: HierarchyProps;
@@ -41,37 +42,66 @@ export function Page2Recursive(props: Props) {
     };
 
     return (
-        <div className='sectionStyle mb-5'>
-            <b>Worksheet and Fields</b>
-            <p />
-            <Selector
-                title={worksheetTitle()}
-                status={props.data.worksheet.status}
-                selected={props.data.worksheet.name}
-                list={props.data.dashboardItems.worksheets}
-                onChange={worksheetChange}
+        <div className='config-page'>
+            <ConfigStepIntro
+                eyebrow='Step 2 of 4'
+                title='Map the source worksheet'
+                description='Tell the navigator which row identifies a hierarchy item, which row is its parent, and what users should see.'
             />
-            <Selector
-                title='Parent ID'
-                status={props.data.worksheet.status!==Status.set? Status.hidden:props.data.worksheet.status}
-                list={props.data.dashboardItems.allCurrentWorksheetItems.fields}
-                onChange={setParent}
-                selected={props.data.worksheet.parentId}
-            />
-            <Selector
-                title='Child ID'
-                status={props.data.worksheet.status!==Status.set? Status.hidden:props.data.worksheet.status}
-                list={props.data.dashboardItems.allCurrentWorksheetItems.fields}
-                onChange={setChild}
-                selected={props.data.worksheet.childId}
-            />
-            <Selector
-                title='Child label'
-                status={props.data.worksheet.status!==Status.set? Status.hidden:props.data.worksheet.status}
-                list={props.data.dashboardItems.allCurrentWorksheetItems.fields}
-                onChange={setChildLabel}
-                selected={props.data.worksheet.childLabel}
-            />
+            <ConfigSection
+                title='Source worksheet'
+                description='Choose the dedicated worksheet that contains the parent-and-child relationship.'
+            >
+                <Selector
+                    title={worksheetTitle()}
+                    status={props.data.worksheet.status}
+                    selected={props.data.worksheet.name}
+                    list={props.data.dashboardItems.worksheets}
+                    onChange={worksheetChange}
+                    required={true}
+                />
+            </ConfigSection>
+            <ConfigSection
+                title='Field mapping'
+                description='Each ID should uniquely identify a node. The label is the friendly name shown in the navigator.'
+            >
+                <div className='config-field-grid'>
+                    <Selector
+                        title='Parent ID field'
+                        description='The ID of this row’s direct parent. Root rows may be null.'
+                        required={true}
+                        status={props.data.worksheet.status!==Status.set? Status.hidden:props.data.worksheet.status}
+                        list={props.data.dashboardItems.allCurrentWorksheetItems.fields}
+                        onChange={setParent}
+                        selected={props.data.worksheet.parentId}
+                    />
+                    <Selector
+                        title='Child ID field'
+                        description='A stable, unique ID for each hierarchy item.'
+                        required={true}
+                        status={props.data.worksheet.status!==Status.set? Status.hidden:props.data.worksheet.status}
+                        list={props.data.dashboardItems.allCurrentWorksheetItems.fields}
+                        onChange={setChild}
+                        selected={props.data.worksheet.childId}
+                    />
+                    <Selector
+                        title='Display label field'
+                        description='The text users will see next to each checkbox.'
+                        required={true}
+                        status={props.data.worksheet.status!==Status.set? Status.hidden:props.data.worksheet.status}
+                        list={props.data.dashboardItems.allCurrentWorksheetItems.fields}
+                        onChange={setChildLabel}
+                        selected={props.data.worksheet.childLabel}
+                    />
+                </div>
+                <div className='config-inline-status'>
+                    <ConfigStatus
+                        complete={Boolean(props.data.worksheet.name&&props.data.worksheet.parentId&&props.data.worksheet.childId&&props.data.worksheet.childLabel)}
+                        completeLabel='Required source fields are mapped'
+                        incompleteLabel='Map all required fields to continue'
+                    />
+                </div>
+            </ConfigSection>
         </div>
     );
 

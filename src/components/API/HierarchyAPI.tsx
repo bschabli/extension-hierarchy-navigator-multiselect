@@ -168,6 +168,7 @@ const hierarchyAPI=(): any => {
                         payload.worksheet.childId=payload.worksheet.parentId;
                     }
                     payload.worksheet.parentId=action.data;
+                    payload.configComplete=evalConfigComplete(payload);
                     return dispatch({ type: 'FETCH_SUCCESS', data: payload });
                 }
             case 'SET_CHILD_ID_FIELD':
@@ -185,12 +186,14 @@ const hierarchyAPI=(): any => {
                         (payload.worksheet.targetFilter===''||payload.worksheet.targetFilter===previousChildId)) {
                         payload.worksheet.targetFilter=action.data;
                     }
+                    payload.configComplete=evalConfigComplete(payload);
                     return dispatch({ type: 'FETCH_SUCCESS', data: payload });
                 }
             case 'SET_CHILD_LABEL_FIELD':
                 {
                     // update parentId from UI
                     payload.worksheet.childLabel=action.data;
+                    payload.configComplete=evalConfigComplete(payload);
                     return dispatch({ type: 'FETCH_SUCCESS', data: payload });
                 }
             case 'SET_CHILD_ID_PARAMETER':
