@@ -1,9 +1,9 @@
-name: Deploy multiselect test site
+name: Deploy Hierarchy Navigator test site
 
 on:
   push:
     branches:
-      - feature/multiselect
+      - master
   workflow_dispatch:
 
 permissions:
