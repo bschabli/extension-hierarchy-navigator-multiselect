@@ -211,6 +211,9 @@ export function Page4(props: Props) {
     const changeSearch = (e: React.ChangeEvent<HTMLInputElement>): void => {
         props.setUpdates({ type: 'TOGGLE_SEARCH_DISPLAY', data: e.target.checked });
     };
+    const changeSearchAutoExpand = (e: React.ChangeEvent<HTMLInputElement>): void => {
+        props.setUpdates({ type: 'TOGGLE_SEARCH_AUTO_EXPAND', data: e.target.checked });
+    };
     // Handles change in background color input
     const bgChange = (color: any): void => {
         props.setUpdates({ type: 'SET_BG_COLOR', data: color.target.value });
@@ -275,6 +278,8 @@ export function Page4(props: Props) {
                     <div><dt>Hierarchy fields</dt><dd>{hierarchyFields||'Not selected'}</dd></div>
                     <div><dt>Selection behavior</dt><dd>{selectionBehaviorLabel}</dd></div>
                     <div><dt>Dashboard filters</dt><dd>{filterSummary}</dd></div>
+                    <div><dt>Search</dt><dd>{props.data.options.searchEnabled?
+                        `On · auto-expand ${props.data.options.searchAutoExpand===false?'off':'on'}`:'Off'}</dd></div>
                     <div><dt>Parameter output</dt><dd>{parameterEnabled?'On':'Off'}</dd></div>
                     <div><dt>Source mark selection</dt><dd>{props.data.worksheet.enableMarkSelection?'On':'Off'}</dd></div>
                 </dl>
@@ -290,6 +295,19 @@ export function Page4(props: Props) {
                         <div><strong>Search box</strong><p>Let users quickly find items in larger hierarchies.</p></div>
                         <Checkbox checked={props.data.options.searchEnabled} onChange={changeSearch} aria-label='Show search box' />
                     </div>
+                    {props.data.options.searchEnabled&&
+                        <div className='config-option-row config-option-row--nested'>
+                            <div>
+                                <strong>Automatically expand matching paths</strong>
+                                <p>Turn this off when users should open matching ancestor branches themselves.</p>
+                            </div>
+                            <Checkbox
+                                checked={props.data.options.searchAutoExpand!==false}
+                                onChange={changeSearchAutoExpand}
+                                aria-label='Automatically expand matching search paths'
+                            />
+                        </div>
+                    }
                     <div className='config-option-row config-option-row--stackable'>
                         <div><strong>Extension title</strong><p>Show a short heading above the navigator.</p></div>
                         <Checkbox checked={props.data.options.titleEnabled} onChange={changeTitleEnabled} aria-label='Show extension title' />

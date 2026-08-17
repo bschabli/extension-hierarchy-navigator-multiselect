@@ -26,7 +26,9 @@ function testExpandedRows(): void {
 }
 
 function testSearchRetainsAncestors(): void {
-    const rows=getHierarchyPreviewRows(makeTree(), new Set<string>(), 'bush').rows;
+    const result=getHierarchyPreviewRows(makeTree(), new Set<string>(), 'bush');
+    const rows=result.rows;
+    assert(result.matchCount===1, 'Search should report direct matches separately from ancestor context.');
     assert(
         rows.map(row => row.node.label).join(',')==='Furniture,Bookcases,Bush',
         'Search should reveal a match with its ancestor path even when branches are closed.'
@@ -41,6 +43,23 @@ function testSearchIsCaseInsensitive(): void {
     assert(!rows[0].expanded, 'A matching parent without matching descendants should stay visually closed.');
 }
 
+function testSearchCanKeepMatchingPathsCollapsed(): void {
+    const tree=makeTree();
+    const collapsed=getHierarchyPreviewRows(tree, new Set<string>(), 'bush', 100, false);
+    assert(
+        collapsed.rows.map(row => row.node.label).join(',')==='Furniture',
+        'Manual search expansion should begin with the matching ancestor root.'
+    );
+    assert(!collapsed.rows[0].expanded, 'Manual search expansion should respect the current closed state.');
+
+    const root=tree[0];
+    const rootExpanded=getHierarchyPreviewRows(tree, new Set([root.key]), 'bush', 100, false);
+    assert(
+        rootExpanded.rows.map(row => row.node.label).join(',')==='Furniture,Bookcases',
+        'Opening a matching ancestor should reveal only the next matching context level.'
+    );
+}
+
 function testRowLimit(): void {
     const tree=makeTree();
     const result=getHierarchyPreviewRows(tree, new Set([tree[0].key]), '', 2);
@@ -51,5 +70,6 @@ function testRowLimit(): void {
 testExpandedRows();
 testSearchRetainsAncestors();
 testSearchIsCaseInsensitive();
+testSearchCanKeepMatchingPathsCollapsed();
 testRowLimit();
 console.log('HierarchyPreviewModel acceptance tests passed.');

@@ -20,6 +20,7 @@ export interface Options {
     fontSize: string;
     highlightColor: string;
     itemCSS: object;
+    searchAutoExpand: boolean;
     searchEnabled: boolean;
     selectionBehavior: SelectionBehavior;
     title: string;
@@ -101,6 +102,7 @@ export const defaultSelectedProps: HierarchyProps={
         fontSize: '12px',
         highlightColor: '#d1d1d1',
         itemCSS: {"overflow": "hidden", "textOverflow": "ellipsis"},
+        searchAutoExpand: true,
         searchEnabled: true,
         selectionBehavior: SelectionBehavior.TERMINAL,
         title: 'Hierarchy Navigator',
