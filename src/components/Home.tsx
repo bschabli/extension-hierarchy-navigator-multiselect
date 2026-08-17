@@ -28,6 +28,7 @@ class AHome extends React.Component<any, any> {
 								<li>Apply the complete selection to filters on multiple Tableau worksheets.</li>
 								<li>Validate IDs, labels, parent relationships, cycles, and hierarchy paths before saving.</li>
 								<li>Try the configured hierarchy in a live, dashboard-safe preview before saving.</li>
+								<li>Choose whether a parent selects terminal values, its entire subtree, or only its own direct ID.</li>
 							</ul>
 							<h4 className='big'>Test the Extension</h4>
 							<ol>

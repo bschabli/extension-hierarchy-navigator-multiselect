@@ -4,8 +4,18 @@ import  React, { useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import '../../css/style.css';
 import { debugOverride, defaultSelectedProps, HierarchyProps } from '../API/Interfaces';
+import { getLegacySelectionBehavior, isSelectionBehavior } from '../API/SelectionBehavior';
 import ParamHandler from './ParamHandler';
 var extend = require('extend');
+
+function hydrateSavedSettings(settingsData: any): HierarchyProps {
+    const savedSelectionBehavior=settingsData.options?.selectionBehavior;
+    const hydrated=extend(true, {}, defaultSelectedProps, settingsData) as HierarchyProps;
+    if(!isSelectionBehavior(savedSelectionBehavior)) {
+        hydrated.options.selectionBehavior=getLegacySelectionBehavior(hydrated.type);
+    }
+    return hydrated;
+}
 
 function HierarchyNavigator() {
     const [dashboard, setDashboard] = useState({});
@@ -52,7 +62,7 @@ function HierarchyNavigator() {
                             console.log(`loaded settingsData:`);
                             console.log(settingsData);
                         }
-                        settingsData = extend(true, {}, defaultSelectedProps, settingsData);
+                        settingsData=hydrateSavedSettings(settingsData);
                         setData(settingsData as HierarchyProps);
                     }
                 }
@@ -107,7 +117,7 @@ function HierarchyNavigator() {
                     let settingsData = {};
                     if (settings.data) {
                         settingsData = JSON.parse(settings.data);
-                        settingsData = extend(true, {}, defaultSelectedProps, settingsData);
+                        settingsData=hydrateSavedSettings(settingsData);
                         if (debugOverride) {
                             console.log(`loaded settingsData:`);
                             console.log(settingsData);

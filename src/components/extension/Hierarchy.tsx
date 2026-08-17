@@ -2,12 +2,14 @@ import { Button, TextField } from '@tableau/tableau-ui';
 import React, { ReactFragment, useEffect, useMemo, useRef, useState } from 'react';
 import TreeMenu from 'react-simple-tree-menu';
 import { debugOverride, defaultSelectedProps, HierarchyProps, HierType } from '../API/Interfaces';
+import { SelectionBehavior } from '../API/SelectionBehavior';
 import {
     CheckboxState,
     NormalizedTreeNode,
     buildFlatTree,
     buildRecursiveTree,
-    getAllLeafFilterValues,
+    getAllSelectableFilterValues,
+    getNodeSelectionValues,
     getSelectionState,
     toggleOpenNode,
     toggleNodeSelection
@@ -92,6 +94,7 @@ function CheckboxTreeItem(props: CheckboxTreeItemProps) {
 
 function Hierarchy(props: Props) {
     const { debug=false||debugOverride }=props.data.options;
+    const selectionBehavior=props.data.options.selectionBehavior||SelectionBehavior.TERMINAL;
     const childRef=useRef<any>(null);
     const selectedRef=useRef<Set<string>>(new Set<string>());
     const [selectedLeafValues, setSelectedLeafValues]=useState<Set<string>>(new Set<string>());
@@ -123,7 +126,15 @@ function Hierarchy(props: Props) {
         return result;
     }, [tree]);
 
-    const allLeafFilterValues=useMemo(() => getAllLeafFilterValues(tree), [tree]);
+    const allSelectableFilterValues=useMemo(
+        () => getAllSelectableFilterValues(tree, selectionBehavior),
+        [selectionBehavior, tree]
+    );
+
+    useEffect(() => {
+        selectedRef.current=new Set<string>();
+        setSelectedLeafValues(new Set<string>());
+    }, [selectionBehavior]);
 
     useEffect(() => {
         if(props.data.options.openedIconType==='Default') { setOpenedIcon(defaultOpenedIcon); }
@@ -209,8 +220,8 @@ function Hierarchy(props: Props) {
     }
 
     function toggleSelection(node: NormalizedTreeNode): void {
-        if(node.leafFilterValues.length===0) { return; }
-        const next=toggleNodeSelection(node, selectedRef.current);
+        if(getNodeSelectionValues(node, selectionBehavior).length===0) { return; }
+        const next=toggleNodeSelection(node, selectedRef.current, selectionBehavior);
         selectedRef.current=next;
         setSelectedLeafValues(next);
         setActiveNode(node, true, next);
@@ -264,18 +275,18 @@ function Hierarchy(props: Props) {
     }
 
     function selectAll(): void {
-        const nextSelection=new Set(allLeafFilterValues);
+        const nextSelection=new Set(allSelectableFilterValues);
         selectedRef.current=nextSelection;
         setSelectedLeafValues(nextSelection);
         props.setDataFromExtension({
             currentId,
             currentLabel,
-            selectedLeafValues: allLeafFilterValues
+            selectedLeafValues: allSelectableFilterValues
         });
     }
 
-    const allValuesSelected=allLeafFilterValues.length>0&&
-        allLeafFilterValues.every(value => selectedLeafValues.has(value));
+    const allValuesSelected=allSelectableFilterValues.length>0&&
+        allSelectableFilterValues.every(value => selectedLeafValues.has(value));
 
     const debugState: ReactFragment=debug? (
         <div style={{ position: 'relative', top: 0, marginTop: '10px' }}>
@@ -312,7 +323,7 @@ function Hierarchy(props: Props) {
                     <Button
                         kind='outline'
                         onClick={selectAll}
-                        disabled={allLeafFilterValues.length===0||allValuesSelected}
+                        disabled={allSelectableFilterValues.length===0||allValuesSelected}
                         aria-label='Select all hierarchy values'
                     >Select all</Button>
                     <Button
@@ -361,8 +372,8 @@ function Hierarchy(props: Props) {
                                     <CheckboxTreeItem
                                         key={item.key}
                                         {...item}
-                                        checkboxState={getSelectionState(node, selectedLeafValues)}
-                                        disabled={node.leafFilterValues.length===0}
+                                        checkboxState={getSelectionState(node, selectedLeafValues, selectionBehavior)}
+                                        disabled={getNodeSelectionValues(node, selectionBehavior).length===0}
                                         onToggleSelection={() => toggleSelection(node)}
                                         toggleNode={() => toggleTreeNode(item.key)}
                                         openedIcon={openedIcon}

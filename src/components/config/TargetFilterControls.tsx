@@ -25,7 +25,7 @@ export function TargetFilterControls(props: Props) {
         <>
             <ConfigSection
                 title='Filter dashboard worksheets'
-                description='Apply the selected leaf values to one or more worksheets. Each worksheet can use its own matching filter field.'
+                description='Apply the selected hierarchy IDs to one or more worksheets. Each worksheet can use its own matching filter field.'
             >
                 <div className='config-option-row'>
                     <div>
@@ -71,7 +71,7 @@ export function TargetFilterControls(props: Props) {
                                         />
                                         <Selector
                                             title='Target filter field'
-                                            description='The field whose values match the selected hierarchy leaves.'
+                                            description='The field whose values match the selected hierarchy IDs.'
                                             required={true}
                                             status={targetFields.length?Status.set:Status.notpossible}
                                             list={targetFields}

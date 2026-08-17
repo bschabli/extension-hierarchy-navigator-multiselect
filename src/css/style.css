@@ -654,6 +654,7 @@ select::-ms-expand {
 
 .config-step button:focus-visible,
 .config-choice:focus-visible,
+.config-behavior-choice:focus-visible,
 .config-advanced summary:focus-visible {
     outline: 2px solid var(--config-accent);
     outline-offset: 1px;
@@ -808,7 +809,8 @@ select::-ms-expand {
     width: 16px;
 }
 
-.config-choice--selected .config-radio::after {
+.config-choice--selected .config-radio::after,
+.config-behavior-choice--selected .config-radio::after {
     background: var(--config-accent);
     border-radius: 50%;
     content: '';
@@ -828,6 +830,59 @@ select::-ms-expand {
 .config-choice p {
     color: var(--config-muted);
     line-height: 1.45;
+}
+
+.config-behavior-grid {
+    display: grid;
+    gap: 10px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.config-behavior-choice {
+    background: #fafbfb;
+    border: 1px solid var(--config-border);
+    border-radius: 4px;
+    color: inherit;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px;
+    text-align: left;
+}
+
+.config-behavior-choice:hover {
+    border-color: #82b7c8;
+}
+
+.config-behavior-choice--selected {
+    background: var(--config-accent-soft);
+    border-color: var(--config-accent);
+    box-shadow: 0 0 0 1px var(--config-accent);
+}
+
+.config-behavior-heading {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+}
+
+.config-behavior-description {
+    color: var(--config-muted);
+    line-height: 1.4;
+}
+
+.config-behavior-example {
+    background: rgba(255, 255, 255, .72);
+    border-radius: 3px;
+    font-size: 10px;
+    line-height: 1.4;
+    padding: 6px 7px;
+}
+
+.config-behavior-note {
+    margin-top: 12px;
 }
 
 .config-tag {
@@ -1477,6 +1532,11 @@ select::-ms-expand {
     font: inherit;
 }
 
+.config-preview-label:disabled {
+    cursor: default;
+    opacity: .48;
+}
+
 .config-preview-toggle {
     align-items: center;
     display: inline-flex;
@@ -1662,6 +1722,7 @@ select::-ms-expand {
     }
 
     .config-choice-grid,
+    .config-behavior-grid,
     .config-field-order,
     .config-field-grid,
     .config-field-grid--two,

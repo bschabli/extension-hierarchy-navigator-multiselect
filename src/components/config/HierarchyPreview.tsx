@@ -1,9 +1,11 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { HierarchyProps, Options } from '../API/Interfaces';
+import { SelectionBehavior, getSelectionBehaviorLabel } from '../API/SelectionBehavior';
 import {
     CheckboxState,
     NormalizedTreeNode,
-    getAllLeafFilterValues,
+    getAllSelectableFilterValues,
+    getNodeSelectionValues,
     getSelectionState,
     toggleNodeSelection
 } from '../extension/TreeModel';
@@ -17,6 +19,7 @@ interface Props {
 }
 
 interface PreviewCheckboxProps {
+    disabled: boolean;
     label: string;
     onChange: () => void;
     state: CheckboxState;
@@ -36,6 +39,7 @@ function PreviewCheckbox(props: PreviewCheckboxProps) {
             ref={checkboxRef}
             type='checkbox'
             checked={props.state==='all'}
+            disabled={props.disabled}
             aria-label={`Select ${ props.label } in preview`}
             onChange={props.onChange}
         />
@@ -77,6 +81,7 @@ function getInitialExpandedKeys(tree: readonly NormalizedTreeNode[]): Set<string
 /** Show a safe, interactive rendering of the configured hierarchy. */
 export function HierarchyPreview(props: Props) {
     const tree=props.validation.previewTree||EMPTY_TREE;
+    const selectionBehavior=props.data.options.selectionBehavior||SelectionBehavior.TERMINAL;
     const [expandedKeys, setExpandedKeys]=useState<Set<string>>(new Set<string>());
     const [searchTerm, setSearchTerm]=useState('');
     const [selectedLeafValues, setSelectedLeafValues]=useState<Set<string>>(new Set<string>());
@@ -85,19 +90,22 @@ export function HierarchyPreview(props: Props) {
         setExpandedKeys(getInitialExpandedKeys(tree));
         setSearchTerm('');
         setSelectedLeafValues(new Set<string>());
-    }, [tree]);
+    }, [selectionBehavior, tree]);
 
     useEffect(() => {
         if(!props.data.options.searchEnabled) { setSearchTerm(''); }
     }, [props.data.options.searchEnabled]);
 
-    const allLeafFilterValues=useMemo(() => getAllLeafFilterValues(tree), [tree]);
+    const allSelectableFilterValues=useMemo(
+        () => getAllSelectableFilterValues(tree, selectionBehavior),
+        [selectionBehavior, tree]
+    );
     const visibleRows=useMemo(
         () => getHierarchyPreviewRows(tree, expandedKeys, searchTerm, MAX_VISIBLE_ROWS),
         [expandedKeys, searchTerm, tree]
     );
-    const allSelected=allLeafFilterValues.length>0&&
-        allLeafFilterValues.every(value => selectedLeafValues.has(value));
+    const allSelected=allSelectableFilterValues.length>0&&
+        allSelectableFilterValues.every(value => selectedLeafValues.has(value));
     const previewReady=props.validation.status==='complete'&&
         Boolean(props.validation.result?.valid)&&tree.length>0;
     const fontFamily=props.data.options.fontFamily.replace(/\s*!important\s*$/i, '');
@@ -120,7 +128,7 @@ export function HierarchyPreview(props: Props) {
     }
 
     function toggleSelection(node: NormalizedTreeNode): void {
-        setSelectedLeafValues(current => toggleNodeSelection(node, current));
+        setSelectedLeafValues(current => toggleNodeSelection(node, current, selectionBehavior));
     }
 
     return (
@@ -154,8 +162,8 @@ export function HierarchyPreview(props: Props) {
                         <div className='config-preview-actions'>
                             <button
                                 type='button'
-                                disabled={allSelected||allLeafFilterValues.length===0}
-                                onClick={() => setSelectedLeafValues(new Set(allLeafFilterValues))}
+                                disabled={allSelected||allSelectableFilterValues.length===0}
+                                onClick={() => setSelectedLeafValues(new Set(allSelectableFilterValues))}
                             >Select all</button>
                             <button
                                 type='button'
@@ -183,7 +191,8 @@ export function HierarchyPreview(props: Props) {
                         <ul className='config-preview-tree' role='tree' aria-label='Hierarchy preview'>
                             {visibleRows.rows.map(row => {
                                 const hasChildren=row.node.nodes.length>0;
-                                const checkboxState=getSelectionState(row.node, selectedLeafValues);
+                                const checkboxState=getSelectionState(row.node, selectedLeafValues, selectionBehavior);
+                                const selectable=getNodeSelectionValues(row.node, selectionBehavior).length>0;
                                 return (
                                     <li
                                         className='config-preview-row'
@@ -207,11 +216,13 @@ export function HierarchyPreview(props: Props) {
                                         <PreviewCheckbox
                                             label={row.node.label}
                                             state={checkboxState}
+                                            disabled={!selectable}
                                             onChange={() => toggleSelection(row.node)}
                                         />
                                         <button
                                             className='config-preview-label'
                                             type='button'
+                                            disabled={!selectable}
                                             style={itemStyle}
                                             onClick={() => toggleSelection(row.node)}
                                         >{row.node.label}</button>
@@ -221,7 +232,8 @@ export function HierarchyPreview(props: Props) {
                         </ul>
                     </div>
                     <div className='config-preview-footer'>
-                        <span>Preview only · {allLeafFilterValues.length.toLocaleString()} selectable value{allLeafFilterValues.length===1?'':'s'}</span>
+                        <span>{getSelectionBehaviorLabel(selectionBehavior)} · {allSelectableFilterValues.length.toLocaleString()} selectable value{allSelectableFilterValues.length===1?'':'s'}</span>
+                        <span>Preview only</span>
                         {visibleRows.truncated&&<span>Showing the first {MAX_VISIBLE_ROWS} visible items</span>}
                     </div>
                 </div>
