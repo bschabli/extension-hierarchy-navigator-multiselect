@@ -1,8 +1,18 @@
 const path = require('path');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
+const MinimizerPlugin = require('minimizer-webpack-plugin');
 
 module.exports = {
   mode: 'development',
+  optimization: {
+    minimizer: [
+      new MinimizerPlugin({
+        minimizerOptions: {
+          keep_fnames: true,
+        },
+      }),
+    ],
+  },
   entry: {
     splash: './src/components/Home.tsx',
     config: './src/components/config/Config.tsx',
