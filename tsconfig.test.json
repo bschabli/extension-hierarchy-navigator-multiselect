@@ -1,0 +1,15 @@
+{
+  "compilerOptions": {
+    "esModuleInterop": true,
+    "lib": ["ES2020", "DOM"],
+    "module": "commonjs",
+    "outDir": "/tmp/hierarchy-navigator-tests",
+    "rootDir": "src/components/extension",
+    "strict": true,
+    "target": "ES2020"
+  },
+  "include": [
+    "src/components/extension/TreeModel.ts",
+    "src/components/extension/TreeModel.test.ts"
+  ]
+}
