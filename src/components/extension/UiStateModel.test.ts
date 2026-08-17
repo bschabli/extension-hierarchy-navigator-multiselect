@@ -115,9 +115,23 @@ function testCorruptStoredStateFallsBackSafely(): void {
     assert(first!==second, 'Different hierarchy definitions should not share persisted UI state.');
 }
 
+function testStoredArraysAreBoundedBeforeDeduplication(): void {
+    const oversizedValues=Array.from({ length: 10001 }, () => 'duplicate').concat('outside-cap');
+    const storage: HierarchyUiStorage={
+        getItem: () => JSON.stringify({ openNodes: oversizedValues, selectedValues: oversizedValues }),
+        setItem: () => undefined
+    };
+    const restored=loadHierarchyUiState(storage, 'test');
+    assert(
+        restored.openNodes.join(',')==='duplicate'&&restored.selectedValues.join(',')==='duplicate',
+        'Corrupt arrays should be capped before deduplication so later entries are never traversed.'
+    );
+}
+
 testRefreshPreservesSurvivingUiState();
 testSelectionBehaviorControlsAvailableValues();
 testRemovedBranchIsCollapsedAfterRefresh();
 testSessionStorageRoundTrip();
 testCorruptStoredStateFallsBackSafely();
+testStoredArraysAreBoundedBeforeDeduplication();
 console.log('Hierarchy UI state acceptance tests passed.');

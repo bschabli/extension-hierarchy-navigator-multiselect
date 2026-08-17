@@ -1,4 +1,12 @@
-import { FilterableWorksheet, resolveFilterTargets, syncLegacyFilterTarget, updateFilterTargets } from './FilterTargets';
+import {
+    FilterableWorksheet,
+    findNextFilterTargetWorksheet,
+    replaceFilterTargetField,
+    resolveFilterTargets,
+    shouldUpdateFilterTargets,
+    syncLegacyFilterTarget,
+    updateFilterTargets
+} from './FilterTargets';
 
 function assert(condition: boolean, message: string): void {
     if(!condition) { throw new Error(message); }
@@ -38,6 +46,33 @@ async function run(): Promise<void> {
     assert(settings.filterTargets.length===0, 'Explicitly clearing targets should not recreate the legacy target.');
     assert(settings.targetName==='', 'Clearing targets should clear the legacy worksheet.');
     assert(settings.targetFilter==='', 'Clearing targets should clear the legacy target field.');
+
+    const nextWorksheet=findNextFilterTargetWorksheet(
+        ['Empty sheet', 'Sales', 'Profit'],
+        [{ worksheetName: 'Sales', fieldName: 'Product Path' }],
+        worksheetName => worksheetName!=='Empty sheet'
+    );
+    assert(nextWorksheet==='Profit', 'Adding a target should skip empty and already configured worksheets.');
+
+    const renamedTargets=replaceFilterTargetField(
+        [
+            { worksheetName: 'Sales', fieldName: 'Old ID' },
+            { worksheetName: 'Profit', fieldName: 'Old ID' },
+            { worksheetName: 'Inventory', fieldName: 'SKU' }
+        ],
+        'Old ID',
+        'New ID'
+    );
+    assert(
+        renamedTargets[0].fieldName==='New ID'&&renamedTargets[1].fieldName==='New ID',
+        'Child ID changes should propagate by field match across every target worksheet.'
+    );
+    assert(renamedTargets[2].fieldName==='SKU', 'Unrelated target fields should remain unchanged.');
+    assert(
+        !shouldUpdateFilterTargets(false, normalized),
+        'Disabled filtering must never apply or clear target filters.'
+    );
+    assert(shouldUpdateFilterTargets(true, normalized), 'Enabled filtering should update valid targets.');
 
     const calls: string[]=[];
     const worksheets: FilterableWorksheet[]=[

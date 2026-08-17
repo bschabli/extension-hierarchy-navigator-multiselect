@@ -3,8 +3,14 @@ import { Parameter, Worksheet } from '@tableau/extensions-api-types';
 import { useEffect, useReducer, useRef, useState } from 'react';
 import * as React from 'react';
 import { debugOverride, defaultSelectedProps, HierarchyProps, HierType, SelectedParameters, Status } from './Interfaces';
-import { FilterTarget, resolveFilterTargets, syncLegacyFilterTarget } from './FilterTargets';
-import { getLegacySelectionBehavior, isSelectionBehavior } from './SelectionBehavior';
+import {
+    FilterTarget,
+    findNextFilterTargetWorksheet,
+    replaceFilterTargetField,
+    resolveFilterTargets,
+    syncLegacyFilterTarget
+} from './FilterTargets';
+import { isSelectionBehavior, resolveSavedSelectionBehavior } from './SelectionBehavior';
 import { withHTMLSpaces } from './Utils';
 import { LocalizedText, TranslationValues } from '../localization/I18n';
 
@@ -104,12 +110,14 @@ const hierarchyAPI=(): any => {
         if(typeof _settings.configComplete!=='undefined'&&_settings.configComplete) {
             const savedSelectionBehavior=_settings.options?.selectionBehavior;
             extend(true, _initialData, _settings);
-            if(!isSelectionBehavior(savedSelectionBehavior)) {
-                // Preserve the previous effective behavior for saved workbooks:
-                // Flat trees included every represented endpoint, while
-                // Recursive trees selected only terminal descendants.
-                _initialData.options.selectionBehavior=getLegacySelectionBehavior(_initialData.type);
-            }
+            // Preserve the previous effective behavior for saved workbooks:
+            // Flat trees included every represented endpoint, while
+            // Recursive trees selected only terminal descendants.
+            _initialData.options.selectionBehavior=resolveSavedSelectionBehavior(
+                savedSelectionBehavior,
+                _initialData.configComplete,
+                _initialData.type
+            );
             _initialData=await getWorksheetsFilterAndFieldsFromDashboardAsyncWithoutAssignments(_initialData);
             const { data, result, msg }=validateSettings(_initialData);
             switch(result) {
@@ -208,15 +216,14 @@ const hierarchyAPI=(): any => {
                     if(payload.type===HierType.FLAT) { payload.parameters.childId=`${ action.data }${ payload.paramSuffix }`; }
                     if (debug) console.log(`PARAM CHILD ID set to ${ payload.parameters.childId }`);
                     payload.worksheet.childId=action.data;
-                    if(payload.worksheet.targetName===payload.worksheet.name&&
-                        (payload.worksheet.targetFilter===''||payload.worksheet.targetFilter===previousChildId)) {
+                    if(payload.worksheet.targetFilter===''||payload.worksheet.targetFilter===previousChildId) {
                         payload.worksheet.targetFilter=action.data;
                     }
-                    const updatedTargets=resolveFilterTargets(payload.worksheet).map(target => (
-                        target.worksheetName===payload.worksheet.name&&target.fieldName===previousChildId?
-                            { ...target, fieldName: action.data }:
-                            target
-                    ));
+                    const updatedTargets=replaceFilterTargetField(
+                        resolveFilterTargets(payload.worksheet),
+                        previousChildId,
+                        action.data
+                    );
                     syncLegacyFilterTarget(payload.worksheet, updatedTargets);
                     payload.configComplete=evalConfigComplete(payload);
                     return dispatch({ type: 'FETCH_SUCCESS', data: payload });
@@ -327,8 +334,11 @@ const hierarchyAPI=(): any => {
             case 'ADD_FILTER_TARGET':
                 {
                     const targets=resolveFilterTargets(payload.worksheet);
-                    const usedWorksheetNames=new Set(targets.map(target => target.worksheetName));
-                    const worksheetName=action.data?.worksheetName||payload.dashboardItems.targetWorksheets.find(name => !usedWorksheetNames.has(name))||'';
+                    const worksheetName=action.data?.worksheetName||findNextFilterTargetWorksheet(
+                        payload.dashboardItems.targetWorksheets,
+                        targets,
+                        name => targetFieldsFor(name).length>0
+                    );
                     const newTarget=makeTarget(worksheetName);
                     if(newTarget) { targets.push(newTarget); }
                     syncLegacyFilterTarget(payload.worksheet, targets);
@@ -869,7 +879,7 @@ const hierarchyAPI=(): any => {
                 if(!d.dashboardItems.allCurrentWorksheetItems.fields.includes(d.worksheet.parentId)) {
                     modifiedMessages.push({
                         message: 'Parent ID ({field}) is no longer available.',
-                        values: {field: d.worksheet.childId}
+                        values: {field: d.worksheet.parentId}
                     });
                     d.worksheet.parentId=d.worksheet.childId===d.dashboardItems.allCurrentWorksheetItems.fields[0]? d.dashboardItems.allCurrentWorksheetItems.fields[1]:d.dashboardItems.allCurrentWorksheetItems.fields[0];
                 };
@@ -883,7 +893,7 @@ const hierarchyAPI=(): any => {
                 };
 
                 // Check Child Label
-                if(!d.dashboardItems.allCurrentWorksheetItems.fields.includes(d.worksheet.parentId)) {
+                if(!d.dashboardItems.allCurrentWorksheetItems.fields.includes(d.worksheet.childLabel)) {
                     modifiedMessages.push({
                         message: 'Child label ({field}) is no longer available.',
                         values: {field: d.worksheet.childLabel}

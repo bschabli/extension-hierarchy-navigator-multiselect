@@ -1,6 +1,11 @@
 import { Dashboard, Parameter, Worksheet } from '@tableau/extensions-api-types';
 import React, { useEffect, useRef, useState } from 'react';
-import { FilterTarget, resolveFilterTargets, updateFilterTargets } from '../API/FilterTargets';
+import {
+    FilterTarget,
+    resolveFilterTargets,
+    shouldUpdateFilterTargets,
+    updateFilterTargets
+} from '../API/FilterTargets';
 import { debugOverride, HierarchyProps, HierType } from '../API/Interfaces';
 import Hierarchy, { HierarchySelectionPayload } from './Hierarchy';
 
@@ -329,7 +334,7 @@ function ParamHandler(props: Props) {
         if(typeof incomingData.selectedLeafValues!=='undefined') {
             const selectedValues=incomingData.selectedLeafValues;
             const configuredTargets=resolveFilterTargets(props.data.worksheet);
-            if(configuredTargets.length&&(props.data.worksheet.filterEnabled||selectedValues.length===0)) {
+            if(shouldUpdateFilterTargets(props.data.worksheet.filterEnabled, configuredTargets)) {
                 const successfulTargets=await updateFilterTargets(
                     configuredTargets,
                     props.dashboard.worksheets,
@@ -337,7 +342,7 @@ function ParamHandler(props: Props) {
                     tableau.FilterUpdateType.Replace,
                     (target, error) => console.error(`Unable to update hierarchy filter '${target.fieldName}' on '${target.worksheetName}'.`, error)
                 );
-                appliedFilterTargets.current=selectedValues.length&&props.data.worksheet.filterEnabled?successfulTargets:[];
+                appliedFilterTargets.current=selectedValues.length?successfulTargets:[];
             }
             if(props.data.worksheet.enableMarkSelection) {
                 const worksheet=await findWorksheet();

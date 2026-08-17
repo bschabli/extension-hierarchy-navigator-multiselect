@@ -89,7 +89,9 @@ function CheckboxTreeItem(props: CheckboxTreeItemProps) {
             data-tree-key={props.itemKey}
             aria-expanded={props.hasNodes? props.isOpen:undefined}
             aria-level={props.level+1}
-            aria-selected={props.checkboxState==='all'}
+            aria-checked={props.checkboxState==='some'?'mixed':props.checkboxState==='all'}
+            aria-disabled={props.disabled||undefined}
+            aria-selected={props.checkboxState!=='none'}
             aria-label={`${ props.label }, ${ selectionDescription }`}
             onClick={props.onClick}
             onFocus={props.onFocus}
@@ -166,6 +168,7 @@ function Hierarchy(props: Props) {
     const [focusedTreePath, setFocusedTreePath]=useState('');
     const [screenReaderAnnouncement, setScreenReaderAnnouncement]=useState('');
     const hierarchyDefinitionRef=useRef(hierarchyDefinitionSignature);
+    const persistedUiStorageKeyRef=useRef(uiStorageKey);
 
     const defaultClosedIcon=<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24'>
         <path fill={props.data.options.fontColor} fillRule='evenodd' d='M12.7632424,18.2911068 L24.112,6.942 L22.698,5.528 L12.0561356,16.1697864 L1.414,5.528 L8.52651283e-14,6.942 L11.3490288,18.2911068 C11.7395531,18.6816311 12.3727181,18.6816311 12.7632424,18.2911068 Z' transform='matrix(0 1 1 0 0 0)' />
@@ -201,6 +204,10 @@ function Hierarchy(props: Props) {
     }, [autoExpandSearch, openNodes, searchActive, searchResult.autoExpandedPaths]);
 
     useEffect(() => {
+        if(persistedUiStorageKeyRef.current!==uiStorageKey) {
+            persistedUiStorageKeyRef.current=uiStorageKey;
+            return;
+        }
         saveHierarchyUiState(getSessionStorage(), uiStorageKey, {
             openNodes,
             searchText: searchVal,
@@ -526,6 +533,7 @@ function Hierarchy(props: Props) {
     }
 
     const allValuesSelected=allSelectableFilterValues.length>0&&
+        allSelectableFilterValues.length===selectedLeafValues.size&&
         allSelectableFilterValues.every(value => selectedLeafValues.has(value));
 
     function describeSelection(count: number): string {
@@ -602,8 +610,10 @@ function Hierarchy(props: Props) {
                 resetOpenNodesOnDataUpdate={true}
                 ref={childRef}
             >
-                {({ items }) => (
-                    <>
+                {({ items }) => {
+                    const currentFocusPath=items.some((candidate: any) => candidate.key===focusedTreePath)?
+                        focusedTreePath:items[0]?.key;
+                    return (<>
                         <TextField
                             kind='search'
                             className='fullWidth'
@@ -645,8 +655,6 @@ function Hierarchy(props: Props) {
                                 const nodeId=item.key.split('/').pop()||'';
                                 const node=nodeById.get(nodeId);
                                 if(!node) { return null; }
-                                const currentFocusPath=items.some((candidate: any) => candidate.key===focusedTreePath)?
-                                    focusedTreePath:items[0]?.key;
                                 return (
                                     <CheckboxTreeItem
                                         key={item.key}
@@ -671,8 +679,8 @@ function Hierarchy(props: Props) {
                                 );
                             })}
                         </ul>
-                    </>
-                )}
+                    </>);
+                }}
             </TreeMenu>
             {debugState}
         </div>

@@ -105,7 +105,7 @@ function unique(values: readonly string[]): string[] {
 
 function stringArray(value: unknown): string[] {
     if(!Array.isArray(value)) { return []; }
-    return unique(value.filter((item): item is string => typeof item==='string')).slice(0, 10000);
+    return unique(value.slice(0, 10000).filter((item): item is string => typeof item==='string'));
 }
 
 function copyEmptyState(): HierarchyUiState {

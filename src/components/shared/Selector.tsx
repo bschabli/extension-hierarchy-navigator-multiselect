@@ -20,6 +20,7 @@ export interface SelectorProps {
 // tslint:disable-next-line variable-name
 export const Selector: React.SFC<SelectorProps> = (props) => {
     const {t}=useTranslation();
+    const accessibleName=props.title||props.description||t('Select an option');
     const dropdownSelectProps: DropdownSelectProps = {
         className: 'dropdown-select',
         disabled: props.status!==Status.set,
@@ -60,7 +61,8 @@ export const Selector: React.SFC<SelectorProps> = (props) => {
             <DropdownSelect
                 {...dropdownSelectProps}
                 data-type={props.type}
-                aria-label={props.title}
+                aria-label={accessibleName}
+                aria-required={props.required||undefined}
             >
                 {props.list.map(option => <option key={option} value={option}>{withHTMLSpaces(option)}</option>)}
             </DropdownSelect>

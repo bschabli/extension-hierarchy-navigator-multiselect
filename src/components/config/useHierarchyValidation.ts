@@ -100,7 +100,7 @@ export function useHierarchyValidation(
                     return index;
                 };
 
-                let previewTree: NormalizedTreeNode[];
+                let previewTree: NormalizedTreeNode[]|undefined;
                 let result: HierarchyValidationResult;
                 if(data.type===HierType.FLAT) {
                     const idColumnIndex=getColumnIndex(data.worksheet.childId);
@@ -111,12 +111,14 @@ export function useHierarchyValidation(
                         levelFieldNames: data.worksheet.fields,
                         separator: data.separator
                     });
-                    previewTree=buildFlatTree(
-                        dataset.rows,
-                        levelColumnIndexes,
-                        idColumnIndex,
-                        data.separator
-                    );
+                    if(result.valid) {
+                        previewTree=buildFlatTree(
+                            dataset.rows,
+                            levelColumnIndexes,
+                            idColumnIndex,
+                            data.separator
+                        );
+                    }
                 }
                 else {
                     const idColumnIndex=getColumnIndex(data.worksheet.childId);
@@ -127,12 +129,14 @@ export function useHierarchyValidation(
                         labelColumnIndex,
                         parentIdColumnIndex
                     });
-                    previewTree=buildRecursiveTree(
-                        dataset.rows,
-                        parentIdColumnIndex,
-                        idColumnIndex,
-                        labelColumnIndex
-                    );
+                    if(result.valid) {
+                        previewTree=buildRecursiveTree(
+                            dataset.rows,
+                            parentIdColumnIndex,
+                            idColumnIndex,
+                            labelColumnIndex
+                        );
+                    }
                 }
                 if(!cancelled) {
                     setState({ mappingSignature, previewTree, result, status: 'complete' });
