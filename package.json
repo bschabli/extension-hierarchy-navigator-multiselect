@@ -14,7 +14,7 @@
     "build": "npm run copy-resources && webpack --mode production --no-devtool",
     "test": "tsc -p tsconfig.test.json && node /tmp/hierarchy-navigator-tests/TreeModel.test.js",
     "sandbox": "webpack --mode production --watch --progress --no-devtool & npx tabextsandbox --config sandbox-config.json",
-    "copy-resources": "mkdir -p ./docs/resources && cp src/*.ico ./docs/ && cp src/*.trex ./docs/ && cp src/*.twbx ./docs/ && cp src/hierarchynavigator-1.0.trex ./docs/hierarchynavigator-multiselect.trex && cp src/resources/tableau.extensions.1.latest.js ./docs/resources/"
+    "copy-resources": "mkdir -p ./docs/resources && cp src/*.ico ./docs/ && cp src/*.trex ./docs/ && cp src/*.twbx ./docs/ && cp src/hierarchynavigator-1.0.trex ./docs/hierarchynavigator-multiselect.trex && cp src/resources/*.js ./docs/resources/"
   },
   "devDependencies": {
     "@babel/core": "^7.18.2",
