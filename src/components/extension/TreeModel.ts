@@ -206,10 +206,10 @@ export function toggleNodeSelection(
 }
 
 function isTableauCell(cell: HierarchyCell): cell is TableauCellLike {
+    // Tableau's current Extensions API exposes DataValue fields through class
+    // getters, so they live on the prototype rather than as own properties.
     return typeof cell==='object'&&cell!==null&&(
-        Object.prototype.hasOwnProperty.call(cell, 'value')||
-        Object.prototype.hasOwnProperty.call(cell, 'nativeValue')||
-        Object.prototype.hasOwnProperty.call(cell, 'formattedValue')
+        'value' in cell||'nativeValue' in cell||'formattedValue' in cell
     );
 }
 

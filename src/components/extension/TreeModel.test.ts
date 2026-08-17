@@ -14,6 +14,23 @@ function cell(value: unknown, formattedValue?: unknown): { value: unknown, forma
     return { value, formattedValue: typeof formattedValue==='undefined'? value:formattedValue };
 }
 
+class TableauGetterCell {
+    private readonly rawValue: unknown;
+
+    private readonly displayValue: unknown;
+
+    constructor(value: unknown, formattedValue?: unknown) {
+        this.rawValue=value;
+        this.displayValue=typeof formattedValue==='undefined'? value:formattedValue;
+    }
+
+    get value(): unknown { return this.rawValue; }
+
+    get nativeValue(): unknown { return this.rawValue; }
+
+    get formattedValue(): unknown { return this.displayValue; }
+}
+
 function testFlatVariableDepthAndNulls(): void {
     const tree=buildFlatTree([
         [cell('A'), cell('B'), cell('C'), cell('A|B|C')],
@@ -68,6 +85,30 @@ function testRecursiveSelection(): void {
     assert(getSelectionState(tree[0], selected)==='all', 'Recursive parent should become fully selected.');
 }
 
+function testTableauGetterCellsAndPartialSelection(): void {
+    const tree=buildFlatTree([
+        [
+            new TableauGetterCell('Furniture'),
+            new TableauGetterCell('Bookcases'),
+            new TableauGetterCell('Atlantic'),
+            new TableauGetterCell('atlantic-id')
+        ],
+        [
+            new TableauGetterCell('Furniture'),
+            new TableauGetterCell('Bookcases'),
+            new TableauGetterCell('Bush'),
+            new TableauGetterCell('bush-id')
+        ]
+    ], [0, 1, 2], 3);
+    const root=tree[0];
+    assert(root.label==='Furniture', 'Tableau getter-backed values should use their formatted label.');
+    assert(root.nodes[0].label==='Bookcases', 'Nested getter-backed labels should remain readable.');
+    assert(root.leafFilterValues.join(',')==='atlantic-id,bush-id', 'Getter-backed filter values must remain distinct.');
+
+    const selected=toggleNodeSelection(root.nodes[0].nodes[0], new Set<string>());
+    assert(getSelectionState(root, selected)==='some', 'Selecting one child should make its ancestors indeterminate.');
+}
+
 function testMissingValueRules(): void {
     assert(isMissingHierarchyValue(null), 'null should be missing.');
     assert(isMissingHierarchyValue(undefined), 'undefined should be missing.');
@@ -88,5 +129,6 @@ testFlatVariableDepthAndNulls();
 testFlatInternalGapAndUniquePaths();
 testEndpointParentAndSelection();
 testRecursiveSelection();
+testTableauGetterCellsAndPartialSelection();
 testMissingValueRules();
 console.log('TreeModel acceptance tests passed.');
