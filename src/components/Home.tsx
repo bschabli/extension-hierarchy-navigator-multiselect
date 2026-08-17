@@ -27,6 +27,7 @@ class AHome extends React.Component<any, any> {
 								<li>Handle incomplete Flat paths without visible NULL nodes.</li>
 								<li>Apply the complete selection to filters on multiple Tableau worksheets.</li>
 								<li>Validate IDs, labels, parent relationships, cycles, and hierarchy paths before saving.</li>
+								<li>Try the configured hierarchy in a live, dashboard-safe preview before saving.</li>
 							</ul>
 							<h4 className='big'>Test the Extension</h4>
 							<ol>

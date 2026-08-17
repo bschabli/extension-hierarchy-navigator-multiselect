@@ -1347,6 +1347,205 @@ select::-ms-expand {
     to { transform: rotate(360deg); }
 }
 
+.config-preview-placeholder {
+    background: #f3f5f6;
+    border-radius: 4px;
+    color: var(--config-muted);
+    padding: 14px;
+}
+
+.config-hierarchy-preview {
+    border: 1px solid #cfd4d7;
+    border-radius: 4px;
+    box-sizing: border-box;
+    max-width: 620px;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.config-preview-toolbar {
+    align-items: flex-start;
+    border-bottom: 1px solid rgba(100, 108, 114, .24);
+    display: flex;
+    gap: 12px;
+    justify-content: space-between;
+    padding: 9px 10px;
+}
+
+.config-preview-toolbar > div:first-child {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.config-preview-title {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.config-preview-selection-status {
+    color: inherit;
+    font-size: 10px;
+    line-height: 1.4;
+    margin-top: 2px;
+    opacity: .68;
+}
+
+.config-preview-actions {
+    display: flex;
+    flex: 0 0 auto;
+    gap: 6px;
+}
+
+.config-preview-actions button {
+    background: rgba(255, 255, 255, .72);
+    border: 1px solid rgba(75, 82, 87, .48);
+    border-radius: 2px;
+    color: inherit;
+    cursor: pointer;
+    font: inherit;
+    min-height: 25px;
+    padding: 3px 9px;
+}
+
+.config-preview-actions button:disabled {
+    cursor: default;
+    opacity: .42;
+}
+
+.config-preview-search {
+    display: block;
+    padding: 8px 10px 6px;
+    position: relative;
+}
+
+.config-preview-search input {
+    background: rgba(255, 255, 255, .76);
+    border: 1px solid rgba(100, 108, 114, .38);
+    border-radius: 2px;
+    box-sizing: border-box;
+    color: inherit;
+    font: inherit;
+    height: 28px;
+    padding: 4px 8px 4px 27px;
+    width: 100%;
+}
+
+.config-preview-search-icon {
+    font-size: 16px;
+    left: 17px;
+    line-height: 1;
+    opacity: .65;
+    pointer-events: none;
+    position: absolute;
+    top: 14px;
+}
+
+.config-preview-tree-scroll {
+    min-height: 128px;
+    max-height: 260px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}
+
+.config-preview-tree {
+    list-style: none;
+    margin: 0;
+    padding: 0 0 5px;
+}
+
+.config-preview-row {
+    align-items: center;
+    box-sizing: border-box;
+    display: flex;
+    min-height: 29px;
+    padding-right: 9px;
+}
+
+.config-preview-row:hover,
+.config-preview-row:focus-within {
+    background: var(--preview-highlight, #d1d1d1);
+}
+
+.config-preview-toggle,
+.config-preview-label {
+    background: transparent;
+    border: 0;
+    color: inherit;
+    cursor: pointer;
+    font: inherit;
+}
+
+.config-preview-toggle {
+    align-items: center;
+    display: inline-flex;
+    flex: 0 0 22px;
+    height: 25px;
+    justify-content: center;
+    padding: 0;
+}
+
+.config-preview-toggle img {
+    object-fit: contain;
+}
+
+.config-preview-toggle--empty {
+    cursor: default;
+}
+
+.config-preview-row input[type='checkbox'] {
+    flex: 0 0 auto;
+    margin: 0 7px 0 1px;
+}
+
+.config-preview-label {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    padding: 4px 0;
+    text-align: left;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.config-preview-actions button:focus-visible,
+.config-preview-search input:focus-visible,
+.config-preview-toggle:focus-visible,
+.config-preview-label:focus-visible,
+.config-preview-row input:focus-visible {
+    outline: 2px solid var(--config-accent);
+    outline-offset: 1px;
+}
+
+.config-preview-empty {
+    color: inherit;
+    opacity: .68;
+    padding: 28px 14px;
+    text-align: center;
+}
+
+.config-preview-footer {
+    border-top: 1px solid rgba(100, 108, 114, .24);
+    display: flex;
+    flex-wrap: wrap;
+    font-size: 9px;
+    gap: 4px 12px;
+    justify-content: space-between;
+    opacity: .68;
+    padding: 6px 10px;
+}
+
+.config-visually-hidden {
+    height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    padding: 0;
+    position: absolute;
+    width: 1px;
+    clip: rect(0 0 0 0);
+}
+
 .config-display-options .config-option-row + .config-option-row {
     border-top: 1px solid #eceeef;
     margin-top: 12px;
@@ -1479,6 +1678,16 @@ select::-ms-expand {
     .config-validation-summary {
         align-items: flex-start;
         flex-direction: column;
+    }
+
+    .config-preview-toolbar {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .config-preview-actions {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 }
 
