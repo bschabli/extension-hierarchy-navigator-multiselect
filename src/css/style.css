@@ -49,18 +49,42 @@ body {
     padding-top: 0;
 }
 
-.hierarchy-checkbox-item input[type="checkbox"] {
+.hierarchy-checkbox-control {
+    align-items: center;
+    border: 1px solid currentColor;
+    border-radius: 3px;
+    box-sizing: border-box;
+    display: inline-flex;
     flex: 0 0 auto;
+    font-size: 11px;
+    font-weight: 700;
+    height: 14px;
+    justify-content: center;
+    line-height: 1;
     margin: 0 6px 0 2px;
+    width: 14px;
+}
+
+.hierarchy-checkbox-control--all,
+.hierarchy-checkbox-control--some {
+    background: #0b6f91;
+    border-color: #0b6f91;
+    color: #fff;
+}
+
+.hierarchy-checkbox-control--disabled {
+    opacity: .42;
 }
 
 .hierarchy-checkbox-item:hover {
     background-color: var(--highlightColor, #d1d1d1);
 }
 
-.hierarchy-checkbox-item:focus-within {
-    outline: 1px solid var(--highlightColor, #d1d1d1);
-    outline-offset: -1px;
+.hierarchy-checkbox-item:focus-visible {
+    background-color: var(--highlightColor, #d1d1d1);
+    box-shadow: inset 0 0 0 3px #fff;
+    outline: 2px solid #0b6f91;
+    outline-offset: -2px;
 }
 
 .extension-status {
@@ -582,9 +606,10 @@ select::-ms-expand {
       width: 100%;
 }
 
-/* remove blue outline when clicking on hierarchy */
-:focus {
-    outline: none;
+/* Consistent high-visibility keyboard focus across the extension and wizard. */
+:focus-visible {
+    outline: 2px solid #0b6f91;
+    outline-offset: 2px;
 }
 
 /* Guided configuration wizard */
@@ -1637,7 +1662,8 @@ select::-ms-expand {
     padding: 6px 10px;
 }
 
-.config-visually-hidden {
+.config-visually-hidden,
+.hierarchy-visually-hidden {
     height: 1px;
     margin: -1px;
     overflow: hidden;

@@ -17,6 +17,11 @@ import {
 } from './TreeModel';
 import { getHierarchySearchResult } from './SearchModel';
 import {
+    KeyboardTreeItem,
+    findTypeaheadTreeItem,
+    getTreeKeyboardAction
+} from './TreeKeyboardNavigation';
+import {
     createHierarchyUiStorageKey,
     loadHierarchyUiState,
     reconcileHierarchyUiState,
@@ -52,53 +57,65 @@ interface CheckboxTreeItemProps {
     disabled: boolean;
     hasNodes: boolean;
     isOpen: boolean;
+    itemKey: string;
     label: string;
     level: number;
     onClick: () => void;
-    onToggleSelection: () => void;
+    onFocus: () => void;
+    onKeyDown: (event: React.KeyboardEvent<HTMLLIElement>) => void;
     openedIcon: React.ReactNode;
+    setRef: (element: HTMLLIElement|null) => void;
     style: React.CSSProperties;
     searchTerm: string;
+    tabIndex: number;
     toggleNode?: () => void;
     toggleDisabled: boolean;
 }
 
 function CheckboxTreeItem(props: CheckboxTreeItemProps) {
-    const checkboxRef=useRef<HTMLInputElement>(null);
-    useEffect(() => {
-        if(checkboxRef.current) { checkboxRef.current.indeterminate=props.checkboxState==='some'; }
-    }, [props.checkboxState]);
+    const selectionDescription=props.disabled?'not selectable':
+        props.checkboxState==='all'?'selected':props.checkboxState==='some'?'partially selected':'not selected';
 
     return (
         <li
+            ref={props.setRef}
             className='rstm-tree-item hierarchy-checkbox-item'
             style={{ ...props.style, paddingLeft: `${ 0.5+props.level*1.25 }rem` }}
             role='treeitem'
+            tabIndex={props.tabIndex}
+            data-tree-key={props.itemKey}
             aria-expanded={props.hasNodes? props.isOpen:undefined}
+            aria-level={props.level+1}
+            aria-selected={props.checkboxState==='all'}
+            aria-label={`${ props.label }, ${ selectionDescription }`}
+            onClick={props.onClick}
+            onFocus={props.onFocus}
+            onKeyDown={props.onKeyDown}
         >
             <button
                 className={`hierarchy-toggle${ props.hasNodes? '':' hierarchy-toggle--empty' }`}
                 type='button'
+                tabIndex={-1}
                 disabled={!props.hasNodes||props.toggleDisabled}
-                aria-label={props.isOpen? `Collapse ${ props.label }`:`Expand ${ props.label }`}
+                aria-hidden='true'
+                onMouseDown={event => event.preventDefault()}
                 onClick={(event) => {
                     event.stopPropagation();
                     if(props.hasNodes&&props.toggleNode) { props.toggleNode(); }
+                    event.currentTarget.parentElement?.focus();
                 }}
             >
                 {props.hasNodes? (props.isOpen? props.openedIcon:props.closedIcon):null}
             </button>
-            <input
-                ref={checkboxRef}
-                type='checkbox'
-                checked={props.checkboxState==='all'}
-                disabled={props.disabled}
-                aria-label={`Select ${ props.label }`}
-                onChange={props.onToggleSelection}
-            />
-            <button className='hierarchy-node-label' type='button' onClick={props.onClick}>
+            <span
+                className={`hierarchy-checkbox-control hierarchy-checkbox-control--${ props.checkboxState }${
+                    props.disabled?' hierarchy-checkbox-control--disabled':''
+                }`}
+                aria-hidden='true'
+            >{props.checkboxState==='all'?'✓':props.checkboxState==='some'?'−':''}</span>
+            <span className='hierarchy-node-label'>
                 <HighlightedHierarchyLabel label={props.label} searchTerm={props.searchTerm} />
-            </button>
+            </span>
         </li>
     );
 }
@@ -127,6 +144,8 @@ function Hierarchy(props: Props) {
     const childRef=useRef<any>(null);
     const lastReappliedSelectionsVersionRef=useRef(0);
     const loadSequenceRef=useRef(0);
+    const treeItemRefs=useRef<Map<string, HTMLLIElement>>(new Map());
+    const typeaheadRef=useRef({ text: '', updatedAt: 0 });
     const selectedRef=useRef<Set<string>>(new Set(initialUiState.selectedValues));
     const selectionBehaviorRef=useRef(selectionBehavior);
     const [selectedLeafValues, setSelectedLeafValues]=useState<Set<string>>(
@@ -140,6 +159,8 @@ function Hierarchy(props: Props) {
     const [tree, setTree]=useState<NormalizedTreeNode[]>([]);
     const [searchVal, setSearchVal]=useState(initialUiState.searchText);
     const [openNodes, setOpenNodes]=useState<string[]>(initialUiState.openNodes);
+    const [focusedTreePath, setFocusedTreePath]=useState('');
+    const [screenReaderAnnouncement, setScreenReaderAnnouncement]=useState('');
     const hierarchyDefinitionRef=useRef(hierarchyDefinitionSignature);
 
     const defaultClosedIcon=<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24'>
@@ -307,6 +328,10 @@ function Hierarchy(props: Props) {
         if(!preserveUiState) { setSearchVal(''); }
         setTree(nextTree);
         setPathMap(nextPathMap);
+        const itemCount=countTreeNodes(nextTree);
+        setScreenReaderAnnouncement(
+            `Hierarchy updated. ${ itemCount } item${ itemCount===1?' is':'s are' } available.`
+        );
         if(debug) { console.log('Normalized hierarchy:', nextTree); }
         const activeNode=findNode(nextTree, node => node.hierarchyValue===currentIdRef.current)||
             findNode(nextTree, node => node.label===currentLabelRef.current);
@@ -344,9 +369,13 @@ function Hierarchy(props: Props) {
 
     function toggleSelection(node: NormalizedTreeNode): void {
         if(getNodeSelectionValues(node, selectionBehavior).length===0) { return; }
+        const wasSelected=getSelectionState(node, selectedRef.current, selectionBehavior)==='all';
         const next=toggleNodeSelection(node, selectedRef.current, selectionBehavior);
         selectedRef.current=next;
         setSelectedLeafValues(next);
+        setScreenReaderAnnouncement(
+            `${ node.label } ${ wasSelected?'deselected':'selected' }. ${ describeSelection(next.size) }`
+        );
         setActiveNode(node, true, next);
     }
 
@@ -377,8 +406,67 @@ function Hierarchy(props: Props) {
         props.setDataFromExtension({ currentId: match.hierarchyValue, currentLabel: match.label });
     }
 
-    function toggleTreeNode(key: string): void {
+    function toggleTreeNode(key: string, label: string): void {
+        const willExpand=!openNodes.includes(key);
         setOpenNodes(currentOpenNodes => toggleOpenNode(currentOpenNodes, key));
+        setScreenReaderAnnouncement(`${ label } ${ willExpand?'expanded':'collapsed' }.`);
+    }
+
+    function setTreeNodeExpanded(key: string, label: string, expanded: boolean): void {
+        if(openNodes.includes(key)===expanded) { return; }
+        setOpenNodes(currentOpenNodes => expanded?
+            Array.from(new Set(currentOpenNodes.concat(key))):
+            currentOpenNodes.filter(openKey => openKey!==key)
+        );
+        setScreenReaderAnnouncement(`${ label } ${ expanded?'expanded':'collapsed' }.`);
+    }
+
+    function focusTreeItem(key: string): void {
+        setFocusedTreePath(key);
+        window.requestAnimationFrame(() => treeItemRefs.current.get(key)?.focus());
+    }
+
+    function handleTreeItemKeyDown(
+        event: React.KeyboardEvent<HTMLLIElement>,
+        item: any,
+        items: any[],
+        node: NormalizedTreeNode
+    ): void {
+        const keyboardItems: KeyboardTreeItem[]=items.map(candidate => ({
+            hasNodes: Boolean(candidate.hasNodes),
+            isOpen: Boolean(candidate.isOpen),
+            key: candidate.key,
+            label: candidate.label
+        }));
+        const allowToggle=!(searchActive&&autoExpandSearch);
+        const action=getTreeKeyboardAction(keyboardItems, item.key, event.key, allowToggle);
+        if(action.type!=='none') {
+            event.preventDefault();
+            event.stopPropagation();
+            if(action.type==='focus') { focusTreeItem(action.key); }
+            else if(action.type==='expand') { setTreeNodeExpanded(action.key, node.label, true); }
+            else if(action.type==='collapse') { setTreeNodeExpanded(action.key, node.label, false); }
+            else if(action.type==='select') { toggleSelection(node); }
+            else {
+                setOpenNodes(currentOpenNodes => Array.from(new Set(currentOpenNodes.concat(action.keys))));
+                setScreenReaderAnnouncement(`${ action.keys.length } sibling branches expanded.`);
+            }
+            return;
+        }
+
+        if(event.key.length!==1||event.ctrlKey||event.metaKey||event.altKey||event.key==='*') { return; }
+        const now=Date.now();
+        const previous=now-typeaheadRef.current.updatedAt<=700?typeaheadRef.current.text:'';
+        const nextText=`${ previous }${ event.key }`;
+        typeaheadRef.current={ text: nextText, updatedAt: now };
+        const repeatedCharacter=Array.from(nextText.toLocaleLowerCase()).every(character =>
+            character===nextText[0].toLocaleLowerCase()
+        );
+        const match=findTypeaheadTreeItem(keyboardItems, item.key, repeatedCharacter?event.key:nextText);
+        if(match) {
+            event.preventDefault();
+            focusTreeItem(match);
+        }
     }
 
     function makePath(path: string): string[] {
@@ -410,6 +498,7 @@ function Hierarchy(props: Props) {
         const emptySelection=new Set<string>();
         selectedRef.current=emptySelection;
         setSelectedLeafValues(emptySelection);
+        setScreenReaderAnnouncement('Selections reset. All values are shown.');
         props.setDataFromExtension({
             currentId: currentIdRef.current,
             currentLabel: currentLabelRef.current,
@@ -421,6 +510,7 @@ function Hierarchy(props: Props) {
         const nextSelection=new Set(allSelectableFilterValues);
         selectedRef.current=nextSelection;
         setSelectedLeafValues(nextSelection);
+        setScreenReaderAnnouncement(`All ${ allSelectableFilterValues.length } values selected.`);
         props.setDataFromExtension({
             currentId: currentIdRef.current,
             currentLabel: currentLabelRef.current,
@@ -430,6 +520,11 @@ function Hierarchy(props: Props) {
 
     const allValuesSelected=allSelectableFilterValues.length>0&&
         allSelectableFilterValues.every(value => selectedLeafValues.has(value));
+
+    function describeSelection(count: number): string {
+        return count===0?'All values are shown with no filter.':
+            `${ count } value${ count===1?' is':'s are' } selected.`;
+    }
 
     const debugState: ReactFragment=debug? (
         <div style={{ position: 'relative', top: 0, marginTop: '10px' }}>
@@ -457,7 +552,7 @@ function Hierarchy(props: Props) {
         <div style={{ width: '100%' }}>
             <div className='hierarchy-toolbar'>
                 {props.data.options.titleEnabled&&<span style={{ fontWeight: 'bold' }}>{props.data.options.title}</span>}
-                <span className='hierarchy-selection-status' role='status' aria-live='polite'>
+                <span className='hierarchy-selection-status'>
                     {selectedLeafValues.size===0?
                         'All values shown (no filter)':
                         `${ selectedLeafValues.size } value${ selectedLeafValues.size===1? '':'s' } selected`}
@@ -477,6 +572,16 @@ function Hierarchy(props: Props) {
                     >Reset Selections</Button>
                 </div>
             </div>
+            <p id='hierarchy-keyboard-help' className='hierarchy-visually-hidden'>
+                Use Up and Down Arrow to move, Right Arrow to expand or enter a branch, Left Arrow to collapse or
+                return to a parent, Home and End to jump, Space or Enter to select, and type letters to find an item.
+            </p>
+            <div
+                className='hierarchy-visually-hidden'
+                role='status'
+                aria-live='polite'
+                aria-atomic='true'
+            >{screenReaderAnnouncement}</div>
             <TreeMenu
                 data={visibleTree}
                 openNodes={effectiveOpenNodes}
@@ -496,6 +601,8 @@ function Hierarchy(props: Props) {
                             className='fullWidth'
                             style={searchStyle}
                             placeholder='Type and search'
+                            aria-label='Search hierarchy'
+                            aria-controls='hierarchy-tree'
                             value={searchVal}
                             onChange={(event: any) => {
                                 setSearchVal(event.target.value);
@@ -505,25 +612,46 @@ function Hierarchy(props: Props) {
                             }}
                         />
                         {props.data.options.searchEnabled&&searchActive&&
-                            <div className='hierarchy-search-summary' role='status' aria-live='polite'>
+                            <div
+                                className='hierarchy-search-summary'
+                                role='status'
+                                aria-live='polite'
+                                aria-atomic='true'
+                            >
                                 {searchResult.matchCount===0?
                                     `No items match “${ searchVal.trim() }”`:
                                     `${ searchResult.matchCount } matching item${ searchResult.matchCount===1?'':'s' } · ancestor context shown`}
                             </div>
                         }
-                        <ul className='rstm-tree-item-group' role='tree'>
+                        <ul
+                            id='hierarchy-tree'
+                            className='rstm-tree-item-group'
+                            role='tree'
+                            aria-label='Hierarchy navigator'
+                            aria-describedby='hierarchy-keyboard-help'
+                            aria-multiselectable='true'
+                        >
                             {items.map((item: any) => {
                                 const nodeId=item.key.split('/').pop()||'';
                                 const node=nodeById.get(nodeId);
                                 if(!node) { return null; }
+                                const currentFocusPath=items.some((candidate: any) => candidate.key===focusedTreePath)?
+                                    focusedTreePath:items[0]?.key;
                                 return (
                                     <CheckboxTreeItem
                                         key={item.key}
                                         {...item}
+                                        itemKey={item.key}
                                         checkboxState={getSelectionState(node, selectedLeafValues, selectionBehavior)}
                                         disabled={getNodeSelectionValues(node, selectionBehavior).length===0}
-                                        onToggleSelection={() => toggleSelection(node)}
-                                        toggleNode={() => toggleTreeNode(item.key)}
+                                        onFocus={() => setFocusedTreePath(item.key)}
+                                        onKeyDown={event => handleTreeItemKeyDown(event, item, items, node)}
+                                        setRef={element => {
+                                            if(element) { treeItemRefs.current.set(item.key, element); }
+                                            else { treeItemRefs.current.delete(item.key); }
+                                        }}
+                                        tabIndex={item.key===currentFocusPath?0:-1}
+                                        toggleNode={() => toggleTreeNode(item.key, node.label)}
                                         toggleDisabled={searchActive&&autoExpandSearch}
                                         openedIcon={openedIcon}
                                         closedIcon={closedIcon}
@@ -544,6 +672,10 @@ function Hierarchy(props: Props) {
 function getSessionStorage(): Storage|undefined {
     try { return window.sessionStorage; }
     catch(_error) { return undefined; }
+}
+
+function countTreeNodes(nodes: readonly NormalizedTreeNode[]): number {
+    return nodes.reduce((count, node) => count+1+countTreeNodes(node.nodes), 0);
 }
 
 export default Hierarchy;

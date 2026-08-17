@@ -17,6 +17,8 @@
     "src/components/extension/TreeModel.test.ts",
     "src/components/extension/SearchModel.ts",
     "src/components/extension/SearchModel.test.ts",
+    "src/components/extension/TreeKeyboardNavigation.ts",
+    "src/components/extension/TreeKeyboardNavigation.test.ts",
     "src/components/extension/UiStateModel.ts",
     "src/components/extension/UiStateModel.test.ts",
     "src/components/config/HierarchyPreviewModel.ts",
