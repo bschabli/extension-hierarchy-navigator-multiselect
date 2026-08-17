@@ -41,7 +41,7 @@ function AHome() {
 								<li>{t('Configure the hierarchy source worksheet, ordered fields or recursive IDs, and one or more target worksheet/filter mappings.')}</li>
 								<li>{t('Use the included')} <a href='./Hierarchy%20Navigator%20Extension%20v2.twbx'>{t('sample workbook')}</a> {t('as a starting point if needed.')}</li>
 							</ol>
-							<p><b>{t('Testing note:')}</b> {t('This is a proof-of-concept build hosted from the multiselect feature branch.')}</p>
+							<p><b>{t('Testing note:')}</b> {t('This test build is deployed automatically from the latest master branch.')}</p>
 							<div className='gh' style={{paddingTop: '10px'}}>
 								<a href='https://github.com/bschabli/extension-hierarchy-navigator-multiselect'>{t('View source and documentation on GitHub')}</a>
 							</div>

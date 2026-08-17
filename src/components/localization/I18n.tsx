@@ -311,7 +311,7 @@ const GERMAN_TRANSLATIONS: Record<string, string>={
     ,'The text users will see next to each checkbox.': 'Der Text, den Benutzer neben jedem Kontrollkästchen sehen.'
     ,'These defaults work well in most dashboards and can be changed later.': 'Diese Standardwerte eignen sich für die meisten Dashboards und können später geändert werden.'
     ,'This check does not apply to the selected hierarchy format.': 'Diese Prüfung gilt nicht für das ausgewählte Hierarchieformat.'
-    ,'This is a proof-of-concept build hosted from the multiselect feature branch.': 'Dies ist ein Proof-of-Concept-Build aus dem Multiselect-Feature-Branch.'
+    ,'This test build is deployed automatically from the latest master branch.': 'Dieser Test-Build wird automatisch aus dem aktuellen Master-Branch bereitgestellt.'
     ,'This node only': 'Nur dieser Knoten'
     ,'This worksheet supplies the hierarchy values. It may be hidden on the finished dashboard.': 'Dieses Arbeitsblatt liefert die Hierarchiewerte. Im fertigen Dashboard kann es ausgeblendet werden.'
     ,'Title text': 'Titeltext'
