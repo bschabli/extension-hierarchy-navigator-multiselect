@@ -6,6 +6,7 @@ import { debugOverride, defaultSelectedProps, HierarchyProps, HierType, Selected
 import { FilterTarget, resolveFilterTargets, syncLegacyFilterTarget } from './FilterTargets';
 import { getLegacySelectionBehavior, isSelectionBehavior } from './SelectionBehavior';
 import { withHTMLSpaces } from './Utils';
+import { LocalizedText, TranslationValues } from '../localization/I18n';
 
 const extend=require('extend');
 
@@ -14,7 +15,7 @@ export interface HierarchyState {
     isError: boolean;
     isLoading: boolean;
     data: HierarchyProps;
-    errorStr: string;
+    errorStr: React.ReactNode;
 }
 const initialData: HierarchyState={
     data: defaultSelectedProps,
@@ -57,7 +58,7 @@ const dataFetchReducer=(state: HierarchyState, action: { type: string, data?: an
         case 'ERROR':
             return {
                 ...state,
-                errorStr: state.errorStr? `${ state.errorStr }\n${ action.data }`:action.data,
+                errorStr: state.errorStr?<>{state.errorStr}<br />{action.data}</>:action.data,
                 isError: true
             };
         case 'CLEAR_ERROR':
@@ -89,6 +90,7 @@ const hierarchyAPI=(): any => {
         dispatch({ type: 'FETCH_INIT' });
 
         await window.tableau.extensions.initializeDialogAsync();
+        window.dispatchEvent(new Event('hierarchy-locale-ready'));
         const _settings=loadSettings();
         if(debug) {
             console.log(`loading _settings: vvv`);
@@ -162,7 +164,10 @@ const hierarchyAPI=(): any => {
         initAsync().catch((error: any) => {
             const message=error&&typeof error.message==='string'? error.message:String(error);
             console.error('Unable to initialize the configuration dialog.', error);
-            dispatch({ type: 'FETCH_FAILURE', data: `Unable to initialize the configuration dialog: ${ message }` });
+            dispatch({
+                type: 'FETCH_FAILURE',
+                data: <><LocalizedText message='Unable to initialize the configuration dialog:' /> {message}</>
+            });
         });
     }, []);
 
@@ -290,7 +295,12 @@ const hierarchyAPI=(): any => {
                     }
                     payload.configComplete=evalConfigComplete(payload);
                     dispatch({ type: 'FETCH_SUCCESS', data: payload });
-                    if(_hasChanged) { dispatch({ type: 'ERROR', data: `Please recheck your Label parameter.  It has changed and has been disabled.` }); };
+                    if(_hasChanged) {
+                        dispatch({
+                            type: 'ERROR',
+                            data: <LocalizedText message='Please recheck your label parameter. It changed and was disabled.' />
+                        });
+                    };
                     return;
                 }
             case 'SET_FILTER_FIELD':
@@ -839,7 +849,7 @@ const hierarchyAPI=(): any => {
     // if any fail, reset all data
     // bLoad = are we loading fresh data?
     const validateSettings=(d: HierarchyProps): { data?: HierarchyProps, result: 'SUCCESS'|'MODIFIED'|'FAIL'; msg?: React.ReactFragment; } => {
-        const modifiedStr=[]; // srting to return if we modified 1+ item
+        const modifiedMessages: Array<{ message: string, values?: TranslationValues }>=[];
         if(debug) {
             console.log(`validate settings`);
             console.log(`availProps: vvv`);
@@ -857,18 +867,27 @@ const hierarchyAPI=(): any => {
             if(d.type===HierType.RECURSIVE) {
                 // Check Parent Id
                 if(!d.dashboardItems.allCurrentWorksheetItems.fields.includes(d.worksheet.parentId)) {
-                    modifiedStr.push(`Parent Id (${ d.worksheet.childId }) no longer present.`);
+                    modifiedMessages.push({
+                        message: 'Parent ID ({field}) is no longer available.',
+                        values: {field: d.worksheet.childId}
+                    });
                     d.worksheet.parentId=d.worksheet.childId===d.dashboardItems.allCurrentWorksheetItems.fields[0]? d.dashboardItems.allCurrentWorksheetItems.fields[1]:d.dashboardItems.allCurrentWorksheetItems.fields[0];
                 };
                 // Check Child Id
                 if(!d.dashboardItems.allCurrentWorksheetItems.fields.includes(d.worksheet.childId)) {
-                    modifiedStr.push(`Child Id (${ d.worksheet.childId }) no longer present.`);
+                    modifiedMessages.push({
+                        message: 'Child ID ({field}) is no longer available.',
+                        values: {field: d.worksheet.childId}
+                    });
                     d.worksheet.childId=d.worksheet.parentId===d.dashboardItems.allCurrentWorksheetItems.fields[0]? d.dashboardItems.allCurrentWorksheetItems.fields[1]:d.dashboardItems.allCurrentWorksheetItems.fields[0];
                 };
 
                 // Check Child Label
                 if(!d.dashboardItems.allCurrentWorksheetItems.fields.includes(d.worksheet.parentId)) {
-                    modifiedStr.push(`Child Label (${ d.worksheet.childLabel }) no longer present.`);
+                    modifiedMessages.push({
+                        message: 'Child label ({field}) is no longer available.',
+                        values: {field: d.worksheet.childLabel}
+                    });
                     d.worksheet.childLabel=d.dashboardItems.allCurrentWorksheetItems.fields[0];
                 };
             }
@@ -879,7 +898,7 @@ const hierarchyAPI=(): any => {
                 for(let i=0;i<d.worksheet.fields.length;i++) {
                     if(!d.dashboardItems.allCurrentWorksheetItems.fields.includes(d.worksheet.fields[i])) {
                         d.worksheet.fields=[];
-                        modifiedStr.push(`One or more fields in the hierarchy has changed.`);
+                        modifiedMessages.push({message: 'One or more hierarchy fields have changed.'});
                         break;
                     }
                 }
@@ -887,7 +906,10 @@ const hierarchyAPI=(): any => {
 
                 // Check Child Id
                 if(!d.dashboardItems.allCurrentWorksheetItems.fields.includes(d.worksheet.childId)) {
-                    modifiedStr.push(`ID Column '(${ withHTMLSpaces(d.worksheet.childId) })' no longer present.`);
+                    modifiedMessages.push({
+                        message: 'ID field ({field}) is no longer available.',
+                        values: {field: withHTMLSpaces(d.worksheet.childId)}
+                    });
                     // is there a field that isn't used?
                     if(d.dashboardItems.allCurrentWorksheetItems.fields.length>d.worksheet.fields.length) {
                         // find first match and set it
@@ -910,7 +932,7 @@ const hierarchyAPI=(): any => {
             // Check Child ID Param; recursive only
             if(d.type===HierType.RECURSIVE) {
                 if(d.parameters.childIdEnabled&&!d.dashboardItems.parameters.includes(d.parameters.childId)) {
-                    modifiedStr.push(`Child ID Parameter is no longer present.`);
+                    modifiedMessages.push({message: 'Child ID parameter is no longer available.'});
                     d.parameters.childIdEnabled=false;
                     d.parameters.childId=d.dashboardItems.parameters[0]||'';
                 }
@@ -918,7 +940,10 @@ const hierarchyAPI=(): any => {
 
             // Check for Child Label Param; recursive and flat
             if(d.parameters.childLabelEnabled&&!d.dashboardItems.parameters.includes(d.parameters.childLabel)) {
-                modifiedStr.push(`Child Label Parameter '${ d.parameters.childLabel }' no longer present.`);
+                modifiedMessages.push({
+                    message: 'Child label parameter ({parameter}) is no longer available.',
+                    values: {parameter: d.parameters.childLabel}
+                });
                 d.parameters.childLabelEnabled=false;
                 d.parameters.childLabel=d.dashboardItems.parameters[1]||d.dashboardItems.parameters[0]||'';
             }
@@ -931,7 +956,10 @@ const hierarchyAPI=(): any => {
                 const targetItems=d.dashboardItems.allWorksheetItems[target.worksheetName];
                 const targetFields=targetItems?Array.from(new Set(targetItems.fields.concat(targetItems.filters))):[];
                 if(!targetFields.includes(target.fieldName)) {
-                    modifiedStr.push(`Filter target '${ target.worksheetName } · ${ target.fieldName }' is no longer available.`);
+                    modifiedMessages.push({
+                        message: 'Filter target ({target}) is no longer available.',
+                        values: {target: `${ target.worksheetName } · ${ target.fieldName }`}
+                    });
                 }
                 else {
                     validTargets.push(target);
@@ -946,17 +974,29 @@ const hierarchyAPI=(): any => {
         catch(err) {
             console.error(`Error in validate settings`);
             console.error(err);
-            const snippet: React.ReactFragment=(<>A critical error was encountered:<br />{modifiedStr.join(', ')}</>);
+            const snippet: React.ReactFragment=(<>
+                <LocalizedText message='A critical error was encountered:' />
+                <ul>
+                    {modifiedMessages.map((item, index) => (
+                        <li key={`${ index }-critical-error`}>
+                            <LocalizedText message={item.message} values={item.values} />
+                        </li>
+                    ))}
+                </ul>
+            </>);
             return { result: 'MODIFIED', msg: snippet, data: d };
         }
-        if(modifiedStr.length) {
+        if(modifiedMessages.length) {
             const snippet: React.ReactFragment=(<>
-                The following have changed.<br /><ul>
-                    {modifiedStr.map((el, idx) => {
-                        return (<ul key={`${ idx }-errors`}>{el}</ul>);
-                    })}
+                <LocalizedText message='The following settings changed.' />
+                <ul>
+                    {modifiedMessages.map((item, index) => (
+                        <li key={`${ index }-errors`}>
+                            <LocalizedText message={item.message} values={item.values} />
+                        </li>
+                    ))}
                 </ul>
-                Please check the configuration options.
+                <LocalizedText message='Please review the configuration options.' />
             </>
             );
 

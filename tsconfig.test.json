@@ -1,6 +1,7 @@
 {
   "compilerOptions": {
     "esModuleInterop": true,
+    "jsx": "react-jsx",
     "lib": ["ES2020", "DOM"],
     "module": "commonjs",
     "outDir": "/tmp/hierarchy-navigator-tests",
@@ -22,6 +23,8 @@
     "src/components/extension/UiStateModel.ts",
     "src/components/extension/UiStateModel.test.ts",
     "src/components/config/HierarchyPreviewModel.ts",
-    "src/components/config/HierarchyPreviewModel.test.ts"
+    "src/components/config/HierarchyPreviewModel.test.ts",
+    "src/components/localization/I18n.tsx",
+    "src/components/localization/I18n.test.ts"
   ]
 }

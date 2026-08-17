@@ -1,5 +1,6 @@
 import { HierarchyProps, HierType } from '../API/Interfaces';
 import { SelectionBehavior } from '../API/SelectionBehavior';
+import { useTranslation } from '../localization/I18n';
 import { ConfigSection } from './ConfigPrimitives';
 
 interface Props {
@@ -39,17 +40,18 @@ const CHOICES: BehaviorChoice[]=[
 
 /** Configure how a node checkbox maps to Tableau filter values. */
 export function SelectionBehaviorControls(props: Props) {
+    const {t}=useTranslation();
     const selected=props.data.options.selectionBehavior||SelectionBehavior.TERMINAL;
     const directValueExplanation=props.data.type===HierType.FLAT?
-        'For separate level columns, a node has a direct value only when a source row ends at that level; the mapped Unique path ID supplies its filter value.':
-        'For parent/child data, every valid source row represents one node and its Child ID supplies the direct filter value.';
+        t('For separate level columns, a node has a direct value only when a source row ends at that level; the mapped Unique path ID supplies its filter value.'):
+        t('For parent/child data, every valid source row represents one node and its Child ID supplies the direct filter value.');
 
     return (
         <ConfigSection
-            title='Selection behavior'
-            description='Choose which IDs a checkbox sends to every configured target filter field.'
+            title={t('Selection behavior')}
+            description={t('Choose which IDs a checkbox sends to every configured target filter field.')}
         >
-            <div className='config-behavior-grid' role='radiogroup' aria-label='Selection behavior'>
+            <div className='config-behavior-grid' role='radiogroup' aria-label={t('Selection behavior')}>
                 {CHOICES.map(choice => (
                     <button
                         className={`config-behavior-choice ${selected===choice.value?'config-behavior-choice--selected':''}`}
@@ -61,16 +63,16 @@ export function SelectionBehaviorControls(props: Props) {
                     >
                         <span className='config-behavior-heading'>
                             <span className='config-radio' aria-hidden='true' />
-                            <strong>{choice.title}</strong>
-                            {choice.recommended&&<span className='config-tag config-tag--recommended'>Recommended</span>}
+                            <strong>{t(choice.title)}</strong>
+                            {choice.recommended&&<span className='config-tag config-tag--recommended'>{t('Recommended')}</span>}
                         </span>
-                        <span className='config-behavior-description'>{choice.description}</span>
-                        <span className='config-behavior-example'>{choice.example}</span>
+                        <span className='config-behavior-description'>{t(choice.description)}</span>
+                        <span className='config-behavior-example'>{t(choice.example)}</span>
                     </button>
                 ))}
             </div>
             <p className='config-muted-note config-behavior-note'>
-                <strong>What “direct ID” means:</strong> {directValueExplanation}
+                <strong>{t('What “direct ID” means:')}</strong> {directValueExplanation}
             </p>
         </ConfigSection>
     );

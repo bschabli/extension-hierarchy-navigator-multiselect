@@ -4,6 +4,7 @@ import TreeMenu from 'react-simple-tree-menu';
 import { debugOverride, defaultSelectedProps, HierarchyProps, HierType } from '../API/Interfaces';
 import { SelectionBehavior } from '../API/SelectionBehavior';
 import { HighlightedHierarchyLabel } from '../shared/HighlightedHierarchyLabel';
+import { useTranslation } from '../localization/I18n';
 import {
     CheckboxState,
     NormalizedTreeNode,
@@ -73,8 +74,10 @@ interface CheckboxTreeItemProps {
 }
 
 function CheckboxTreeItem(props: CheckboxTreeItemProps) {
-    const selectionDescription=props.disabled?'not selectable':
-        props.checkboxState==='all'?'selected':props.checkboxState==='some'?'partially selected':'not selected';
+    const {t}=useTranslation();
+    const selectionDescription=props.disabled?t('not selectable'):
+        props.checkboxState==='all'?t('selected'):
+            props.checkboxState==='some'?t('partially selected'):t('not selected');
 
     return (
         <li
@@ -121,6 +124,7 @@ function CheckboxTreeItem(props: CheckboxTreeItemProps) {
 }
 
 function Hierarchy(props: Props) {
+    const {t}=useTranslation();
     const { debug=false||debugOverride }=props.data.options;
     const selectionBehavior=props.data.options.selectionBehavior||SelectionBehavior.TERMINAL;
     const autoExpandSearch=props.data.options.searchAutoExpand!==false;
@@ -218,13 +222,13 @@ function Hierarchy(props: Props) {
     useEffect(() => {
         if(props.data.options.openedIconType==='Default') { setOpenedIcon(defaultOpenedIcon); }
         else if(props.data.options.openedIconType==='Base64 Image') {
-            setOpenedIcon(<img src={props.data.options.openedIconBase64Image} width='12px' height='12px' alt='Expanded' />);
+            setOpenedIcon(<img src={props.data.options.openedIconBase64Image} width='12px' height='12px' alt={t('Expanded icon')} />);
         }
         else { setOpenedIcon(props.data.options.openedIconAscii); }
 
         if(props.data.options.closedIconType==='Default') { setClosedIcon(defaultClosedIcon); }
         else if(props.data.options.closedIconType==='Base64 Image') {
-            setClosedIcon(<img src={props.data.options.closedIconBase64Image} width='12px' height='12px' alt='Collapsed' />);
+            setClosedIcon(<img src={props.data.options.closedIconBase64Image} width='12px' height='12px' alt={t('Collapsed icon')} />);
         }
         else { setClosedIcon(props.data.options.closedIconAscii); }
     }, [
@@ -330,7 +334,8 @@ function Hierarchy(props: Props) {
         setPathMap(nextPathMap);
         const itemCount=countTreeNodes(nextTree);
         setScreenReaderAnnouncement(
-            `Hierarchy updated. ${ itemCount } item${ itemCount===1?' is':'s are' } available.`
+            t(itemCount===1?'Hierarchy updated. {count} item is available.':
+                'Hierarchy updated. {count} items are available.', { count: itemCount })
         );
         if(debug) { console.log('Normalized hierarchy:', nextTree); }
         const activeNode=findNode(nextTree, node => node.hierarchyValue===currentIdRef.current)||
@@ -374,7 +379,9 @@ function Hierarchy(props: Props) {
         selectedRef.current=next;
         setSelectedLeafValues(next);
         setScreenReaderAnnouncement(
-            `${ node.label } ${ wasSelected?'deselected':'selected' }. ${ describeSelection(next.size) }`
+            `${ t(wasSelected?'{label} deselected.':'{label} selected.', { label: node.label }) } ${
+                describeSelection(next.size)
+            }`
         );
         setActiveNode(node, true, next);
     }
@@ -409,7 +416,7 @@ function Hierarchy(props: Props) {
     function toggleTreeNode(key: string, label: string): void {
         const willExpand=!openNodes.includes(key);
         setOpenNodes(currentOpenNodes => toggleOpenNode(currentOpenNodes, key));
-        setScreenReaderAnnouncement(`${ label } ${ willExpand?'expanded':'collapsed' }.`);
+        setScreenReaderAnnouncement(t(willExpand?'{label} expanded.':'{label} collapsed.', { label }));
     }
 
     function setTreeNodeExpanded(key: string, label: string, expanded: boolean): void {
@@ -418,7 +425,7 @@ function Hierarchy(props: Props) {
             Array.from(new Set(currentOpenNodes.concat(key))):
             currentOpenNodes.filter(openKey => openKey!==key)
         );
-        setScreenReaderAnnouncement(`${ label } ${ expanded?'expanded':'collapsed' }.`);
+        setScreenReaderAnnouncement(t(expanded?'{label} expanded.':'{label} collapsed.', { label }));
     }
 
     function focusTreeItem(key: string): void {
@@ -449,7 +456,7 @@ function Hierarchy(props: Props) {
             else if(action.type==='select') { toggleSelection(node); }
             else {
                 setOpenNodes(currentOpenNodes => Array.from(new Set(currentOpenNodes.concat(action.keys))));
-                setScreenReaderAnnouncement(`${ action.keys.length } sibling branches expanded.`);
+                setScreenReaderAnnouncement(t('{count} sibling branches expanded.', { count: action.keys.length }));
             }
             return;
         }
@@ -498,7 +505,7 @@ function Hierarchy(props: Props) {
         const emptySelection=new Set<string>();
         selectedRef.current=emptySelection;
         setSelectedLeafValues(emptySelection);
-        setScreenReaderAnnouncement('Selections reset. All values are shown.');
+        setScreenReaderAnnouncement(t('Selections reset. All values are shown.'));
         props.setDataFromExtension({
             currentId: currentIdRef.current,
             currentLabel: currentLabelRef.current,
@@ -510,7 +517,7 @@ function Hierarchy(props: Props) {
         const nextSelection=new Set(allSelectableFilterValues);
         selectedRef.current=nextSelection;
         setSelectedLeafValues(nextSelection);
-        setScreenReaderAnnouncement(`All ${ allSelectableFilterValues.length } values selected.`);
+        setScreenReaderAnnouncement(t('All {count} values selected.', { count: allSelectableFilterValues.length }));
         props.setDataFromExtension({
             currentId: currentIdRef.current,
             currentLabel: currentLabelRef.current,
@@ -522,8 +529,8 @@ function Hierarchy(props: Props) {
         allSelectableFilterValues.every(value => selectedLeafValues.has(value));
 
     function describeSelection(count: number): string {
-        return count===0?'All values are shown with no filter.':
-            `${ count } value${ count===1?' is':'s are' } selected.`;
+        if(count===0) { return t('All values are shown with no filter.'); }
+        return t(count===1?'{count} value is selected.':'{count} values are selected.', { count });
     }
 
     const debugState: ReactFragment=debug? (
@@ -554,27 +561,28 @@ function Hierarchy(props: Props) {
                 {props.data.options.titleEnabled&&<span style={{ fontWeight: 'bold' }}>{props.data.options.title}</span>}
                 <span className='hierarchy-selection-status'>
                     {selectedLeafValues.size===0?
-                        'All values shown (no filter)':
-                        `${ selectedLeafValues.size } value${ selectedLeafValues.size===1? '':'s' } selected`}
+                        t('All values shown (no filter)'):
+                        t(selectedLeafValues.size===1?'{count} value selected':'{count} values selected', {
+                            count: selectedLeafValues.size
+                        })}
                 </span>
                 <div className='hierarchy-toolbar-actions'>
                     <Button
                         kind='outline'
                         onClick={selectAll}
                         disabled={allSelectableFilterValues.length===0||allValuesSelected}
-                        aria-label='Select all hierarchy values'
-                    >Select all</Button>
+                        aria-label={t('Select all hierarchy values')}
+                    >{t('Select all')}</Button>
                     <Button
                         kind='outline'
                         onClick={resetAll}
                         disabled={selectedLeafValues.size===0}
-                        aria-label='Reset all hierarchy selections'
-                    >Reset Selections</Button>
+                        aria-label={t('Reset all hierarchy selections')}
+                    >{t('Reset Selections')}</Button>
                 </div>
             </div>
             <p id='hierarchy-keyboard-help' className='hierarchy-visually-hidden'>
-                Use Up and Down Arrow to move, Right Arrow to expand or enter a branch, Left Arrow to collapse or
-                return to a parent, Home and End to jump, Space or Enter to select, and type letters to find an item.
+                {t('Use Up and Down Arrow to move, Right Arrow to expand or enter a branch, Left Arrow to collapse or return to a parent, Home and End to jump, Space or Enter to select, and type letters to find an item.')}
             </p>
             <div
                 className='hierarchy-visually-hidden'
@@ -600,8 +608,8 @@ function Hierarchy(props: Props) {
                             kind='search'
                             className='fullWidth'
                             style={searchStyle}
-                            placeholder='Type and search'
-                            aria-label='Search hierarchy'
+                            placeholder={t('Type and search')}
+                            aria-label={t('Search hierarchy')}
                             aria-controls='hierarchy-tree'
                             value={searchVal}
                             onChange={(event: any) => {
@@ -619,15 +627,17 @@ function Hierarchy(props: Props) {
                                 aria-atomic='true'
                             >
                                 {searchResult.matchCount===0?
-                                    `No items match “${ searchVal.trim() }”`:
-                                    `${ searchResult.matchCount } matching item${ searchResult.matchCount===1?'':'s' } · ancestor context shown`}
+                                    t('No items match “{term}”', { term: searchVal.trim() }):
+                                    `${ t(searchResult.matchCount===1?'{count} matching item':'{count} matching items', {
+                                        count: searchResult.matchCount
+                                    }) } · ${ t('ancestor context shown') }`}
                             </div>
                         }
                         <ul
                             id='hierarchy-tree'
                             className='rstm-tree-item-group'
                             role='tree'
-                            aria-label='Hierarchy navigator'
+                            aria-label={t('Hierarchy navigator')}
                             aria-describedby='hierarchy-keyboard-help'
                             aria-multiselectable='true'
                         >

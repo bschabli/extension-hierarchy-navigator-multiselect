@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from '../localization/I18n';
 
 interface ConfigStepIntroProps {
     eyebrow: string;
@@ -30,6 +31,7 @@ export function ConfigStepIntro(props: ConfigStepIntroProps) {
 }
 
 export function ConfigSection(props: ConfigSectionProps) {
+    const {t}=useTranslation();
     return (
         <section className='config-section'>
             <div className='config-section-heading'>
@@ -37,7 +39,7 @@ export function ConfigSection(props: ConfigSectionProps) {
                     <h2>{props.title}</h2>
                     {props.description&&<p>{props.description}</p>}
                 </div>
-                {props.optional&&<span className='config-tag'>Optional</span>}
+                {props.optional&&<span className='config-tag'>{t('Optional')}</span>}
             </div>
             {props.children}
         </section>
@@ -45,9 +47,10 @@ export function ConfigSection(props: ConfigSectionProps) {
 }
 
 export function ConfigStatus(props: ConfigStatusProps) {
+    const {t}=useTranslation();
     const label=props.complete?
-        (props.completeLabel||'Ready'):
-        (props.incompleteLabel||'Needs attention');
+        (props.completeLabel||t('Ready')):
+        (props.incompleteLabel||t('Needs attention'));
 
     return (
         <span className={`config-status ${props.complete?'config-status--complete':'config-status--incomplete'}`}>

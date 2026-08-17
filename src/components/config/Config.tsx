@@ -10,6 +10,7 @@ import flatHier from '../../images/FlatHier.jpeg';
 import recursiveHier from '../../images/RecursiveHier.jpeg';
 import HierarchyAPI from '../API/HierarchyAPI';
 import { debugOverride, HierarchyProps, HierType } from '../API/Interfaces';
+import { LocalizationProvider, useTranslation } from '../localization/I18n';
 import { ConfigStatus, ConfigStepIntro } from './ConfigPrimitives';
 import { Page2Flat } from './Page2Flat';
 import { Page2Recursive } from './Page2Recursive';
@@ -23,9 +24,10 @@ declare global {
 }
 
 function Configure(props: any) {
+    const {t}=useTranslation();
     const [state, setCurrentWorksheetName, setUpdates] = HierarchyAPI();
     const [selectedTabIndex, setSelectedTabIndex] = useState(0);
-    const { data, isError, errorStr, doneLoading }: { data: HierarchyProps, isLoading: boolean, isError: boolean, errorStr: string, doneLoading: boolean; } = state;
+    const { data, isError, errorStr, doneLoading }: { data: HierarchyProps, isLoading: boolean, isError: boolean, errorStr: React.ReactNode, doneLoading: boolean; } = state;
     const [debug, setDebug] = useState(debugOverride);
 
     useEffect(() => {
@@ -94,10 +96,10 @@ function Configure(props: any) {
 
 
     const page: Array<{ name: string, description: string, content: React.ReactFragment; }> = [
-        { name: 'Hierarchy format', description: 'Choose the shape of your data', content: (<div />) },
-        { name: 'Source data', description: 'Map the worksheet and fields', content: (<div />) },
-        { name: 'Dashboard actions', description: 'Choose what selection controls', content: (<div />) },
-        { name: 'Review & display', description: 'Confirm settings and appearance', content: (<div />) }
+        { name: t('Hierarchy format'), description: t('Choose the shape of your data'), content: (<div />) },
+        { name: t('Source data'), description: t('Map the worksheet and fields'), content: (<div />) },
+        { name: t('Dashboard actions'), description: t('Choose what selection controls'), content: (<div />) },
+        { name: t('Review & display'), description: t('Confirm settings and appearance'), content: (<div />) }
     ];
     const sourceComplete=data.worksheet.name!==''&&data.worksheet.childId!==''&&(
         (data.type===HierType.FLAT&&data.worksheet.fields.length>0)||
@@ -111,11 +113,11 @@ function Configure(props: any) {
     const submit = () => {
         if(saveReady) { setUpdates({ type: 'SUBMIT' }); }
     };
-    const saveStatus=!sourceComplete?'Complete the required source fields before saving.':
-        validation.status==='loading'?'Checking the source worksheet before saving…':
-        validation.status==='error'?'Validation must finish successfully before saving.':
-        validation.status==='complete'&&!validation.result?.valid?'Fix the data issues shown above before saving.':
-        validation.status==='idle'?'Waiting to validate the source worksheet…':'';
+    const saveStatus=!sourceComplete?t('Complete the required source fields before saving.'):
+        validation.status==='loading'?t('Checking the source worksheet before saving…'):
+        validation.status==='error'?t('Validation must finish successfully before saving.'):
+        validation.status==='complete'&&!validation.result?.valid?t('Fix the data issues shown above before saving.'):
+        validation.status==='idle'?t('Waiting to validate the source worksheet…'):'';
     const stepComplete=[true, sourceComplete, false, false];
     const isStepComplete=(index: number): boolean => stepComplete[index]||(index>1&&selectedTabIndex>index);
 
@@ -123,11 +125,11 @@ function Configure(props: any) {
     page[0].content = (
         <div className='config-page'>
             <ConfigStepIntro
-                eyebrow='Step 1 of 4'
-                title='How is your hierarchy stored?'
-                description='Choose the format used by the dedicated source worksheet. The worksheet can be hidden after configuration.'
+                eyebrow={t('Step {current} of {total}', { current: 1, total: 4 })}
+                title={t('How is your hierarchy stored?')}
+                description={t('Choose the format used by the dedicated source worksheet. The worksheet can be hidden after configuration.')}
             />
-            <div className='config-choice-grid' role='radiogroup' aria-label='Hierarchy format'>
+            <div className='config-choice-grid' role='radiogroup' aria-label={t('Hierarchy format')}>
                 <button
                     className={`config-choice ${data.type===HierType.FLAT?'config-choice--selected':''}`}
                     type='button'
@@ -137,13 +139,13 @@ function Configure(props: any) {
                 >
                     <div className='config-choice-heading'>
                         <div>
-                            <span className='config-choice-title'>Separate level columns</span>
-                            <span className='config-tag config-tag--recommended'>Recommended</span>
+                            <span className='config-choice-title'>{t('Separate level columns')}</span>
+                            <span className='config-tag config-tag--recommended'>{t('Recommended')}</span>
                         </div>
                         <span className='config-radio' aria-hidden='true' />
                     </div>
-                    <img src={flatHier} alt='Example table with one column for each hierarchy level' />
-                    <p>Use this when each level—such as Category, Sub-category, and Product—has its own field.</p>
+                    <img src={flatHier} alt={t('Example table with one column for each hierarchy level')} />
+                    <p>{t('Use this when each level—such as Category, Sub-category, and Product—has its own field.')}</p>
                 </button>
                 <button
                     className={`config-choice ${data.type===HierType.RECURSIVE?'config-choice--selected':''}`}
@@ -153,15 +155,15 @@ function Configure(props: any) {
                     onClick={() => changeHierType(HierType.RECURSIVE)}
                 >
                     <div className='config-choice-heading'>
-                        <span className='config-choice-title'>Parent and child rows</span>
+                        <span className='config-choice-title'>{t('Parent and child rows')}</span>
                         <span className='config-radio' aria-hidden='true' />
                     </div>
-                    <img src={recursiveHier} alt='Example table with parent and child columns' />
-                    <p>Use this when every row identifies one item and its parent, such as Manager ID and Employee ID.</p>
+                    <img src={recursiveHier} alt={t('Example table with parent and child columns')} />
+                    <p>{t('Use this when every row identifies one item and its parent, such as Manager ID and Employee ID.')}</p>
                 </button>
             </div>
             <div className='config-callout'>
-                <strong>Not sure?</strong> Choose separate level columns if your Tableau view already contains one dimension for every hierarchy level.
+                <strong>{t('Not sure?')}</strong> {t('Choose separate level columns if your Tableau view already contains one dimension for every hierarchy level.')}
             </div>
         </div>
     );
@@ -212,7 +214,7 @@ function Configure(props: any) {
                     setUpdates={setUpdates}
                 />
             default:
-                return (<div>Not here yet</div>);
+                return (<div>{t('Not available')}</div>);
         }
     }
     const onDismiss = () => {
@@ -224,20 +226,20 @@ function Configure(props: any) {
     return (
         <div className='config-shell'>
             {!doneLoading ? (<div aria-busy='true' className='overlay'><div className='centerOnPage'><div className='spinnerBg centerOnPage'>{ }</div><Spinner color='light'
-            alt="Loading..." /></div></div>) : undefined}
+            alt={t('Loading…')} /></div></div>) : undefined}
             <header className='config-app-header'>
                 <div>
                     <strong>Hierarchy Navigator</strong>
-                    <span>Configuration</span>
+                    <span>{t('Configuration')}</span>
                 </div>
                 <ConfigStatus
                     complete={sourceComplete}
-                    completeLabel='Source ready'
-                    incompleteLabel='Setup in progress'
+                    completeLabel={t('Source ready')}
+                    incompleteLabel={t('Setup in progress')}
                 />
             </header>
 
-            <nav className='config-progress' aria-label='Configuration progress'>
+            <nav className='config-progress' aria-label={t('Configuration progress')}>
                 <ol className='config-steps'>
                     {page.map((pageItem, index) => (
                         <li
@@ -257,10 +259,10 @@ function Configure(props: any) {
             </nav>
             <main className='config-main'>
                 <Alert isOpen={data.options.warningEnabled} color='primary' toggle={onDismissWarning}>
-                    New to the extension? Follow the four steps below. The source hierarchy should live on its own worksheet; it can be hidden after setup.
+                    {t('New to the extension? Follow the four steps below. The source hierarchy should live on its own worksheet; it can be hidden after setup.')}
                 </Alert>
                 <Alert color='warning' isOpen={isError} toggle={onDismiss}>
-                    {errorStr}
+                    {typeof errorStr==='string'?t(errorStr):errorStr}
                 </Alert>
                 {returnPage(selectedTabIndex)}
             </main>
@@ -270,13 +272,13 @@ function Configure(props: any) {
                 </span>
                 <div className='config-footer-actions'>
                     {selectedTabIndex>0&&
-                        <Button kind='outline' onClick={changeTabPrevious}>Previous</Button>
+                        <Button kind='outline' onClick={changeTabPrevious}>{t('Previous')}</Button>
                     }
                     {selectedTabIndex<3&&
-                        <Button kind='primary' onClick={changeTabNext}>Continue</Button>
+                        <Button kind='primary' onClick={changeTabNext}>{t('Continue')}</Button>
                     }
                     {selectedTabIndex===3&&
-                        <Button kind='primary' disabled={!saveReady} onClick={submit}>Save configuration</Button>
+                        <Button kind='primary' disabled={!saveReady} onClick={submit}>{t('Save configuration')}</Button>
                     }
                 </div>
             </footer>
@@ -287,4 +289,4 @@ function Configure(props: any) {
 export default Configure;
 const container = document.getElementById('app') as HTMLElement;
 const root = createRoot(container);
-root.render(<Configure tab="configure" />);
+root.render(<LocalizationProvider><Configure tab="configure" /></LocalizationProvider>);
