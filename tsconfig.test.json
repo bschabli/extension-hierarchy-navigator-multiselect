@@ -11,6 +11,8 @@
   "include": [
     "src/components/API/FilterTargets.ts",
     "src/components/API/FilterTargets.test.ts",
+    "src/components/API/HierarchyValidation.ts",
+    "src/components/API/HierarchyValidation.test.ts",
     "src/components/extension/TreeModel.ts",
     "src/components/extension/TreeModel.test.ts"
   ]

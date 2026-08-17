@@ -1242,6 +1242,111 @@ select::-ms-expand {
     overflow-wrap: anywhere;
 }
 
+.config-validation-message,
+.config-validation-summary {
+    align-items: center;
+    border-radius: 4px;
+    display: flex;
+    gap: 12px;
+    justify-content: space-between;
+    padding: 11px 12px;
+}
+
+.config-validation-message p,
+.config-validation-summary p {
+    margin-top: 2px;
+}
+
+.config-validation-message--neutral,
+.config-validation-message--loading {
+    background: #f3f5f6;
+    color: var(--config-muted);
+    justify-content: flex-start;
+}
+
+.config-validation-message--error,
+.config-validation-summary--failed {
+    background: #fff1eb;
+    border: 1px solid #e9b49d;
+    color: #7c3518;
+}
+
+.config-validation-summary--passed {
+    background: #edf8f1;
+    border: 1px solid #a8d4b8;
+    color: #176a3a;
+}
+
+.config-validation-spinner {
+    animation: config-validation-spin .8s linear infinite;
+    border: 2px solid #cbd5da;
+    border-radius: 50%;
+    border-top-color: var(--config-accent);
+    height: 16px;
+    width: 16px;
+}
+
+.config-validation-checks {
+    list-style: none;
+    margin: 12px 0 0;
+    padding: 0;
+}
+
+.config-validation-check {
+    align-items: flex-start;
+    border-top: 1px solid #eceeef;
+    display: flex;
+    gap: 9px;
+    padding: 10px 2px;
+}
+
+.config-validation-check > div {
+    min-width: 0;
+}
+
+.config-validation-check p {
+    color: var(--config-muted);
+    margin-top: 2px;
+}
+
+.config-validation-icon {
+    align-items: center;
+    border-radius: 50%;
+    display: inline-flex;
+    flex: 0 0 19px;
+    font-size: 10px;
+    font-weight: 700;
+    height: 19px;
+    justify-content: center;
+}
+
+.config-validation-check--passed .config-validation-icon {
+    background: #dff3e6;
+    color: #176a3a;
+}
+
+.config-validation-check--failed .config-validation-icon {
+    background: #ffe0d2;
+    color: #8b3414;
+}
+
+.config-validation-check--not-applicable .config-validation-icon {
+    background: #eceff1;
+    color: #677079;
+}
+
+.config-validation-examples {
+    color: #7c3518;
+    font-size: 10px;
+    line-height: 1.45;
+    margin: 5px 0 0;
+    padding-left: 18px;
+}
+
+@keyframes config-validation-spin {
+    to { transform: rotate(360deg); }
+}
+
 .config-display-options .config-option-row + .config-option-row {
     border-top: 1px solid #eceeef;
     margin-top: 12px;
@@ -1368,6 +1473,12 @@ select::-ms-expand {
 
     .config-field-grid .config-field + .config-field {
         margin-top: 0;
+    }
+
+    .config-validation-message,
+    .config-validation-summary {
+        align-items: flex-start;
+        flex-direction: column;
     }
 }
 
