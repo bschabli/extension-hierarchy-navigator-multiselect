@@ -1,7 +1,7 @@
 import { Checkbox, Stepper, TextField, TextArea, TextFieldProps, TextAreaProps, DropdownSelect, DropdownSelectProps } from '@tableau/tableau-ui';
 import { InputAttrs, TextAreaAttrs } from '@tableau/tableau-ui/lib/src/utils/NativeProps';
 import React, { useEffect, useState } from 'react';
-import { resolveFilterTargets } from '../API/FilterTargets';
+import { resolveFilterTargetsExcludingWorksheet } from '../API/FilterTargets';
 import { HierarchyProps, HierType } from '../API/Interfaces';
 import { SelectionBehavior, getSelectionBehaviorLabel } from '../API/SelectionBehavior';
 import { useTranslation } from '../localization/I18n';
@@ -248,7 +248,7 @@ export function Page4(props: Props) {
     const selectionBehaviorLabel=t(getSelectionBehaviorLabel(
         props.data.options.selectionBehavior||SelectionBehavior.TERMINAL
     ));
-    const filterTargets=resolveFilterTargets(props.data.worksheet);
+    const filterTargets=resolveFilterTargetsExcludingWorksheet(props.data.worksheet, props.data.worksheet.name);
     const filterSummary=props.data.worksheet.filterEnabled&&filterTargets.length?
         `${ t(filterTargets.length===1?'{count} worksheet':'{count} worksheets', { count: filterTargets.length }) } · ${filterTargets.map(target => target.worksheetName).join(', ')}`:
         t('Off');
