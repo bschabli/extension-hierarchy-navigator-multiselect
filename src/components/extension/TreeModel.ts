@@ -212,6 +212,11 @@ export function toggleOpenNode(openNodeKeys: readonly string[], key: string): st
         openNodeKeys.concat(key);
 }
 
+/** Return every unique selectable leaf value represented by a tree. */
+export function getAllLeafFilterValues(nodes: readonly NormalizedTreeNode[]): string[] {
+    return unique(nodes.reduce<string[]>((values, node) => values.concat(node.leafFilterValues), []));
+}
+
 function isTableauCell(cell: HierarchyCell): cell is TableauCellLike {
     // Tableau's current Extensions API exposes DataValue fields through class
     // getters, so they live on the prototype rather than as own properties.

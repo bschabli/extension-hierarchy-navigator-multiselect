@@ -7,6 +7,7 @@ import {
     NormalizedTreeNode,
     buildFlatTree,
     buildRecursiveTree,
+    getAllLeafFilterValues,
     getSelectionState,
     toggleOpenNode,
     toggleNodeSelection
@@ -121,6 +122,8 @@ function Hierarchy(props: Props) {
         addNodes(tree);
         return result;
     }, [tree]);
+
+    const allLeafFilterValues=useMemo(() => getAllLeafFilterValues(tree), [tree]);
 
     useEffect(() => {
         if(props.data.options.openedIconType==='Default') { setOpenedIcon(defaultOpenedIcon); }
@@ -260,6 +263,20 @@ function Hierarchy(props: Props) {
         });
     }
 
+    function selectAll(): void {
+        const nextSelection=new Set(allLeafFilterValues);
+        selectedRef.current=nextSelection;
+        setSelectedLeafValues(nextSelection);
+        props.setDataFromExtension({
+            currentId,
+            currentLabel,
+            selectedLeafValues: allLeafFilterValues
+        });
+    }
+
+    const allValuesSelected=allLeafFilterValues.length>0&&
+        allLeafFilterValues.every(value => selectedLeafValues.has(value));
+
     const debugState: ReactFragment=debug? (
         <div style={{ position: 'relative', top: 0, marginTop: '10px' }}>
             Debug: true<p />
@@ -291,12 +308,20 @@ function Hierarchy(props: Props) {
                         'All values shown (no filter)':
                         `${ selectedLeafValues.size } value${ selectedLeafValues.size===1? '':'s' } selected`}
                 </span>
-                <Button
-                    kind='outline'
-                    onClick={resetAll}
-                    disabled={selectedLeafValues.size===0}
-                    aria-label='Reset all hierarchy selections'
-                >Reset Selections</Button>
+                <div className='hierarchy-toolbar-actions'>
+                    <Button
+                        kind='outline'
+                        onClick={selectAll}
+                        disabled={allLeafFilterValues.length===0||allValuesSelected}
+                        aria-label='Select all hierarchy values'
+                    >Select all</Button>
+                    <Button
+                        kind='outline'
+                        onClick={resetAll}
+                        disabled={selectedLeafValues.size===0}
+                        aria-label='Reset all hierarchy selections'
+                    >Reset Selections</Button>
+                </div>
             </div>
             <TreeMenu
                 data={tree}

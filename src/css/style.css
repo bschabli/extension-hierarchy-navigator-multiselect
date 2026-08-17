@@ -27,6 +27,12 @@ body {
     white-space: nowrap;
 }
 
+.hierarchy-toolbar-actions {
+    display: flex;
+    flex: 0 0 auto;
+    gap: 6px;
+}
+
 .hierarchy-checkbox-item {
     align-items: center;
     display: flex;

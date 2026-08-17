@@ -1,6 +1,7 @@
 import {
     buildFlatTree,
     buildRecursiveTree,
+    getAllLeafFilterValues,
     getSelectionState,
     isMissingHierarchyValue,
     toggleOpenNode,
@@ -120,6 +121,19 @@ function testControlledOpenNodeToggle(): void {
     assert(openNodes.join(',')==='root/other', 'Closing a node should remove only the requested path.');
 }
 
+function testCollectAllLeafFilterValues(): void {
+    const tree=buildFlatTree([
+        ['A', 'A1', 'a1'],
+        ['A', 'A2', 'a2'],
+        ['B', 'B1', 'b1'],
+        ['B', 'B2', 'a1']
+    ], [0, 1], 2);
+    assert(
+        getAllLeafFilterValues(tree).join(',')==='a1,a2,b1',
+        'Select all should collect each leaf filter value exactly once.'
+    );
+}
+
 function testMissingValueRules(): void {
     assert(isMissingHierarchyValue(null), 'null should be missing.');
     assert(isMissingHierarchyValue(undefined), 'undefined should be missing.');
@@ -142,5 +156,6 @@ testEndpointParentAndSelection();
 testRecursiveSelection();
 testTableauGetterCellsAndPartialSelection();
 testControlledOpenNodeToggle();
+testCollectAllLeafFilterValues();
 testMissingValueRules();
 console.log('TreeModel acceptance tests passed.');
