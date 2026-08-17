@@ -72,7 +72,16 @@ function testMissingValueRules(): void {
     assert(isMissingHierarchyValue(null), 'null should be missing.');
     assert(isMissingHierarchyValue(undefined), 'undefined should be missing.');
     assert(isMissingHierarchyValue('  '), 'Whitespace should be missing.');
+    assert(isMissingHierarchyValue({ value: '%null%', formattedValue: 'Null' }), 'Tableau special null should be missing.');
+    assert(
+        isMissingHierarchyValue({ value: '%null%', nativeValue: null, formattedValue: 'Null' }),
+        'Tableau native null should take precedence over its formatted label.'
+    );
     assert(!isMissingHierarchyValue('NULL'), 'The literal domain value NULL should remain valid.');
+    assert(
+        !isMissingHierarchyValue({ value: 'Null', nativeValue: 'Null', formattedValue: 'Null' }),
+        'A real domain value named Null should remain valid.'
+    );
 }
 
 testFlatVariableDepthAndNulls();

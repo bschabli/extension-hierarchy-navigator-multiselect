@@ -2,6 +2,7 @@ export type CheckboxState='none'|'some'|'all';
 
 export interface TableauCellLike {
     formattedValue?: unknown;
+    nativeValue?: unknown;
     value?: unknown;
 }
 
@@ -46,6 +47,9 @@ interface RecursiveRecord {
  */
 export function getHierarchyValue(cell: HierarchyCell): unknown {
     if(isTableauCell(cell)) {
+        if(Object.prototype.hasOwnProperty.call(cell, 'nativeValue')&&typeof cell.nativeValue!=='undefined') {
+            return cell.nativeValue;
+        }
         if(Object.prototype.hasOwnProperty.call(cell, 'value')) {
             return cell.value;
         }
@@ -57,7 +61,8 @@ export function getHierarchyValue(cell: HierarchyCell): unknown {
 /** Return whether a hierarchy value represents a missing level. */
 export function isMissingHierarchyValue(cell: HierarchyCell): boolean {
     const value=getHierarchyValue(cell);
-    return value===null||typeof value==='undefined'||(typeof value==='string'&&value.trim()==='');
+    return value===null||typeof value==='undefined'||
+        (typeof value==='string'&&(value.trim()===''||value==='%null%'));
 }
 
 /** Return a display/filter string, or undefined for a missing value. */
@@ -203,6 +208,7 @@ export function toggleNodeSelection(
 function isTableauCell(cell: HierarchyCell): cell is TableauCellLike {
     return typeof cell==='object'&&cell!==null&&(
         Object.prototype.hasOwnProperty.call(cell, 'value')||
+        Object.prototype.hasOwnProperty.call(cell, 'nativeValue')||
         Object.prototype.hasOwnProperty.call(cell, 'formattedValue')
     );
 }
