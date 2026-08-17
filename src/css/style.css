@@ -122,6 +122,21 @@ body {
     white-space: nowrap;
 }
 
+.hierarchy-search-match {
+    background: #ffe58f;
+    border-radius: 2px;
+    color: inherit;
+    padding: 0 1px;
+}
+
+.hierarchy-search-summary {
+    color: inherit;
+    font-size: 10px;
+    line-height: 1.35;
+    opacity: .68;
+    padding: 4px 7px 3px;
+}
+
 /* * { 
     -moz-box-sizing: border-box; 
     -webkit-box-sizing: border-box; 
@@ -1131,6 +1146,22 @@ select::-ms-expand {
     flex: 0 0 auto;
 }
 
+.config-option-row--nested {
+    margin-left: 18px;
+    padding-left: 12px;
+    position: relative;
+}
+
+.config-option-row--nested::before {
+    background: #d7e3e7;
+    bottom: 0;
+    content: '';
+    left: 0;
+    position: absolute;
+    top: 12px;
+    width: 2px;
+}
+
 .config-revealed-options,
 .config-title-field,
 .config-stepper-field {
@@ -1483,7 +1514,7 @@ select::-ms-expand {
     color: inherit;
     font: inherit;
     height: 28px;
-    padding: 4px 8px 4px 27px;
+    padding: 4px 72px 4px 27px;
     width: 100%;
 }
 
@@ -1495,6 +1526,16 @@ select::-ms-expand {
     pointer-events: none;
     position: absolute;
     top: 14px;
+}
+
+.config-preview-search-count {
+    font-size: 9px;
+    line-height: 1;
+    opacity: .68;
+    pointer-events: none;
+    position: absolute;
+    right: 18px;
+    top: 18px;
 }
 
 .config-preview-tree-scroll {

@@ -1,4 +1,5 @@
 import { NormalizedTreeNode } from '../extension/TreeModel';
+import { getHierarchySearchResult } from '../extension/SearchModel';
 
 export interface HierarchyPreviewRow {
     depth: number;
@@ -7,6 +8,7 @@ export interface HierarchyPreviewRow {
 }
 
 export interface HierarchyPreviewRows {
+    matchCount: number;
     rows: HierarchyPreviewRow[];
     truncated: boolean;
 }
@@ -21,36 +23,29 @@ export function getHierarchyPreviewRows(
     nodes: readonly NormalizedTreeNode[],
     expandedKeys: ReadonlySet<string>,
     searchTerm: string,
-    limit=100
+    limit=100,
+    autoExpandMatches=true
 ): HierarchyPreviewRows {
     const rows: HierarchyPreviewRow[]=[];
-    const normalizedSearch=searchTerm.trim().toLocaleLowerCase();
-    const matchCache=new Map<string, boolean>();
+    const searchResult=getHierarchySearchResult(nodes, searchTerm);
+    const searchActive=searchResult.normalizedTerm!=='';
+    const visibleTree=searchActive?searchResult.tree:nodes;
     let truncated=false;
-
-    function containsMatch(node: NormalizedTreeNode): boolean {
-        const cached=matchCache.get(node.key);
-        if(typeof cached==='boolean') { return cached; }
-        const matches=node.label.toLocaleLowerCase().includes(normalizedSearch)||
-            node.nodes.some(containsMatch);
-        matchCache.set(node.key, matches);
-        return matches;
-    }
 
     function addNodes(currentNodes: readonly NormalizedTreeNode[], depth: number): void {
         currentNodes.forEach(node => {
-            if(truncated||(normalizedSearch!==''&&!containsMatch(node))) { return; }
+            if(truncated) { return; }
             if(rows.length>=limit) {
                 truncated=true;
                 return;
             }
-            const showChildren=normalizedSearch!==''?
-                node.nodes.some(containsMatch):expandedKeys.has(node.key);
+            const showChildren=searchActive&&autoExpandMatches?
+                node.nodes.length>0:expandedKeys.has(node.key);
             rows.push({ depth, expanded: showChildren, node });
             if(showChildren) { addNodes(node.nodes, depth+1); }
         });
     }
 
-    addNodes(nodes, 0);
-    return { rows, truncated };
+    addNodes(visibleTree, 0);
+    return { matchCount: searchResult.matchCount, rows, truncated };
 }

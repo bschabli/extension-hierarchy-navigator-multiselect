@@ -15,6 +15,8 @@
     "src/components/API/HierarchyValidation.test.ts",
     "src/components/extension/TreeModel.ts",
     "src/components/extension/TreeModel.test.ts",
+    "src/components/extension/SearchModel.ts",
+    "src/components/extension/SearchModel.test.ts",
     "src/components/config/HierarchyPreviewModel.ts",
     "src/components/config/HierarchyPreviewModel.test.ts"
   ]

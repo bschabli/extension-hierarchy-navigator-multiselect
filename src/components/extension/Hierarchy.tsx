@@ -3,6 +3,7 @@ import React, { ReactFragment, useEffect, useMemo, useRef, useState } from 'reac
 import TreeMenu from 'react-simple-tree-menu';
 import { debugOverride, defaultSelectedProps, HierarchyProps, HierType } from '../API/Interfaces';
 import { SelectionBehavior } from '../API/SelectionBehavior';
+import { HighlightedHierarchyLabel } from '../shared/HighlightedHierarchyLabel';
 import {
     CheckboxState,
     NormalizedTreeNode,
@@ -14,6 +15,7 @@ import {
     toggleOpenNode,
     toggleNodeSelection
 } from './TreeModel';
+import { getHierarchySearchResult } from './SearchModel';
 
 export interface HierarchySelectionPayload {
     currentFieldValues?: Array<string|undefined>;
@@ -49,7 +51,9 @@ interface CheckboxTreeItemProps {
     onToggleSelection: () => void;
     openedIcon: React.ReactNode;
     style: React.CSSProperties;
+    searchTerm: string;
     toggleNode?: () => void;
+    toggleDisabled: boolean;
 }
 
 function CheckboxTreeItem(props: CheckboxTreeItemProps) {
@@ -68,8 +72,8 @@ function CheckboxTreeItem(props: CheckboxTreeItemProps) {
             <button
                 className={`hierarchy-toggle${ props.hasNodes? '':' hierarchy-toggle--empty' }`}
                 type='button'
-                disabled={!props.hasNodes}
-                aria-label={props.isOpen? 'Collapse node':'Expand node'}
+                disabled={!props.hasNodes||props.toggleDisabled}
+                aria-label={props.isOpen? `Collapse ${ props.label }`:`Expand ${ props.label }`}
                 onClick={(event) => {
                     event.stopPropagation();
                     if(props.hasNodes&&props.toggleNode) { props.toggleNode(); }
@@ -86,7 +90,7 @@ function CheckboxTreeItem(props: CheckboxTreeItemProps) {
                 onChange={props.onToggleSelection}
             />
             <button className='hierarchy-node-label' type='button' onClick={props.onClick}>
-                {props.label}
+                <HighlightedHierarchyLabel label={props.label} searchTerm={props.searchTerm} />
             </button>
         </li>
     );
@@ -95,6 +99,7 @@ function CheckboxTreeItem(props: CheckboxTreeItemProps) {
 function Hierarchy(props: Props) {
     const { debug=false||debugOverride }=props.data.options;
     const selectionBehavior=props.data.options.selectionBehavior||SelectionBehavior.TERMINAL;
+    const autoExpandSearch=props.data.options.searchAutoExpand!==false;
     const childRef=useRef<any>(null);
     const selectedRef=useRef<Set<string>>(new Set<string>());
     const [selectedLeafValues, setSelectedLeafValues]=useState<Set<string>>(new Set<string>());
@@ -130,11 +135,22 @@ function Hierarchy(props: Props) {
         () => getAllSelectableFilterValues(tree, selectionBehavior),
         [selectionBehavior, tree]
     );
+    const searchResult=useMemo(() => getHierarchySearchResult(tree, searchVal), [searchVal, tree]);
+    const searchActive=searchResult.normalizedTerm!=='';
+    const visibleTree=searchActive?searchResult.tree:tree;
+    const effectiveOpenNodes=useMemo(() => {
+        if(!searchActive||!autoExpandSearch) { return openNodes; }
+        return Array.from(new Set(openNodes.concat(searchResult.autoExpandedPaths)));
+    }, [autoExpandSearch, openNodes, searchActive, searchResult.autoExpandedPaths]);
 
     useEffect(() => {
         selectedRef.current=new Set<string>();
         setSelectedLeafValues(new Set<string>());
     }, [selectionBehavior]);
+
+    useEffect(() => {
+        if(!props.data.options.searchEnabled) { setSearchVal(''); }
+    }, [props.data.options.searchEnabled]);
 
     useEffect(() => {
         if(props.data.options.openedIconType==='Default') { setOpenedIcon(defaultOpenedIcon); }
@@ -209,6 +225,7 @@ function Hierarchy(props: Props) {
         setSelectedLeafValues(new Set<string>());
         setTree([]);
         setPathMap([]);
+        setSearchVal('');
     }
 
     function buildPathMap(nodes: NormalizedTreeNode[], parentPath=''): PathMap[] {
@@ -335,8 +352,9 @@ function Hierarchy(props: Props) {
                 </div>
             </div>
             <TreeMenu
-                data={tree}
-                openNodes={openNodes}
+                data={visibleTree}
+                openNodes={effectiveOpenNodes}
+                hasSearch={false}
                 onClickItem={(item: any) => {
                     const nodeId=item.key.split('/').pop()||'';
                     const node=nodeById.get(nodeId);
@@ -344,9 +362,8 @@ function Hierarchy(props: Props) {
                 }}
                 resetOpenNodesOnDataUpdate={true}
                 ref={childRef}
-                debounceTime={125}
             >
-                {({ search, items }) => (
+                {({ items }) => (
                     <>
                         <TextField
                             kind='search'
@@ -356,13 +373,18 @@ function Hierarchy(props: Props) {
                             value={searchVal}
                             onChange={(event: any) => {
                                 setSearchVal(event.target.value);
-                                if(search) { search(event.target.value); }
                             }}
                             onClear={() => {
-                                if(search) { search(''); }
                                 setSearchVal('');
                             }}
                         />
+                        {props.data.options.searchEnabled&&searchActive&&
+                            <div className='hierarchy-search-summary' role='status' aria-live='polite'>
+                                {searchResult.matchCount===0?
+                                    `No items match “${ searchVal.trim() }”`:
+                                    `${ searchResult.matchCount } matching item${ searchResult.matchCount===1?'':'s' } · ancestor context shown`}
+                            </div>
+                        }
                         <ul className='rstm-tree-item-group' role='tree'>
                             {items.map((item: any) => {
                                 const nodeId=item.key.split('/').pop()||'';
@@ -376,8 +398,10 @@ function Hierarchy(props: Props) {
                                         disabled={getNodeSelectionValues(node, selectionBehavior).length===0}
                                         onToggleSelection={() => toggleSelection(node)}
                                         toggleNode={() => toggleTreeNode(item.key)}
+                                        toggleDisabled={searchActive&&autoExpandSearch}
                                         openedIcon={openedIcon}
                                         closedIcon={closedIcon}
+                                        searchTerm={searchVal}
                                         style={props.data.options.itemCSS}
                                     />
                                 );

@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { HierarchyProps, Options } from '../API/Interfaces';
 import { SelectionBehavior, getSelectionBehaviorLabel } from '../API/SelectionBehavior';
+import { HighlightedHierarchyLabel } from '../shared/HighlightedHierarchyLabel';
 import {
     CheckboxState,
     NormalizedTreeNode,
@@ -82,6 +83,7 @@ function getInitialExpandedKeys(tree: readonly NormalizedTreeNode[]): Set<string
 export function HierarchyPreview(props: Props) {
     const tree=props.validation.previewTree||EMPTY_TREE;
     const selectionBehavior=props.data.options.selectionBehavior||SelectionBehavior.TERMINAL;
+    const autoExpandSearch=props.data.options.searchAutoExpand!==false;
     const [expandedKeys, setExpandedKeys]=useState<Set<string>>(new Set<string>());
     const [searchTerm, setSearchTerm]=useState('');
     const [selectedLeafValues, setSelectedLeafValues]=useState<Set<string>>(new Set<string>());
@@ -101,9 +103,10 @@ export function HierarchyPreview(props: Props) {
         [selectionBehavior, tree]
     );
     const visibleRows=useMemo(
-        () => getHierarchyPreviewRows(tree, expandedKeys, searchTerm, MAX_VISIBLE_ROWS),
-        [expandedKeys, searchTerm, tree]
+        () => getHierarchyPreviewRows(tree, expandedKeys, searchTerm, MAX_VISIBLE_ROWS, autoExpandSearch),
+        [autoExpandSearch, expandedKeys, searchTerm, tree]
     );
+    const searchActive=searchTerm.trim()!=='';
     const allSelected=allSelectableFilterValues.length>0&&
         allSelectableFilterValues.every(value => selectedLeafValues.has(value));
     const previewReady=props.validation.status==='complete'&&
@@ -182,6 +185,11 @@ export function HierarchyPreview(props: Props) {
                                 value={searchTerm}
                                 onChange={event => setSearchTerm(event.target.value)}
                             />
+                            {searchActive&&
+                                <span className='config-preview-search-count' role='status'>
+                                    {visibleRows.matchCount} match{visibleRows.matchCount===1?'':'es'}
+                                </span>
+                            }
                         </label>
                     }
                     <div className='config-preview-tree-scroll'>
@@ -205,7 +213,7 @@ export function HierarchyPreview(props: Props) {
                                         <button
                                             className={`config-preview-toggle${hasChildren?'':' config-preview-toggle--empty'}`}
                                             type='button'
-                                            disabled={!hasChildren||searchTerm.trim()!==''}
+                                            disabled={!hasChildren||(searchActive&&autoExpandSearch)}
                                             aria-label={hasChildren?
                                                 (row.expanded?`Collapse ${ row.node.label }`:`Expand ${ row.node.label }`):
                                                 undefined}
@@ -225,7 +233,7 @@ export function HierarchyPreview(props: Props) {
                                             disabled={!selectable}
                                             style={itemStyle}
                                             onClick={() => toggleSelection(row.node)}
-                                        >{row.node.label}</button>
+                                        ><HighlightedHierarchyLabel label={row.node.label} searchTerm={searchTerm} /></button>
                                     </li>
                                 );
                             })}
