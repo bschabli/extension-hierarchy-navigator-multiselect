@@ -14,10 +14,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: 22.15.0
           cache: npm
@@ -32,7 +32,18 @@ jobs:
         run: npm test
 
       - name: Validate manifests
-        run: xmllint --noout src/*.trex
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import xml.etree.ElementTree as element_tree
+
+          manifests = sorted(Path("src").glob("*.trex"))
+          if not manifests:
+              raise SystemExit("No Tableau manifests were found.")
+          for manifest in manifests:
+              element_tree.parse(manifest)
+              print(f"Validated {manifest}")
+          PY
 
       - name: Build production site
         run: npm run build
