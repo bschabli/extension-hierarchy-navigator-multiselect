@@ -38,7 +38,6 @@ interface CheckboxTreeItemProps {
     checkboxState: CheckboxState;
     closedIcon: React.ReactNode;
     disabled: boolean;
-    focused?: boolean;
     hasNodes: boolean;
     isOpen: boolean;
     label: string;
@@ -58,7 +57,7 @@ function CheckboxTreeItem(props: CheckboxTreeItemProps) {
 
     return (
         <li
-            className={`rstm-tree-item hierarchy-checkbox-item${ props.focused? ' rstm-tree-item--focused':'' }`}
+            className='rstm-tree-item hierarchy-checkbox-item'
             style={{ ...props.style, paddingLeft: `${ 0.5+props.level*1.25 }rem` }}
             role='treeitem'
             aria-expanded={props.hasNodes? props.isOpen:undefined}

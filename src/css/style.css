@@ -33,6 +33,15 @@ body {
     margin: 0 6px 0 2px;
 }
 
+.hierarchy-checkbox-item:hover {
+    background-color: var(--highlightColor, #d1d1d1);
+}
+
+.hierarchy-checkbox-item:focus-within {
+    outline: 1px solid var(--highlightColor, #d1d1d1);
+    outline-offset: -1px;
+}
+
 .extension-status {
     background: #fff;
     border: 1px solid #d4d4d4;
@@ -414,19 +423,6 @@ select::-ms-expand {
     text-overflow: ellipsis;
     */
 }
-    .rstm-tree-item--active {
-      background: var(--highlightColor);
-      border-bottom: none; 
-      /* Below are to fix background width to take full div ;
-      if ellipsis are desired; have to comment these out */
-      width: 100%;
-      display: table;
-      box-sizing: border-box;
-    }
-    .rstm-tree-item--focused {
-      box-shadow: 0 0 5px 0 #222;
-      z-index: 999; }
-  
   .rstm-search {
     padding: 1rem 1.5rem;
     border: none;

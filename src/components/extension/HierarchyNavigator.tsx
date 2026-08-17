@@ -136,7 +136,10 @@ function HierarchyNavigator() {
     }, []);
 
     useEffect(() => {
-        document.body.style.backgroundColor = data.options.highlightColor || defaultSelectedProps.options.highlightColor;
+        document.documentElement.style.setProperty(
+            '--highlightColor',
+            data.options.highlightColor||defaultSelectedProps.options.highlightColor
+        );
     }, [data.options.highlightColor]);
     useEffect(() => {
         document.body.style.backgroundColor = data.options.bgColor || defaultSelectedProps.options.bgColor;
