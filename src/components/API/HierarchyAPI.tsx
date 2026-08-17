@@ -2,7 +2,7 @@
 import { Parameter, Worksheet } from '@tableau/extensions-api-types';
 import { useEffect, useReducer, useRef, useState } from 'react';
 import * as React from 'react';
-import { debugOverride, defaultSelectedProps, HierarchyProps, HierType, SelectedParameters, Status } from './Interfaces';
+import { defaultSelectedProps, HierarchyProps, HierType, isDebugEnabled, SelectedParameters, Status } from './Interfaces';
 import {
     FilterTarget,
     findNextFilterTargetWorksheet,
@@ -39,7 +39,7 @@ const initialData: HierarchyState={
 };
 
 const dataFetchReducer=(state: HierarchyState, action: { type: string, data?: any; }) => {
-    const {debug=false||debugOverride} = state.data.options;
+    const debug=isDebugEnabled(state.data.options.debug);
     if(debug) {
         console.log(`dataFetchReducer receivied: ${ action.type }`);
         console.log(action.data);
@@ -90,11 +90,7 @@ const hierarchyAPI=(): any => {
     const initAsyncLoading=useRef<boolean>(true);
     const getWorksheetsRunning=useRef<boolean>(false);
     const [state, dispatch]=useReducer(dataFetchReducer, initialData);
-    const [debug, setDebug]=useState(debugOverride);
-
-    useEffect(()=>{
-        setDebug(state.data.options.debug || debugOverride);
-    },[state.data.options.debug])
+    const debug=isDebugEnabled(state.data.options.debug);
 
     // if we are loading, or reset the data, re-init
     const initAsync=async (_initialData: HierarchyProps=extend(true, {}, defaultSelectedProps)) => {
@@ -358,7 +354,7 @@ const hierarchyAPI=(): any => {
             case 'REMOVE_FILTER_TARGET':
                 {
                     const targets=resolveFilterTargetsExcludingWorksheet(payload.worksheet, payload.worksheet.name)
-                        .filter((target, index) => index!==action.data.index);
+                        .filter((_target, index) => index!==action.data.index);
                     syncLegacyFilterTarget(payload.worksheet, targets);
                     if(!targets.length) { payload.worksheet.filterEnabled=false; }
                     return dispatch({ type: 'FETCH_SUCCESS', data: payload });
@@ -554,8 +550,10 @@ const hierarchyAPI=(): any => {
                 submit();
                 break;
             default:
-                console.log(`No state found for ${ action.type } (action.data follows...)`);
-                console.log(action.data);
+                if(debug) {
+                    console.log(`No state found for ${ action.type } (action.data follows...)`);
+                    console.log(action.data);
+                }
         }
     };
 
@@ -725,11 +723,11 @@ const hierarchyAPI=(): any => {
     const availableFlatParamList=(selectedParams: SelectedParameters, availableParameters: string[]): string[] => {
         const { level, childId, fields }=selectedParams;
         const p: string[]=[];
-        console.log(`p param list: ${ p }`);
+        if(debug) { console.log(`p param list: ${ p }`); }
         availableParameters.forEach(param => {
             if(param!==level&&param!==childId&&!fields.includes(param)) { p.push(param); }
         });
-        console.log(`setting p: ${ p }`);
+        if(debug) { console.log(`setting p: ${ p }`); }
         return p;
     };
 
@@ -763,7 +761,6 @@ const hierarchyAPI=(): any => {
             }
             else { if(debug) { console.log(` --- skipping ${ p.name }`); } }
         }
-        // TODO: case insensitive sort was returning incorrect results
         if(params.length>0) {
             // case insensitive sort
             params.sort((a, b) =>
@@ -832,7 +829,7 @@ const hierarchyAPI=(): any => {
     // big logic block to make sure existing settings are still valid
     // if any fail, reset all data
     // bLoad = are we loading fresh data?
-    const validateSettings=(d: HierarchyProps): { data?: HierarchyProps, result: 'SUCCESS'|'MODIFIED'|'FAIL'; msg?: React.ReactFragment; } => {
+    const validateSettings=(d: HierarchyProps): { data?: HierarchyProps, result: 'SUCCESS'|'MODIFIED'|'FAIL'; msg?: React.ReactNode; } => {
         const modifiedMessages: Array<{ message: string, values?: TranslationValues }>=[];
         if(debug) {
             console.log(`validate settings`);
@@ -878,7 +875,6 @@ const hierarchyAPI=(): any => {
 
             else {
                 // flat tree
-                // tslint:disable:prefer-for-of
                 for(let i=0;i<d.worksheet.fields.length;i++) {
                     if(!d.dashboardItems.allCurrentWorksheetItems.fields.includes(d.worksheet.fields[i])) {
                         d.worksheet.fields=[];
@@ -886,7 +882,6 @@ const hierarchyAPI=(): any => {
                         break;
                     }
                 }
-                // tslint:enable:prefer-for-of
 
                 // Check Child Id
                 if(!d.dashboardItems.allCurrentWorksheetItems.fields.includes(d.worksheet.childId)) {
@@ -897,14 +892,12 @@ const hierarchyAPI=(): any => {
                     // is there a field that isn't used?
                     if(d.dashboardItems.allCurrentWorksheetItems.fields.length>d.worksheet.fields.length) {
                         // find first match and set it
-                        // tslint:disable:prefer-for-of
                         for(let i=0;i<d.dashboardItems.allCurrentWorksheetItems.fields.length;i++) {
                             if(!d.worksheet.fields.includes(d.dashboardItems.allCurrentWorksheetItems.fields[i])) {
                                 d.worksheet.childId=d.dashboardItems.allCurrentWorksheetItems.fields[i];
                                 break;
                             }
                         }
-                        // tslint:enable:prefer-for-of
                     }
                     else {
                         // just take the last field and set it as the id field
@@ -956,7 +949,7 @@ const hierarchyAPI=(): any => {
         catch(err) {
             console.error(`Error in validate settings`);
             console.error(err);
-            const snippet: React.ReactFragment=(<>
+            const snippet: React.ReactNode=(<>
                 <LocalizedText message='A critical error was encountered:' />
                 <ul>
                     {modifiedMessages.map((item, index) => (
@@ -969,7 +962,7 @@ const hierarchyAPI=(): any => {
             return { result: 'MODIFIED', msg: snippet, data: d };
         }
         if(modifiedMessages.length) {
-            const snippet: React.ReactFragment=(<>
+            const snippet: React.ReactNode=(<>
                 <LocalizedText message='The following settings changed.' />
                 <ul>
                     {modifiedMessages.map((item, index) => (

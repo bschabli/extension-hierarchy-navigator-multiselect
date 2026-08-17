@@ -1,4 +1,3 @@
-/* tslint:disable:jsx-no-lambda */
 import '../../css/bootstrap.css';
 import '../../css/style.css';
 import { Extensions } from '@tableau/extensions-api-types';
@@ -9,7 +8,7 @@ import { Alert } from 'reactstrap';
 import flatHier from '../../images/FlatHier.jpeg';
 import recursiveHier from '../../images/RecursiveHier.jpeg';
 import HierarchyAPI from '../API/HierarchyAPI';
-import { debugOverride, HierarchyProps, HierType } from '../API/Interfaces';
+import { HierarchyProps, HierType, isDebugEnabled } from '../API/Interfaces';
 import { LocalizationProvider, useTranslation } from '../localization/I18n';
 import { ConfigStatus, ConfigStepIntro } from './ConfigPrimitives';
 import { Page2Flat } from './Page2Flat';
@@ -23,20 +22,16 @@ declare global {
     interface Window { tableau: { extensions: Extensions; }; }
 }
 
-function Configure(props: any) {
+function Configure() {
     const {t}=useTranslation();
     const [state, setCurrentWorksheetName, setUpdates] = HierarchyAPI();
     const [selectedTabIndex, setSelectedTabIndex] = useState(0);
     const { data, isError, errorStr, doneLoading }: { data: HierarchyProps, isLoading: boolean, isError: boolean, errorStr: React.ReactNode, doneLoading: boolean; } = state;
-    const [debug, setDebug] = useState(debugOverride);
+    const debug=isDebugEnabled(state.data.options.debug);
 
     useEffect(() => {
         window.dispatchEvent(new Event('hierarchy-app-ready'));
     }, []);
-
-    useEffect(() => {
-        setDebug(state.data.options.debug || debugOverride);
-    }, [state.data.options.debug])
 
     // event fired when one of the parameters/filter/mark selection is changed
     const changeEnabled = (e: React.MouseEvent<HTMLInputElement> | React.ChangeEvent<HTMLInputElement>) => {
@@ -99,7 +94,7 @@ function Configure(props: any) {
     };
 
 
-    const page: Array<{ name: string, description: string, content: React.ReactFragment; }> = [
+    const page: Array<{ name: string, description: string, content: React.ReactNode; }> = [
         { name: t('Hierarchy format'), description: t('Choose the shape of your data'), content: (<div />) },
         { name: t('Source data'), description: t('Map the worksheet and fields'), content: (<div />) },
         { name: t('Dashboard actions'), description: t('Choose what selection controls'), content: (<div />) },
@@ -192,6 +187,7 @@ function Configure(props: any) {
                         setCurrentWorksheetName={setCurrentWorksheetName}
                     />;
                 }
+                return null;
             case 2:
                 if (data.type === HierType.FLAT) {
                     return <Page3Flat
@@ -293,4 +289,4 @@ function Configure(props: any) {
 export default Configure;
 const container = document.getElementById('app') as HTMLElement;
 const root = createRoot(container);
-root.render(<LocalizationProvider><Configure tab="configure" /></LocalizationProvider>);
+root.render(<LocalizationProvider><Configure /></LocalizationProvider>);

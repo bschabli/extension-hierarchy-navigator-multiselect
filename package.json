@@ -1,6 +1,6 @@
 {
   "name": "extension-hierarchy-navigator",
-  "version": "2.9.3",
+  "version": "2.9.4",
   "private": true,
   "engines": {
     "node": ">=22.15.0"
@@ -15,7 +15,7 @@
   "scripts": {
     "start": "npm run copy-resources && webpack-dev-server --open --mode development --hot",
     "build": "npm run copy-resources && webpack --mode production --no-devtool",
-    "test": "tsc -p tsconfig.test.json && node /tmp/hierarchy-navigator-tests/API/FilterTargets.test.js && node /tmp/hierarchy-navigator-tests/API/HierarchyValidation.test.js && node /tmp/hierarchy-navigator-tests/API/SummaryData.test.js && node /tmp/hierarchy-navigator-tests/extension/TreeModel.test.js && node /tmp/hierarchy-navigator-tests/extension/SearchModel.test.js && node /tmp/hierarchy-navigator-tests/extension/TreeKeyboardNavigation.test.js && node /tmp/hierarchy-navigator-tests/extension/UiStateModel.test.js && node /tmp/hierarchy-navigator-tests/config/HierarchyPreviewModel.test.js && NODE_PATH=./node_modules node /tmp/hierarchy-navigator-tests/localization/I18n.test.js",
+    "test": "tsc -p tsconfig.test.json && node /tmp/hierarchy-navigator-tests/API/DebugOverride.test.js && node /tmp/hierarchy-navigator-tests/API/FilterTargets.test.js && node /tmp/hierarchy-navigator-tests/API/HierarchyValidation.test.js && node /tmp/hierarchy-navigator-tests/API/SummaryData.test.js && node /tmp/hierarchy-navigator-tests/extension/TreeModel.test.js && node /tmp/hierarchy-navigator-tests/extension/SearchModel.test.js && node /tmp/hierarchy-navigator-tests/extension/TreeKeyboardNavigation.test.js && node /tmp/hierarchy-navigator-tests/extension/UiStateModel.test.js && node /tmp/hierarchy-navigator-tests/config/HierarchyPreviewModel.test.js && NODE_PATH=./node_modules node /tmp/hierarchy-navigator-tests/localization/I18n.test.js",
     "typecheck": "tsc --noEmit",
     "sandbox": "webpack --mode production --watch --progress --no-devtool & npx tabextsandbox --config sandbox-config.json",
     "copy-resources": "mkdir -p ./docs/resources && cp src/*.ico ./docs/ && cp src/*.trex ./docs/ && cp src/*.twbx ./docs/ && cp src/hierarchynavigator-1.0.trex ./docs/hierarchynavigator-multiselect.trex && cp src/resources/*.js ./docs/resources/"

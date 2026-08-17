@@ -17,8 +17,7 @@ export interface SelectorProps {
 }
 
 // Shows if setting has not yet been configured
-// tslint:disable-next-line variable-name
-export const Selector: React.SFC<SelectorProps> = (props) => {
+export const Selector: React.FC<SelectorProps> = (props) => {
     const {t}=useTranslation();
     const accessibleName=props.title||props.description||t('Select an option');
     const dropdownSelectProps: DropdownSelectProps = {
@@ -35,7 +34,7 @@ export const Selector: React.SFC<SelectorProps> = (props) => {
         onClick: props.onClick,
         style: { marginTop: '8px' },
     };
-    const showButton = ():React.ReactFragment => {
+    const showButton = ():React.ReactNode => {
         if (typeof props.onClick === 'function'){
             return (<Button {...buttonProps}>{t('Set')}</Button>);
         }

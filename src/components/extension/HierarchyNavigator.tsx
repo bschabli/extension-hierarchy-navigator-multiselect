@@ -42,9 +42,11 @@ function HierarchyNavigator() {
         if (debugOverride) { console.log(`calling CONFIGURE`); }
 
         let popupUrl = `config.html`;
-        console.log(`version: ${tableau.extensions.environment.tableauVersion}`);
-        console.log(`hostname: ${window.location.hostname}`);
-        console.log(window.location)
+        if(debugOverride) {
+            console.log(`version: ${tableau.extensions.environment.tableauVersion}`);
+            console.log(`hostname: ${window.location.hostname}`);
+            console.log(window.location);
+        }
         const version = tableau.extensions.environment.tableauVersion.split('.');
         // if version < 2019.3 need an absolute URL
         if (parseInt(version[0], 10) === 2018 || (parseInt(version[0], 10) === 2019 && parseInt(version[1], 10) < 3)) {
@@ -60,7 +62,6 @@ function HierarchyNavigator() {
             if (debugOverride) { console.log(`returning from Configure! ${closePayload}`); }
             if (closePayload === 'true') {
                 const settings = tableau.extensions.settings.getAll();
-                console.log(`what is settings?`);
                 try {
                     let settingsData = {};
                     if (settings.data) {

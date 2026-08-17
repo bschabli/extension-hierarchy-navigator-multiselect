@@ -30,7 +30,6 @@ export function Page2Flat(props: Props) {
     useEffect(() => {
         const avail: string[]=[];
         const sansChildId: string[]=[];
-        // tslint:disable prefer-for-of
         for(let i=0;i<allFields.length;i++) {
             if(!props.data.worksheet.fields.includes(allFields[i])) {
                 avail.push(allFields[i]);
@@ -39,7 +38,6 @@ export function Page2Flat(props: Props) {
                 }
             }
         }
-        // tslint:enable prefer-for-of
         setAvailFields(avail);
         setAvailFieldsSansChildId(sansChildId);
     }, [props.data.worksheet.fields, props.data.worksheet.childId]);

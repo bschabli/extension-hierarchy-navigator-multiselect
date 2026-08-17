@@ -8,7 +8,7 @@ interface SelectedProps {
 }
 
 // An individual setting that has been set
-export const Selected: React.SFC<SelectedProps> = (props) => {
+export const Selected: React.FC<SelectedProps> = (props) => {
     const {t}=useTranslation();
 
     return (
