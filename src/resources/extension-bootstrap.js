@@ -2,6 +2,7 @@
     'use strict';
 
     var errorShown = false;
+    var startupComplete = false;
 
     function describeError(error) {
         if (error && typeof error.message === 'string') { return error.message; }
@@ -12,7 +13,7 @@
 
     function showStartupError(error) {
         window.setTimeout(function renderStartupError() {
-            if (errorShown) { return; }
+            if (errorShown || startupComplete) { return; }
 
             var container = document.getElementById('app');
             if (!container) { return; }
@@ -35,10 +36,22 @@
         }, 0);
     }
 
-    window.addEventListener('error', function handleStartupError(event) {
+    function handleStartupError(event) {
         showStartupError(event.error || event.message);
-    });
-    window.addEventListener('unhandledrejection', function handleStartupRejection(event) {
+    }
+
+    function handleStartupRejection(event) {
         showStartupError(event.reason);
-    });
+    }
+
+    function handleStartupComplete() {
+        startupComplete = true;
+        window.removeEventListener('error', handleStartupError);
+        window.removeEventListener('unhandledrejection', handleStartupRejection);
+        window.removeEventListener('hierarchy-app-ready', handleStartupComplete);
+    }
+
+    window.addEventListener('error', handleStartupError);
+    window.addEventListener('unhandledrejection', handleStartupRejection);
+    window.addEventListener('hierarchy-app-ready', handleStartupComplete);
 }());

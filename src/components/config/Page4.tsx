@@ -202,7 +202,7 @@ export function Page4(props: Props) {
             props.setUpdates({ type: 'SET_HIGHLIGHT_COLOR', data: e.target.value });
         },
         onClear: () => {
-            props.setUpdates({ type: 'SET_HIGHLIGHT_COLOR', data: 'rgba(0, 0, 0, 0.8);' });
+            props.setUpdates({ type: 'SET_HIGHLIGHT_COLOR', data: '#d1d1d1' });
         },
         style: { paddingLeft: '9px' },
         value: props.data.options.highlightColor

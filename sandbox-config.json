@@ -1,7 +1,7 @@
 {
   "port": 8765,
   "extensions": {
-    "extension-hierarchy-navigator-sandboxed": {
+    "extension-hierarchy-navigator-multiselect": {
       "path": "./docs"
     }
   }

@@ -3,6 +3,7 @@ import React, { ReactFragment, useEffect, useMemo, useRef, useState } from 'reac
 import TreeMenu from 'react-simple-tree-menu';
 import { debugOverride, defaultSelectedProps, HierarchyProps, HierType } from '../API/Interfaces';
 import { SelectionBehavior } from '../API/SelectionBehavior';
+import { loadSummaryDataset } from '../API/SummaryData';
 import { HighlightedHierarchyLabel } from '../shared/HighlightedHierarchyLabel';
 import { useTranslation } from '../localization/I18n';
 import {
@@ -286,7 +287,12 @@ function Hierarchy(props: Props) {
             (candidate: any) => candidate.name===props.data.worksheet.name
         );
         if(typeof worksheet==='undefined') { return; }
-        const dataTable: any=await worksheet.getSummaryDataAsync();
+        const dataTable=await loadSummaryDataset(worksheet);
+        if(dataTable.limited||dataTable.rows.length<dataTable.totalRowCount) {
+            throw new Error(
+                `Tableau returned ${ dataTable.rows.length } of ${ dataTable.totalRowCount } hierarchy rows.`
+            );
+        }
         const columnIndexes=new Map<string, number>();
         dataTable.columns.forEach((column: any) => columnIndexes.set(column.fieldName, column.index));
 
@@ -295,7 +301,7 @@ function Hierarchy(props: Props) {
             const levelIndexes=props.data.worksheet.fields.map(field => columnIndexes.get(field));
             const idIndex=columnIndexes.get(props.data.worksheet.childId);
             if(levelIndexes.every(index => typeof index==='number')&&typeof idIndex==='number') {
-                nextTree=buildFlatTree(dataTable.data, levelIndexes as number[], idIndex, props.data.separator);
+                nextTree=buildFlatTree(dataTable.rows, levelIndexes as number[], idIndex, props.data.separator);
             }
         }
         else {
@@ -303,7 +309,7 @@ function Hierarchy(props: Props) {
             const idIndex=columnIndexes.get(props.data.worksheet.childId);
             const labelIndex=columnIndexes.get(props.data.worksheet.childLabel);
             if(typeof parentIndex==='number'&&typeof idIndex==='number'&&typeof labelIndex==='number') {
-                nextTree=buildRecursiveTree(dataTable.data, parentIndex, idIndex, labelIndex);
+                nextTree=buildRecursiveTree(dataTable.rows, parentIndex, idIndex, labelIndex);
             }
         }
 

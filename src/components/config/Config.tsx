@@ -31,6 +31,10 @@ function Configure(props: any) {
     const [debug, setDebug] = useState(debugOverride);
 
     useEffect(() => {
+        window.dispatchEvent(new Event('hierarchy-app-ready'));
+    }, []);
+
+    useEffect(() => {
         setDebug(state.data.options.debug || debugOverride);
     }, [state.data.options.debug])
 
