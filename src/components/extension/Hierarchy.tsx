@@ -280,7 +280,12 @@ function Hierarchy(props: Props) {
         <div style={{ width: '100%' }}>
             <div className='hierarchy-toolbar'>
                 {props.data.options.titleEnabled&&<span style={{ fontWeight: 'bold' }}>{props.data.options.title}</span>}
-                <Button kind='outline' onClick={resetAll} disabled={selectedLeafValues.size===0}>Reset All</Button>
+                <Button
+                    kind='outline'
+                    onClick={resetAll}
+                    disabled={selectedLeafValues.size===0}
+                    aria-label='Reset all hierarchy selections'
+                >Reset Selections</Button>
             </div>
             <TreeMenu
                 data={tree}
