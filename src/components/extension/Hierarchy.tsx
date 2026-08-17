@@ -286,6 +286,11 @@ function Hierarchy(props: Props) {
         <div style={{ width: '100%' }}>
             <div className='hierarchy-toolbar'>
                 {props.data.options.titleEnabled&&<span style={{ fontWeight: 'bold' }}>{props.data.options.title}</span>}
+                <span className='hierarchy-selection-status' role='status' aria-live='polite'>
+                    {selectedLeafValues.size===0?
+                        'All values shown (no filter)':
+                        `${ selectedLeafValues.size } value${ selectedLeafValues.size===1? '':'s' } selected`}
+                </span>
                 <Button
                     kind='outline'
                     onClick={resetAll}
