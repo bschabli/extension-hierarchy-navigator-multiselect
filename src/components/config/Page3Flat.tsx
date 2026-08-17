@@ -6,6 +6,7 @@ import { debugOverride, HierarchyProps, Status } from '../API/Interfaces';
 import { withHTMLSpaces } from '../API/Utils';
 import { Selector } from '../shared/Selector';
 import { ConfigSection, ConfigStepIntro } from './ConfigPrimitives';
+import { SelectionBehaviorControls } from './SelectionBehaviorControls';
 import { TargetFilterControls } from './TargetFilterControls';
 
 interface Props {
@@ -94,6 +95,7 @@ export function Page3Flat(props: Props) {
                 title='Choose what a selection controls'
                 description='Filtering is the usual choice. Parameters and source mark selection are optional integrations for more advanced dashboards.'
             />
+            <SelectionBehaviorControls data={props.data} setUpdates={props.setUpdates} />
             <TargetFilterControls {...props} />
             <details className='config-advanced' open={props.data.parameters.childLabelEnabled}>
                 <summary>

@@ -3,6 +3,7 @@ import React from 'react';
 import { HierarchyProps, Status } from '../API/Interfaces';
 import { Selector } from '../shared/Selector';
 import { ConfigSection, ConfigStepIntro } from './ConfigPrimitives';
+import { SelectionBehaviorControls } from './SelectionBehaviorControls';
 import { TargetFilterControls } from './TargetFilterControls';
 
 interface Props {
@@ -22,6 +23,7 @@ export function Page3Recursive(props: Props) {
                 title='Choose what a selection controls'
                 description='Filtering is the usual choice. Parameters and source mark selection are optional integrations for more advanced dashboards.'
             />
+            <SelectionBehaviorControls data={props.data} setUpdates={props.setUpdates} />
             <TargetFilterControls {...props} />
             <details className='config-advanced' open={props.data.parameters.childIdEnabled||props.data.parameters.childLabelEnabled}>
                 <summary>

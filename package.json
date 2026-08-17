@@ -1,6 +1,6 @@
 {
   "name": "extension-hierarchy-navigator",
-  "version": "2.4.0",
+  "version": "2.5.0",
   "private": true,
   "dependencies": {
     "array-move": "^4.0.0",

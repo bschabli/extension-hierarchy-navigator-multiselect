@@ -1,7 +1,9 @@
+import { SelectionBehavior, getLegacySelectionBehavior } from '../API/SelectionBehavior';
 import {
     buildFlatTree,
     buildRecursiveTree,
-    getAllLeafFilterValues,
+    getAllSelectableFilterValues,
+    getNodeSelectionValues,
     getSelectionState,
     isMissingHierarchyValue,
     toggleOpenNode,
@@ -63,14 +65,16 @@ function testEndpointParentAndSelection(): void {
         ['X', 'Y', null, 'row-y']
     ], [0, 1, 2], 3);
     const parent=tree[0].nodes[0];
-    assert(parent.leafFilterValues.join(',')==='row-b,row-c,row-d', 'Endpoint parent must retain every terminal row value.');
-    let selected=toggleNodeSelection(parent, new Set<string>(['row-y']));
+    assert(parent.directFilterValues.join(',')==='row-b', 'Endpoint parent must retain its own direct row value.');
+    assert(parent.terminalFilterValues.join(',')==='row-c,row-d', 'Leaf mode must exclude an intermediate endpoint value.');
+    assert(parent.subtreeFilterValues.join(',')==='row-b,row-c,row-d', 'Subtree mode must retain every represented row.');
+    let selected=toggleNodeSelection(parent, new Set<string>(['row-y']), SelectionBehavior.SUBTREE);
     assert(selected.size===4&&selected.has('row-y'), 'Parent selection must preserve unrelated values.');
     selected.delete('row-c');
-    assert(getSelectionState(parent, selected)==='some', 'A partially selected parent must be indeterminate.');
-    selected=toggleNodeSelection(parent, selected);
-    assert(getSelectionState(parent, selected)==='all', 'Toggling an indeterminate parent should select all descendants.');
-    selected=toggleNodeSelection(parent, selected);
+    assert(getSelectionState(parent, selected, SelectionBehavior.SUBTREE)==='some', 'A partially selected parent must be indeterminate.');
+    selected=toggleNodeSelection(parent, selected, SelectionBehavior.SUBTREE);
+    assert(getSelectionState(parent, selected, SelectionBehavior.SUBTREE)==='all', 'Toggling an indeterminate parent should select all descendants.');
+    selected=toggleNodeSelection(parent, selected, SelectionBehavior.SUBTREE);
     assert(selected.size===1&&selected.has('row-y'), 'Parent deselection must only remove its subtree.');
 }
 
@@ -82,7 +86,8 @@ function testRecursiveSelection(): void {
         ['A1', 'A11', 'Leaf A11']
     ], 0, 1, 2);
     assert(tree.length===1&&tree[0].nodes.length===2, 'Recursive adapter should construct both branches.');
-    assert(tree[0].leafFilterValues.join(',')==='A11,A2', 'Recursive parents select leaves at variable depths.');
+    assert(tree[0].terminalFilterValues.join(',')==='A11,A2', 'Recursive parents select leaves at variable depths.');
+    assert(tree[0].subtreeFilterValues.join(',')==='A,A1,A11,A2', 'Recursive subtree mode should include intermediate IDs.');
     const selected=toggleNodeSelection(tree[0], new Set<string>());
     assert(getSelectionState(tree[0], selected)==='all', 'Recursive parent should become fully selected.');
 }
@@ -105,7 +110,7 @@ function testTableauGetterCellsAndPartialSelection(): void {
     const root=tree[0];
     assert(root.label==='Furniture', 'Tableau getter-backed values should use their formatted label.');
     assert(root.nodes[0].label==='Bookcases', 'Nested getter-backed labels should remain readable.');
-    assert(root.leafFilterValues.join(',')==='atlantic-id,bush-id', 'Getter-backed filter values must remain distinct.');
+    assert(root.terminalFilterValues.join(',')==='atlantic-id,bush-id', 'Getter-backed filter values must remain distinct.');
 
     const selected=toggleNodeSelection(root.nodes[0].nodes[0], new Set<string>());
     assert(getSelectionState(root, selected)==='some', 'Selecting one child should make its ancestors indeterminate.');
@@ -129,8 +134,43 @@ function testCollectAllLeafFilterValues(): void {
         ['B', 'B2', 'a1']
     ], [0, 1], 2);
     assert(
-        getAllLeafFilterValues(tree).join(',')==='a1,a2,b1',
+        getAllSelectableFilterValues(tree).join(',')==='a1,a2,b1',
         'Select all should collect each leaf filter value exactly once.'
+    );
+}
+
+function testSelectionBehaviors(): void {
+    const tree=buildRecursiveTree([
+        [null, 'root', 'Root'],
+        ['root', 'branch', 'Branch'],
+        ['branch', 'leaf-a', 'Leaf A'],
+        ['branch', 'leaf-b', 'Leaf B']
+    ], 0, 1, 2);
+    const root=tree[0];
+    const branch=root.nodes[0];
+    assert(
+        getNodeSelectionValues(branch, SelectionBehavior.NODE).join(',')==='branch',
+        'Node-only mode should control only the clicked node ID.'
+    );
+    assert(
+        getNodeSelectionValues(branch, SelectionBehavior.TERMINAL).join(',')==='leaf-a,leaf-b',
+        'Terminal mode should control only visual leaf IDs.'
+    );
+    assert(
+        getNodeSelectionValues(branch, SelectionBehavior.SUBTREE).join(',')==='branch,leaf-a,leaf-b',
+        'Subtree mode should include the clicked node and every represented descendant.'
+    );
+    assert(
+        getAllSelectableFilterValues(tree, SelectionBehavior.NODE).join(',')==='root,branch,leaf-a,leaf-b',
+        'Select all in node-only mode should still select every directly represented node.'
+    );
+    assert(
+        getLegacySelectionBehavior('flat')===SelectionBehavior.SUBTREE,
+        'Saved Flat configurations should preserve the former all-endpoints behavior.'
+    );
+    assert(
+        getLegacySelectionBehavior('recursive')===SelectionBehavior.TERMINAL,
+        'Saved Recursive configurations should preserve the former terminal-descendants behavior.'
     );
 }
 
@@ -157,5 +197,6 @@ testRecursiveSelection();
 testTableauGetterCellsAndPartialSelection();
 testControlledOpenNodeToggle();
 testCollectAllLeafFilterValues();
+testSelectionBehaviors();
 testMissingValueRules();
 console.log('TreeModel acceptance tests passed.');

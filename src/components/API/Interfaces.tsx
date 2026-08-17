@@ -1,6 +1,8 @@
 /*  tslint:disable:max-classes-per-file */
 import { FilterTarget } from './FilterTargets';
+import { SelectionBehavior } from './SelectionBehavior';
 export { FilterTarget } from './FilterTargets';
+export { SelectionBehavior } from './SelectionBehavior';
 export {debugOverride} from './DebugOverride';
 export enum HierType {
     FLAT='flat',
@@ -19,6 +21,7 @@ export interface Options {
     highlightColor: string;
     itemCSS: object;
     searchEnabled: boolean;
+    selectionBehavior: SelectionBehavior;
     title: string;
     titleEnabled: boolean;
     warningEnabled: boolean;
@@ -99,6 +102,7 @@ export const defaultSelectedProps: HierarchyProps={
         highlightColor: '#d1d1d1',
         itemCSS: {"overflow": "hidden", "textOverflow": "ellipsis"},
         searchEnabled: true,
+        selectionBehavior: SelectionBehavior.TERMINAL,
         title: 'Hierarchy Navigator',
         titleEnabled: true,
         warningEnabled: true,

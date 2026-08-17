@@ -4,6 +4,7 @@ import { useEffect, useReducer, useRef, useState } from 'react';
 import * as React from 'react';
 import { debugOverride, defaultSelectedProps, HierarchyProps, HierType, SelectedParameters, Status } from './Interfaces';
 import { FilterTarget, resolveFilterTargets, syncLegacyFilterTarget } from './FilterTargets';
+import { getLegacySelectionBehavior, isSelectionBehavior } from './SelectionBehavior';
 import { withHTMLSpaces } from './Utils';
 
 const extend=require('extend');
@@ -99,7 +100,14 @@ const hierarchyAPI=(): any => {
         // true means all good; false means some data didn't pass the logic
         // skip if current worksheet name is blank (initial load)
         if(typeof _settings.configComplete!=='undefined'&&_settings.configComplete) {
+            const savedSelectionBehavior=_settings.options?.selectionBehavior;
             extend(true, _initialData, _settings);
+            if(!isSelectionBehavior(savedSelectionBehavior)) {
+                // Preserve the previous effective behavior for saved workbooks:
+                // Flat trees included every represented endpoint, while
+                // Recursive trees selected only terminal descendants.
+                _initialData.options.selectionBehavior=getLegacySelectionBehavior(_initialData.type);
+            }
             _initialData=await getWorksheetsFilterAndFieldsFromDashboardAsyncWithoutAssignments(_initialData);
             const { data, result, msg }=validateSettings(_initialData);
             switch(result) {
@@ -381,6 +389,13 @@ const hierarchyAPI=(): any => {
                     return dispatch({ type: 'FETCH_SUCCESS', data: payload });
                 }
             // BEGIN OPTIONS 
+            case 'SET_SELECTION_BEHAVIOR':
+                {
+                    if(isSelectionBehavior(action.data)) {
+                        payload.options.selectionBehavior=action.data;
+                    }
+                    return dispatch({ type: 'FETCH_SUCCESS', data: payload });
+                }
             case 'TOGGLE_SEARCH_DISPLAY':
                 {
                     // enable/disable title

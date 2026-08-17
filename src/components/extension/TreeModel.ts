@@ -1,3 +1,5 @@
+import { SelectionBehavior } from '../API/SelectionBehavior';
+
 export type CheckboxState='none'|'some'|'all';
 
 export interface TableauCellLike {
@@ -14,8 +16,12 @@ export interface NormalizedTreeNode {
     /** Value used by the existing parameter integration for the active node. */
     hierarchyValue: string;
     label: string;
-    /** All selectable Tableau filter values at or below this node. */
-    leafFilterValues: string[];
+    /** Filter values attached directly to source rows ending at this node. */
+    directFilterValues: string[];
+    /** Filter values attached to visual leaves below this node. */
+    terminalFilterValues: string[];
+    /** Every directly represented filter value in this node's subtree. */
+    subtreeFilterValues: string[];
     /** Original zero-based source levels represented by this node. */
     sourceLevels: number[];
     /** Values at their original Flat field positions for parameter compatibility. */
@@ -29,7 +35,7 @@ interface FlatNodeBuilder {
     label: string;
     sourceLevels: number[];
     sourcePathValues: Array<string|undefined>;
-    terminalFilterValues: Set<string>;
+    directFilterValues: Set<string>;
     children: Map<string, FlatNodeBuilder>;
 }
 
@@ -117,7 +123,7 @@ export function buildFlatTree(
                     label: pathPart.label,
                     sourceLevels: [pathPart.level],
                     sourcePathValues: sourcePathValues.slice(),
-                    terminalFilterValues: new Set<string>()
+                    directFilterValues: new Set<string>()
                 };
                 siblings.set(key, node);
             }
@@ -127,7 +133,7 @@ export function buildFlatTree(
 
         const filterValue=normalizeHierarchyValue(row[filterValueColumnIndex]);
         if(terminal&&typeof filterValue!=='undefined') {
-            terminal.terminalFilterValues.add(filterValue);
+            terminal.directFilterValues.add(filterValue);
         }
     });
 
@@ -179,26 +185,45 @@ export function buildRecursiveTree(
     return sortTree(roots);
 }
 
-/** Return a node's derived checkbox state for the centralized leaf selection. */
-export function getSelectionState(node: NormalizedTreeNode, selectedLeafValues: ReadonlySet<string>): CheckboxState {
-    if(node.leafFilterValues.length===0) { return 'none'; }
-    const selectedCount=node.leafFilterValues.reduce(
-        (count, value) => count+(selectedLeafValues.has(value)? 1:0),
+/** Return the filter values controlled by a node for the selected behavior. */
+export function getNodeSelectionValues(
+    node: NormalizedTreeNode,
+    behavior: SelectionBehavior
+): string[] {
+    switch(behavior) {
+        case SelectionBehavior.SUBTREE: return node.subtreeFilterValues;
+        case SelectionBehavior.NODE: return node.directFilterValues;
+        default: return node.terminalFilterValues;
+    }
+}
+
+/** Return a node's derived checkbox state for the configured selection behavior. */
+export function getSelectionState(
+    node: NormalizedTreeNode,
+    selectedFilterValues: ReadonlySet<string>,
+    behavior=SelectionBehavior.TERMINAL
+): CheckboxState {
+    const controlledValues=getNodeSelectionValues(node, behavior);
+    if(controlledValues.length===0) { return 'none'; }
+    const selectedCount=controlledValues.reduce(
+        (count, value) => count+(selectedFilterValues.has(value)? 1:0),
         0
     );
     if(selectedCount===0) { return 'none'; }
-    if(selectedCount===node.leafFilterValues.length) { return 'all'; }
+    if(selectedCount===controlledValues.length) { return 'all'; }
     return 'some';
 }
 
-/** Toggle all selectable values in a subtree without changing other branches. */
+/** Toggle the values controlled by one node without changing unrelated values. */
 export function toggleNodeSelection(
     node: NormalizedTreeNode,
-    selectedLeafValues: ReadonlySet<string>
+    selectedFilterValues: ReadonlySet<string>,
+    behavior=SelectionBehavior.TERMINAL
 ): Set<string> {
-    const next=new Set(selectedLeafValues);
-    const deselect=getSelectionState(node, selectedLeafValues)==='all';
-    node.leafFilterValues.forEach(value => {
+    const controlledValues=getNodeSelectionValues(node, behavior);
+    const next=new Set(selectedFilterValues);
+    const deselect=getSelectionState(node, selectedFilterValues, behavior)==='all';
+    controlledValues.forEach(value => {
         if(deselect) { next.delete(value); }
         else { next.add(value); }
     });
@@ -212,9 +237,13 @@ export function toggleOpenNode(openNodeKeys: readonly string[], key: string): st
         openNodeKeys.concat(key);
 }
 
-/** Return every unique selectable leaf value represented by a tree. */
-export function getAllLeafFilterValues(nodes: readonly NormalizedTreeNode[]): string[] {
-    return unique(nodes.reduce<string[]>((values, node) => values.concat(node.leafFilterValues), []));
+/** Return the complete selectable value universe for one behavior. */
+export function getAllSelectableFilterValues(
+    nodes: readonly NormalizedTreeNode[],
+    behavior=SelectionBehavior.TERMINAL
+): string[] {
+    const property=behavior===SelectionBehavior.TERMINAL?'terminalFilterValues':'subtreeFilterValues';
+    return unique(nodes.reduce<string[]>((values, node) => values.concat(node[property]), []));
 }
 
 function isTableauCell(cell: HierarchyCell): cell is TableauCellLike {
@@ -232,16 +261,23 @@ function encodeKeyPart(value: string): string {
 function finalizeFlatNodes(nodes: Map<string, FlatNodeBuilder>): NormalizedTreeNode[] {
     const normalized=Array.from(nodes.values()).map(node => {
         const children=finalizeFlatNodes(node.children);
-        const leafFilterValues=new Set(node.terminalFilterValues);
-        children.forEach(child => child.leafFilterValues.forEach(value => leafFilterValues.add(value)));
+        const directFilterValues=Array.from(node.directFilterValues);
+        const terminalFilterValues=children.length===0?
+            directFilterValues.slice():
+            unique(children.reduce<string[]>((values, child) => values.concat(child.terminalFilterValues), []));
+        const subtreeFilterValues=unique(directFilterValues.concat(
+            children.reduce<string[]>((values, child) => values.concat(child.subtreeFilterValues), [])
+        ));
         return {
+            directFilterValues,
             hierarchyValue: node.hierarchyValue,
             key: node.key,
             label: node.label,
-            leafFilterValues: Array.from(leafFilterValues),
             nodes: children,
             sourceLevels: node.sourceLevels,
-            sourcePathValues: node.sourcePathValues
+            sourcePathValues: node.sourcePathValues,
+            subtreeFilterValues,
+            terminalFilterValues
         };
     });
     return sortTree(normalized);
@@ -259,16 +295,23 @@ function buildRecursiveNode(
     const children=(childrenByParent.get(record.id)||[])
         .filter(child => !nextAncestors.has(child.id))
         .map(child => buildRecursiveNode(child, childrenByParent, built, nextAncestors));
-    const leafFilterValues=children.length===0?
-        [record.id]:unique(children.reduce<string[]>((values, child) => values.concat(child.leafFilterValues), []));
+    const directFilterValues=[record.id];
+    const terminalFilterValues=children.length===0?
+        directFilterValues.slice():
+        unique(children.reduce<string[]>((values, child) => values.concat(child.terminalFilterValues), []));
+    const subtreeFilterValues=unique(directFilterValues.concat(
+        children.reduce<string[]>((values, child) => values.concat(child.subtreeFilterValues), [])
+    ));
     return {
+        directFilterValues,
         hierarchyValue: record.id,
         key: `recursive:${ encodeKeyPart(record.id) }`,
         label: record.label,
-        leafFilterValues,
         nodes: sortTree(children),
         sourceLevels: [],
-        sourcePathValues: []
+        sourcePathValues: [],
+        subtreeFilterValues,
+        terminalFilterValues
     };
 }
 
