@@ -16,6 +16,12 @@ import {
     toggleNodeSelection
 } from './TreeModel';
 import { getHierarchySearchResult } from './SearchModel';
+import {
+    createHierarchyUiStorageKey,
+    loadHierarchyUiState,
+    reconcileHierarchyUiState,
+    saveHierarchyUiState
+} from './UiStateModel';
 
 export interface HierarchySelectionPayload {
     currentFieldValues?: Array<string|undefined>;
@@ -35,7 +41,8 @@ interface Props {
     currentId: string;
     currentLabel: string;
     data: HierarchyProps;
-    lastUpdated: Date;
+    reapplySelectionsVersion: number;
+    refreshVersion: number;
     setDataFromExtension: (data: HierarchySelectionPayload) => void;
 }
 
@@ -100,15 +107,40 @@ function Hierarchy(props: Props) {
     const { debug=false||debugOverride }=props.data.options;
     const selectionBehavior=props.data.options.selectionBehavior||SelectionBehavior.TERMINAL;
     const autoExpandSearch=props.data.options.searchAutoExpand!==false;
+    const hierarchyDefinitionSignature=JSON.stringify([
+        props.data.type,
+        props.data.worksheet.name,
+        props.data.worksheet.parentId,
+        props.data.worksheet.childId,
+        props.data.worksheet.childLabel,
+        props.data.worksheet.fields,
+        props.data.separator,
+        selectionBehavior
+    ]);
+    const dashboardName=window.tableau.extensions.dashboardContent?.dashboard.name||'';
+    const uiStorageKey=createHierarchyUiStorageKey(
+        dashboardName,
+        window.tableau.extensions.dashboardObjectId,
+        hierarchyDefinitionSignature
+    );
+    const [initialUiState]=useState(() => loadHierarchyUiState(getSessionStorage(), uiStorageKey));
     const childRef=useRef<any>(null);
-    const selectedRef=useRef<Set<string>>(new Set<string>());
-    const [selectedLeafValues, setSelectedLeafValues]=useState<Set<string>>(new Set<string>());
+    const lastReappliedSelectionsVersionRef=useRef(0);
+    const loadSequenceRef=useRef(0);
+    const selectedRef=useRef<Set<string>>(new Set(initialUiState.selectedValues));
+    const selectionBehaviorRef=useRef(selectionBehavior);
+    const [selectedLeafValues, setSelectedLeafValues]=useState<Set<string>>(
+        new Set(initialUiState.selectedValues)
+    );
     const [currentLabel, setCurrentLabel]=useState(props.currentLabel);
     const [currentId, setCurrentId]=useState(props.currentId);
+    const currentLabelRef=useRef(props.currentLabel);
+    const currentIdRef=useRef(props.currentId);
     const [pathMap, setPathMap]=useState<PathMap[]>([]);
     const [tree, setTree]=useState<NormalizedTreeNode[]>([]);
-    const [searchVal, setSearchVal]=useState('');
-    const [openNodes, setOpenNodes]=useState<string[]>([]);
+    const [searchVal, setSearchVal]=useState(initialUiState.searchText);
+    const [openNodes, setOpenNodes]=useState<string[]>(initialUiState.openNodes);
+    const hierarchyDefinitionRef=useRef(hierarchyDefinitionSignature);
 
     const defaultClosedIcon=<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24'>
         <path fill={props.data.options.fontColor} fillRule='evenodd' d='M12.7632424,18.2911068 L24.112,6.942 L22.698,5.528 L12.0561356,16.1697864 L1.414,5.528 L8.52651283e-14,6.942 L11.3490288,18.2911068 C11.7395531,18.6816311 12.3727181,18.6816311 12.7632424,18.2911068 Z' transform='matrix(0 1 1 0 0 0)' />
@@ -144,6 +176,16 @@ function Hierarchy(props: Props) {
     }, [autoExpandSearch, openNodes, searchActive, searchResult.autoExpandedPaths]);
 
     useEffect(() => {
+        saveHierarchyUiState(getSessionStorage(), uiStorageKey, {
+            openNodes,
+            searchText: searchVal,
+            selectedValues: Array.from(selectedLeafValues)
+        });
+    }, [openNodes, searchVal, selectedLeafValues, uiStorageKey]);
+
+    useEffect(() => {
+        if(selectionBehaviorRef.current===selectionBehavior) { return; }
+        selectionBehaviorRef.current=selectionBehavior;
         selectedRef.current=new Set<string>();
         setSelectedLeafValues(new Set<string>());
     }, [selectionBehavior]);
@@ -175,19 +217,39 @@ function Hierarchy(props: Props) {
     ]);
 
     useEffect(() => {
-        if(props.currentId!==currentId&&props.data.configComplete) { selectNodeFromDashboard('id', props.currentId); }
+        if(props.currentId!==currentIdRef.current&&props.data.configComplete) {
+            selectNodeFromDashboard('id', props.currentId);
+        }
     }, [props.currentId]);
 
     useEffect(() => {
-        if(props.currentLabel!==currentLabel&&props.data.configComplete) { selectNodeFromDashboard('label', props.currentLabel); }
+        if(props.currentLabel!==currentLabelRef.current&&props.data.configComplete) {
+            selectNodeFromDashboard('label', props.currentLabel);
+        }
     }, [props.currentLabel]);
 
     useEffect(() => {
-        clearHierarchy();
-        if(props.data.configComplete) { loadHierarchyFromDataSource(); }
-    }, [props.lastUpdated]);
+        if(props.refreshVersion===0) { return; }
+        const preserveUiState=hierarchyDefinitionRef.current===hierarchyDefinitionSignature;
+        hierarchyDefinitionRef.current=hierarchyDefinitionSignature;
+        const requestId=++loadSequenceRef.current;
+        if(!preserveUiState) { resetHierarchyUiState(); }
+        if(props.data.configComplete) {
+            loadHierarchyFromDataSource(
+                requestId,
+                preserveUiState,
+                props.reapplySelectionsVersion
+            ).catch(error => {
+                console.error('Unable to refresh the hierarchy source data.', error);
+            });
+        }
+    }, [props.refreshVersion]);
 
-    async function loadHierarchyFromDataSource(): Promise<void> {
+    async function loadHierarchyFromDataSource(
+        requestId: number,
+        preserveUiState: boolean,
+        reapplySelectionsVersion: number
+    ): Promise<void> {
         const worksheet=window.tableau.extensions.dashboardContent!.dashboard.worksheets.find(
             (candidate: any) => candidate.name===props.data.worksheet.name
         );
@@ -213,19 +275,63 @@ function Hierarchy(props: Props) {
             }
         }
 
+        if(requestId!==loadSequenceRef.current) { return; }
+
         const nextPathMap=buildPathMap(nextTree);
+        const previousSelectedValues=Array.from(selectedRef.current);
+        const reconciledUiState=preserveUiState?reconcileHierarchyUiState(nextTree, {
+            openNodes,
+            searchText: searchVal,
+            selectedValues: previousSelectedValues
+        }, selectionBehavior):{
+            openNodes: [],
+            searchText: '',
+            selectedValues: []
+        };
+        const nextSelectedValues=new Set(reconciledUiState.selectedValues);
+        const shouldReapplySelections=
+            reapplySelectionsVersion>lastReappliedSelectionsVersionRef.current&&nextSelectedValues.size>0;
+        lastReappliedSelectionsVersionRef.current=Math.max(
+            lastReappliedSelectionsVersionRef.current,
+            reapplySelectionsVersion
+        );
+        const selectionChanged=!setsEqual(selectedRef.current, nextSelectedValues)||shouldReapplySelections;
+
+        selectedRef.current=nextSelectedValues;
+        setSelectedLeafValues(nextSelectedValues);
+        setOpenNodes(currentOpenNodes => preserveUiState?reconcileHierarchyUiState(nextTree, {
+            openNodes: currentOpenNodes,
+            searchText: '',
+            selectedValues: []
+        }, selectionBehavior).openNodes:[]);
+        if(!preserveUiState) { setSearchVal(''); }
         setTree(nextTree);
         setPathMap(nextPathMap);
         if(debug) { console.log('Normalized hierarchy:', nextTree); }
-        if(nextTree.length>0) { setActiveNode(nextTree[0], false); }
+        const activeNode=findNode(nextTree, node => node.hierarchyValue===currentIdRef.current)||
+            findNode(nextTree, node => node.label===currentLabelRef.current);
+        const nextActiveNode=activeNode||nextTree[0];
+        if(nextActiveNode) {
+            if(!activeNode||selectionChanged) {
+                setActiveNode(nextActiveNode, selectionChanged, nextSelectedValues);
+            }
+        }
+        else if(selectionChanged) {
+            props.setDataFromExtension({
+                currentId: currentIdRef.current,
+                currentLabel: currentLabelRef.current,
+                selectedLeafValues: reconciledUiState.selectedValues
+            });
+        }
     }
 
-    function clearHierarchy(): void {
+    function resetHierarchyUiState(): void {
         selectedRef.current=new Set<string>();
         setSelectedLeafValues(new Set<string>());
         setTree([]);
         setPathMap([]);
         setSearchVal('');
+        setOpenNodes([]);
     }
 
     function buildPathMap(nodes: NormalizedTreeNode[], parentPath=''): PathMap[] {
@@ -245,6 +351,8 @@ function Hierarchy(props: Props) {
     }
 
     function setActiveNode(node: NormalizedTreeNode, includeSelection: boolean, selection=selectedRef.current): void {
+        currentIdRef.current=node.hierarchyValue;
+        currentLabelRef.current=node.label;
         setCurrentId(node.hierarchyValue);
         setCurrentLabel(node.label);
         props.setDataFromExtension({
@@ -262,6 +370,8 @@ function Hierarchy(props: Props) {
         const nextOpenNodes=makePath(match.path);
         setOpenNodes(nextOpenNodes);
         if(childRef.current) { childRef.current.resetOpenNodes(nextOpenNodes, match.path); }
+        currentIdRef.current=match.hierarchyValue;
+        currentLabelRef.current=match.label;
         setCurrentId(match.hierarchyValue);
         setCurrentLabel(match.label);
         props.setDataFromExtension({ currentId: match.hierarchyValue, currentLabel: match.label });
@@ -280,13 +390,29 @@ function Hierarchy(props: Props) {
         return result;
     }
 
+    function findNode(
+        nodes: readonly NormalizedTreeNode[],
+        predicate: (node: NormalizedTreeNode) => boolean
+    ): NormalizedTreeNode|undefined {
+        for(const node of nodes) {
+            if(predicate(node)) { return node; }
+            const childMatch=findNode(node.nodes, predicate);
+            if(childMatch) { return childMatch; }
+        }
+        return undefined;
+    }
+
+    function setsEqual(left: ReadonlySet<string>, right: ReadonlySet<string>): boolean {
+        return left.size===right.size&&Array.from(left).every(value => right.has(value));
+    }
+
     function resetAll(): void {
         const emptySelection=new Set<string>();
         selectedRef.current=emptySelection;
         setSelectedLeafValues(emptySelection);
         props.setDataFromExtension({
-            currentId,
-            currentLabel,
+            currentId: currentIdRef.current,
+            currentLabel: currentLabelRef.current,
             selectedLeafValues: []
         });
     }
@@ -296,8 +422,8 @@ function Hierarchy(props: Props) {
         selectedRef.current=nextSelection;
         setSelectedLeafValues(nextSelection);
         props.setDataFromExtension({
-            currentId,
-            currentLabel,
+            currentId: currentIdRef.current,
+            currentLabel: currentLabelRef.current,
             selectedLeafValues: allSelectableFilterValues
         });
     }
@@ -413,6 +539,11 @@ function Hierarchy(props: Props) {
             {debugState}
         </div>
     );
+}
+
+function getSessionStorage(): Storage|undefined {
+    try { return window.sessionStorage; }
+    catch(_error) { return undefined; }
 }
 
 export default Hierarchy;
