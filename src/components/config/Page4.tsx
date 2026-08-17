@@ -5,6 +5,7 @@ import { resolveFilterTargets } from '../API/FilterTargets';
 import { HierarchyProps, HierType } from '../API/Interfaces';
 import { ConfigSection, ConfigStatus, ConfigStepIntro } from './ConfigPrimitives';
 import { DataValidationPreview } from './DataValidationPreview';
+import { HierarchyPreview } from './HierarchyPreview';
 import { HierarchyValidationState } from './useHierarchyValidation';
 
 interface Props {
@@ -274,6 +275,7 @@ export function Page4(props: Props) {
                 </dl>
             </ConfigSection>
             <DataValidationPreview validation={props.validation} onRetry={props.onRetryValidation} />
+            <HierarchyPreview data={props.data} validation={props.validation} />
             <ConfigSection
                 title='Display'
                 description='These defaults work well in most dashboards and can be changed later.'

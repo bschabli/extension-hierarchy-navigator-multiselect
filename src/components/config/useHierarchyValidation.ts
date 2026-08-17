@@ -13,11 +13,17 @@ import {
     validateRecursiveHierarchy
 } from '../API/HierarchyValidation';
 import { HierarchyProps, HierType } from '../API/Interfaces';
+import {
+    NormalizedTreeNode,
+    buildFlatTree,
+    buildRecursiveTree
+} from '../extension/TreeModel';
 
 export type HierarchyValidationRunStatus='idle'|'loading'|'complete'|'error';
 
 export interface HierarchyValidationState {
     errorMessage?: string;
+    previewTree?: NormalizedTreeNode[];
     result?: HierarchyValidationResult;
     status: HierarchyValidationRunStatus;
 }
@@ -94,19 +100,43 @@ export function useHierarchyValidation(
                     return index;
                 };
 
-                const result=data.type===HierType.FLAT?
-                    validateFlatHierarchy(dataset.rows, {
-                        idColumnIndex: getColumnIndex(data.worksheet.childId),
-                        levelColumnIndexes: data.worksheet.fields.map(getColumnIndex),
+                let previewTree: NormalizedTreeNode[];
+                let result: HierarchyValidationResult;
+                if(data.type===HierType.FLAT) {
+                    const idColumnIndex=getColumnIndex(data.worksheet.childId);
+                    const levelColumnIndexes=data.worksheet.fields.map(getColumnIndex);
+                    result=validateFlatHierarchy(dataset.rows, {
+                        idColumnIndex,
+                        levelColumnIndexes,
                         levelFieldNames: data.worksheet.fields,
                         separator: data.separator
-                    }):
-                    validateRecursiveHierarchy(dataset.rows, {
-                        idColumnIndex: getColumnIndex(data.worksheet.childId),
-                        labelColumnIndex: getColumnIndex(data.worksheet.childLabel),
-                        parentIdColumnIndex: getColumnIndex(data.worksheet.parentId)
                     });
-                if(!cancelled) { setState({ mappingSignature, result, status: 'complete' }); }
+                    previewTree=buildFlatTree(
+                        dataset.rows,
+                        levelColumnIndexes,
+                        idColumnIndex,
+                        data.separator
+                    );
+                }
+                else {
+                    const idColumnIndex=getColumnIndex(data.worksheet.childId);
+                    const labelColumnIndex=getColumnIndex(data.worksheet.childLabel);
+                    const parentIdColumnIndex=getColumnIndex(data.worksheet.parentId);
+                    result=validateRecursiveHierarchy(dataset.rows, {
+                        idColumnIndex,
+                        labelColumnIndex,
+                        parentIdColumnIndex
+                    });
+                    previewTree=buildRecursiveTree(
+                        dataset.rows,
+                        parentIdColumnIndex,
+                        idColumnIndex,
+                        labelColumnIndex
+                    );
+                }
+                if(!cancelled) {
+                    setState({ mappingSignature, previewTree, result, status: 'complete' });
+                }
             }
             catch(error) {
                 if(!cancelled) {
