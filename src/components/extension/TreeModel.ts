@@ -205,6 +205,13 @@ export function toggleNodeSelection(
     return next;
 }
 
+/** Toggle one expanded tree path while preserving all other open paths. */
+export function toggleOpenNode(openNodeKeys: readonly string[], key: string): string[] {
+    return openNodeKeys.includes(key)?
+        openNodeKeys.filter(openNodeKey => openNodeKey!==key):
+        openNodeKeys.concat(key);
+}
+
 function isTableauCell(cell: HierarchyCell): cell is TableauCellLike {
     // Tableau's current Extensions API exposes DataValue fields through class
     // getters, so they live on the prototype rather than as own properties.

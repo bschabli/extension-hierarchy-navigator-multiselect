@@ -180,63 +180,25 @@ function Configure(props: any) {
             </div>
 
             <Container className='navcontainer'>
-                <Row>
-                    <Col style={{minWidth: "86px"}}>
-                        <Row style={{ paddingLeft: "28px" }}>
-                            <Pill kind='discrete'
-                                style={{ height: "30px", width: "30px", minWidth: "unset", borderColor: "rgb(73,150,178)" }}
-                            >1</Pill>
-                        </Row>
-                        <Row className='noMargin'>
-                            {page[0].name}
-                        </Row>
-                    </Col>
-                    <Col className='narrow'>
-                        <div className='userhr' />
-                    </Col>
-                    <Col style={{minWidth: "86px"}}>
-                        <Row style={{ paddingLeft: "28px" }}>
-                            <Pill
-                                kind={selectedTabIndex >= 1 ? 'discrete' : 'other'}
-                                style={{ height: "30px", width: "30px", minWidth: "unset", borderColor: selectedTabIndex >=2 ? "rgb(73,150,178)" : "#d4d4d4" }}
-                            >2</Pill>
-                        </Row>
-                        <Row className='noMargin'>
-                            {page[1].name}
-                        </Row>
-                    </Col>
-                    <Col className='narrow'>
-                        <div className='userhr' />
-                    </Col>
-                    <Col style={{minWidth: "86px"}}>
-                        <Row style={{ paddingLeft: "28px" }}>
-                            <Pill
-                                kind={selectedTabIndex >= 2 ? 'discrete' : 'other'}
-                                style={{ height: "30px", width: "30px", minWidth: "unset", borderColor: selectedTabIndex >=2 ? "rgb(73,150,178)" : "#d4d4d4" }}
-                            >3</Pill>
-                        </Row>
-                        <Row className='noMargin'>
-                            {page[2].name}
-                        </Row>
-                    </Col>
-                    <Col className='narrow'>
-                        <div className='userhr' />
-                    </Col>
-                    <Col style={{minWidth: "86px"}}>
-                        <Row style={{ paddingLeft: "28px" }}>
-
-                            <Pill
-                                kind={selectedTabIndex >= 3 ? 'discrete' : 'other'}
-                                style={{ height: "30px", width: "30px", minWidth: "unset", borderColor: selectedTabIndex >=3 ? "rgb(73,150,178)" : "#d4d4d4"}}
-                            >4</Pill>
-                        </Row>
-                        <Row className='noMargin'>
-                            {page[3].name}
-                        </Row>
-                    </Col>
-
-
-                </Row>
+                <div className='config-steps' aria-label='Configuration progress'>
+                    {page.map((pageItem, index) => (
+                        <React.Fragment key={pageItem.name}>
+                            {index>0&&<div className='config-step-connector' aria-hidden='true' />}
+                            <div className='config-step'>
+                                <Pill
+                                    kind={selectedTabIndex>=index? 'discrete':'other'}
+                                    style={{
+                                        borderColor: selectedTabIndex>=index? 'rgb(73,150,178)':'#d4d4d4',
+                                        height: '30px',
+                                        minWidth: '30px',
+                                        width: '30px'
+                                    }}
+                                >{index+1}</Pill>
+                                <span className='config-step-label'>{pageItem.name}</span>
+                            </div>
+                        </React.Fragment>
+                    ))}
+                </div>
             </Container>
             <Alert isOpen={data.options.warningEnabled} color='primary' toggle={onDismissWarning}>
                 This app requires specific setup instructions. Please read the documentation (https://github.com/bschabli/extension-hierarchy-navigator-multiselect) before use.

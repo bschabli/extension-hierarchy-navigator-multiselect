@@ -3,6 +3,7 @@ import {
     buildRecursiveTree,
     getSelectionState,
     isMissingHierarchyValue,
+    toggleOpenNode,
     toggleNodeSelection
 } from './TreeModel';
 
@@ -109,6 +110,16 @@ function testTableauGetterCellsAndPartialSelection(): void {
     assert(getSelectionState(root, selected)==='some', 'Selecting one child should make its ancestors indeterminate.');
 }
 
+function testControlledOpenNodeToggle(): void {
+    let openNodes=toggleOpenNode(['root/other'], 'root/category');
+    assert(
+        openNodes.join(',')==='root/other,root/category',
+        'Opening a node should preserve other expanded branches and add the requested path once.'
+    );
+    openNodes=toggleOpenNode(openNodes, 'root/category');
+    assert(openNodes.join(',')==='root/other', 'Closing a node should remove only the requested path.');
+}
+
 function testMissingValueRules(): void {
     assert(isMissingHierarchyValue(null), 'null should be missing.');
     assert(isMissingHierarchyValue(undefined), 'undefined should be missing.');
@@ -130,5 +141,6 @@ testFlatInternalGapAndUniquePaths();
 testEndpointParentAndSelection();
 testRecursiveSelection();
 testTableauGetterCellsAndPartialSelection();
+testControlledOpenNodeToggle();
 testMissingValueRules();
 console.log('TreeModel acceptance tests passed.');

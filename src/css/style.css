@@ -435,14 +435,6 @@ select::-ms-expand {
     }
 
 
-/* Line */
-.userhr { 
-    display: inline-flex;
-    padding: 15px 15px 0px 15px;
-    margin: 15px 5px 0px 5px;
-    overflow: hidden;
-    border-top: 3px solid gray;
-}
 /* For nav circles */
 .btn-circle {
     margin: auto;
@@ -454,22 +446,40 @@ select::-ms-expand {
     font-size: 12px;
     line-height: 1.42857;
 }
-.narrow {
-    padding: 0px 0px 0px 0px;
-}
-.noMargin {
-    margin: 0px !important;
-    display: inline-block !important;
-}
 .btn-circle:hover{
     cursor: default; 
 }
 .navcontainer {
-    font-size: 12px;
     background: #F5F5F5;
-    display: flex;
+    box-sizing: border-box;
+    display: block;
+    font-size: 12px;
+    padding-bottom: 10px;
+    padding-top: 8px;
     text-align: center;
-    /* padding: 0px 18px 0px 18px; */
+}
+.config-steps {
+    align-items: flex-start;
+    display: flex;
+    width: 100%;
+}
+.config-step {
+    align-items: center;
+    display: flex;
+    flex: 0 0 86px;
+    flex-direction: column;
+    gap: 4px;
+}
+.config-step-connector {
+    border-top: 2px solid #8c8c8c;
+    flex: 1 1 24px;
+    margin: 14px 5px 0;
+    min-width: 12px;
+}
+.config-step-label {
+    line-height: 16px;
+    min-height: 16px;
+    white-space: nowrap;
 }
 
 /* dragging for SortableList */

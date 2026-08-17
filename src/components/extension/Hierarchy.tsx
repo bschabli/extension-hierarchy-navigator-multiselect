@@ -8,6 +8,7 @@ import {
     buildFlatTree,
     buildRecursiveTree,
     getSelectionState,
+    toggleOpenNode,
     toggleNodeSelection
 } from './TreeModel';
 
@@ -99,6 +100,7 @@ function Hierarchy(props: Props) {
     const [pathMap, setPathMap]=useState<PathMap[]>([]);
     const [tree, setTree]=useState<NormalizedTreeNode[]>([]);
     const [searchVal, setSearchVal]=useState('');
+    const [openNodes, setOpenNodes]=useState<string[]>([]);
 
     const defaultClosedIcon=<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24'>
         <path fill={props.data.options.fontColor} fillRule='evenodd' d='M12.7632424,18.2911068 L24.112,6.942 L22.698,5.528 L12.0561356,16.1697864 L1.414,5.528 L8.52651283e-14,6.942 L11.3490288,18.2911068 C11.7395531,18.6816311 12.3727181,18.6816311 12.7632424,18.2911068 Z' transform='matrix(0 1 1 0 0 0)' />
@@ -227,11 +229,16 @@ function Hierarchy(props: Props) {
     function selectNodeFromDashboard(type: 'id'|'label', value: string): void {
         const match=pathMap.find(node => type==='id'? node.hierarchyValue===value:node.label===value);
         if(typeof match==='undefined') { return; }
-        const openNodes=makePath(match.path);
-        if(childRef.current) { childRef.current.resetOpenNodes(openNodes, match.path); }
+        const nextOpenNodes=makePath(match.path);
+        setOpenNodes(nextOpenNodes);
+        if(childRef.current) { childRef.current.resetOpenNodes(nextOpenNodes, match.path); }
         setCurrentId(match.hierarchyValue);
         setCurrentLabel(match.label);
         props.setDataFromExtension({ currentId: match.hierarchyValue, currentLabel: match.label });
+    }
+
+    function toggleTreeNode(key: string): void {
+        setOpenNodes(currentOpenNodes => toggleOpenNode(currentOpenNodes, key));
     }
 
     function makePath(path: string): string[] {
@@ -289,6 +296,7 @@ function Hierarchy(props: Props) {
             </div>
             <TreeMenu
                 data={tree}
+                openNodes={openNodes}
                 onClickItem={(item: any) => {
                     const nodeId=item.key.split('/').pop()||'';
                     const node=nodeById.get(nodeId);
@@ -327,6 +335,7 @@ function Hierarchy(props: Props) {
                                         checkboxState={getSelectionState(node, selectedLeafValues)}
                                         disabled={node.leafFilterValues.length===0}
                                         onToggleSelection={() => toggleSelection(node)}
+                                        toggleNode={() => toggleTreeNode(item.key)}
                                         openedIcon={openedIcon}
                                         closedIcon={closedIcon}
                                         style={props.data.options.itemCSS}
