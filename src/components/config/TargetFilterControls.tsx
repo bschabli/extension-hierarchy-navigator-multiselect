@@ -2,6 +2,7 @@ import { Checkbox } from '@tableau/tableau-ui';
 import React from 'react';
 import { HierarchyProps, Status } from '../API/Interfaces';
 import { Selector } from '../shared/Selector';
+import { ConfigSection } from './ConfigPrimitives';
 
 interface Props {
     changeEnabled: (event: React.MouseEvent<HTMLInputElement, MouseEvent>|React.ChangeEvent<HTMLInputElement>) => void;
@@ -15,35 +16,66 @@ export function TargetFilterControls(props: Props) {
     const targetFields=targetItems? Array.from(new Set(targetItems.fields.concat(targetItems.filters))):[];
 
     return (
-        <div className='sectionStyle mb-2'>
-            <b>Sheet Interactions</b>
-            <div style={{ marginLeft: '9px' }}>
+        <>
+            <ConfigSection
+                title='Filter a dashboard worksheet'
+                description='When users change the hierarchy selection, apply the selected leaf values to another worksheet.'
+            >
+                <div className='config-option-row'>
+                    <div>
+                        <strong>Apply selection as a filter</strong>
+                        <p>Recommended when the navigator should control the visible marks in the dashboard.</p>
+                    </div>
                 <Checkbox
                     disabled={targetFields.length===0}
                     checked={props.data.worksheet.filterEnabled}
                     onChange={props.changeEnabled}
                     data-type='filter'
-                >Apply selected leaf values as a filter</Checkbox>
-                <Selector
-                    title='Target Worksheet'
-                    status={props.data.dashboardItems.targetWorksheets.length? Status.set:Status.notpossible}
-                    list={props.data.dashboardItems.targetWorksheets}
-                    selected={props.data.worksheet.targetName}
-                    onChange={(event) => props.setUpdates({ type: 'SET_TARGET_WORKSHEET', data: event.target.value })}
+                    aria-label='Apply selection as a filter'
                 />
-                <Selector
-                    title='Target Filter Field'
-                    status={targetFields.length? Status.set:Status.notpossible}
-                    list={targetFields}
-                    selected={props.data.worksheet.targetFilter}
-                    onChange={(event) => props.setUpdates({ type: 'SET_TARGET_FILTER_FIELD', data: event.target.value })}
-                />
+                </div>
+                {props.data.worksheet.filterEnabled?
+                    <div className='config-field-grid config-field-grid--two config-revealed-options'>
+                        <Selector
+                            title='Target worksheet'
+                            description='The worksheet that should react to hierarchy selections.'
+                            required={true}
+                            status={props.data.dashboardItems.targetWorksheets.length? Status.set:Status.notpossible}
+                            list={props.data.dashboardItems.targetWorksheets}
+                            selected={props.data.worksheet.targetName}
+                            onChange={(event) => props.setUpdates({ type: 'SET_TARGET_WORKSHEET', data: event.target.value })}
+                        />
+                        <Selector
+                            title='Target filter field'
+                            description='Usually the unique path ID or leaf-level field used by the target worksheet.'
+                            required={true}
+                            status={targetFields.length? Status.set:Status.notpossible}
+                            list={targetFields}
+                            selected={props.data.worksheet.targetFilter}
+                            onChange={(event) => props.setUpdates({ type: 'SET_TARGET_FILTER_FIELD', data: event.target.value })}
+                        />
+                    </div>:
+                    <p className='config-muted-note'>Filtering is off. The navigator will keep its selection internally unless another output below is enabled.</p>
+                }
+            </ConfigSection>
+            <ConfigSection
+                title='Select marks on the source worksheet'
+                description='Visually select the matching marks in the hierarchy source worksheet. This is separate from filtering a target worksheet.'
+                optional={true}
+            >
+                <div className='config-option-row'>
+                    <div>
+                        <strong>Enable source mark selection</strong>
+                        <p>Useful for dashboard actions that start from selected marks on the source sheet.</p>
+                    </div>
                 <Checkbox
                     checked={props.data.worksheet.enableMarkSelection}
                     onChange={props.changeEnabled}
                     data-type='mark'
-                >Enable Mark Selection on the source worksheet</Checkbox>
-            </div>
-        </div>
+                    aria-label='Enable source mark selection'
+                />
+                </div>
+            </ConfigSection>
+        </>
     );
 }

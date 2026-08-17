@@ -571,3 +571,797 @@ select::-ms-expand {
 :focus {
     outline: none;
 }
+
+/* Guided configuration wizard */
+.config-shell {
+    --config-accent: #0b6f91;
+    --config-accent-soft: #e9f4f7;
+    --config-border: #d7dce0;
+    --config-muted: #5f6870;
+    --config-text: #202428;
+    background: #f7f8f9;
+    color: var(--config-text);
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+.config-app-header {
+    align-items: center;
+    background: #fff;
+    border-bottom: 1px solid var(--config-border);
+    display: flex;
+    justify-content: space-between;
+    min-height: 48px;
+    padding: 0 20px;
+}
+
+.config-app-header > div {
+    align-items: baseline;
+    display: flex;
+    gap: 8px;
+}
+
+.config-app-header strong {
+    font-size: 14px;
+}
+
+.config-app-header > div > span {
+    color: var(--config-muted);
+}
+
+.config-progress {
+    background: #fff;
+    border-bottom: 1px solid var(--config-border);
+    overflow-x: auto;
+    padding: 10px 20px;
+}
+
+.config-steps {
+    align-items: stretch;
+    display: grid;
+    gap: 8px;
+    grid-template-columns: repeat(4, minmax(132px, 1fr));
+    list-style: none;
+    margin: 0 auto;
+    max-width: 1020px;
+    min-width: 560px;
+    padding: 0;
+}
+
+.config-step {
+    display: block;
+}
+
+.config-step button {
+    align-items: center;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    color: var(--config-muted);
+    cursor: pointer;
+    display: flex;
+    gap: 9px;
+    min-height: 50px;
+    padding: 6px 8px;
+    text-align: left;
+    width: 100%;
+}
+
+.config-step button:hover {
+    background: #f4f6f7;
+}
+
+.config-step button:focus-visible,
+.config-choice:focus-visible,
+.config-advanced summary:focus-visible {
+    outline: 2px solid var(--config-accent);
+    outline-offset: 1px;
+}
+
+.config-step--active button {
+    background: var(--config-accent-soft);
+    border-color: #9ac6d4;
+    color: var(--config-text);
+}
+
+.config-step-number {
+    align-items: center;
+    background: #e2e5e7;
+    border-radius: 50%;
+    display: flex;
+    flex: 0 0 26px;
+    font-weight: 600;
+    height: 26px;
+    justify-content: center;
+}
+
+.config-step--active .config-step-number,
+.config-step--complete .config-step-number {
+    background: var(--config-accent);
+    color: #fff;
+}
+
+.config-step-copy {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.25;
+    min-width: 0;
+}
+
+.config-step-copy strong {
+    font-size: 11px;
+}
+
+.config-step-copy small {
+    font-size: 9px;
+    margin-top: 2px;
+}
+
+.config-main {
+    flex: 1 0 auto;
+    margin: 0 auto;
+    max-width: 1020px;
+    padding: 20px;
+    width: 100%;
+}
+
+.config-main > .alert {
+    margin-bottom: 14px;
+}
+
+.config-page {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.config-step-intro {
+    margin-bottom: 2px;
+}
+
+.config-eyebrow {
+    color: var(--config-accent);
+    display: block;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .06em;
+    margin-bottom: 3px;
+    text-transform: uppercase;
+}
+
+.config-step-intro h1 {
+    font-size: 20px;
+    line-height: 1.25;
+    margin: 0 0 5px;
+}
+
+.config-step-intro p,
+.config-section-heading p,
+.config-option-row p,
+.config-muted-note,
+.config-field-help,
+.config-formula p,
+.config-parameter-check p,
+.config-stepper-field p {
+    color: var(--config-muted);
+    line-height: 1.45;
+}
+
+.config-choice-grid {
+    display: grid;
+    gap: 14px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.config-choice {
+    background: #fff;
+    border: 1px solid var(--config-border);
+    border-radius: 5px;
+    color: inherit;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 16px;
+    text-align: left;
+}
+
+.config-choice:hover {
+    border-color: #82b7c8;
+    box-shadow: 0 2px 7px rgba(25, 55, 70, .08);
+}
+
+.config-choice--selected {
+    background: var(--config-accent-soft);
+    border-color: var(--config-accent);
+    box-shadow: 0 0 0 1px var(--config-accent);
+}
+
+.config-choice-heading,
+.config-section-heading,
+.config-field-list-heading,
+.config-review-heading {
+    align-items: flex-start;
+    display: flex;
+    justify-content: space-between;
+}
+
+.config-choice-heading > div {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+}
+
+.config-choice-title {
+    font-size: 14px;
+    font-weight: 700;
+}
+
+.config-radio {
+    background: #fff;
+    border: 1px solid #899197;
+    border-radius: 50%;
+    height: 16px;
+    position: relative;
+    width: 16px;
+}
+
+.config-choice--selected .config-radio::after {
+    background: var(--config-accent);
+    border-radius: 50%;
+    content: '';
+    inset: 3px;
+    position: absolute;
+}
+
+.config-choice img {
+    background: #fff;
+    border: 1px solid #e2e5e7;
+    height: 118px;
+    object-fit: contain;
+    padding: 6px;
+    width: 100%;
+}
+
+.config-choice p {
+    color: var(--config-muted);
+    line-height: 1.45;
+}
+
+.config-tag {
+    background: #edf0f2;
+    border-radius: 10px;
+    color: #586169;
+    font-size: 9px;
+    font-weight: 600;
+    padding: 3px 7px;
+    white-space: nowrap;
+}
+
+.config-tag--recommended {
+    background: #dceff3;
+    color: #075d77;
+}
+
+.config-callout,
+.config-formula {
+    background: #f1f7f9;
+    border-left: 3px solid var(--config-accent);
+    line-height: 1.45;
+    padding: 11px 13px;
+}
+
+.config-section {
+    background: #fff;
+    border: 1px solid var(--config-border);
+    border-radius: 5px;
+    padding: 16px;
+}
+
+.config-section-heading {
+    gap: 14px;
+    margin-bottom: 14px;
+}
+
+.config-section-heading h2 {
+    font-size: 14px;
+    line-height: 1.3;
+    margin: 0 0 3px;
+}
+
+.config-field-grid {
+    display: grid;
+    gap: 14px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.config-field-grid--two,
+.config-color-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.config-field {
+    min-width: 0;
+}
+
+.config-field + .config-field,
+.config-toggle-field + .config-toggle-field {
+    margin-top: 12px;
+}
+
+.config-field-grid .config-field + .config-field {
+    margin-top: 0;
+}
+
+.config-field-label {
+    align-items: center;
+    color: var(--config-text);
+    display: flex;
+    font-size: 11px;
+    font-weight: 600;
+    gap: 7px;
+    margin-bottom: 3px;
+}
+
+.config-required {
+    color: #8b4e15;
+    font-size: 8px;
+    font-weight: 600;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+}
+
+.config-field-help {
+    font-size: 10px;
+    min-height: 28px;
+    margin-bottom: 6px;
+}
+
+.config-field .dropdown-select,
+.config-field select,
+.config-area-field > div,
+.config-text-field > div,
+.config-title-field > div {
+    max-width: none !important;
+    width: 100% !important;
+}
+
+.config-compact-field {
+    max-width: 360px;
+}
+
+.config-inline-status {
+    border-top: 1px solid #eceeef;
+    margin-top: 14px;
+    padding-top: 12px;
+}
+
+.config-status {
+    align-items: center;
+    display: inline-flex;
+    font-size: 10px;
+    font-weight: 600;
+    gap: 5px;
+}
+
+.config-status > span {
+    align-items: center;
+    border-radius: 50%;
+    display: inline-flex;
+    height: 17px;
+    justify-content: center;
+    width: 17px;
+}
+
+.config-status--complete {
+    color: #176a3a;
+}
+
+.config-status--complete > span {
+    background: #dff3e6;
+}
+
+.config-status--incomplete {
+    color: #8b4e15;
+}
+
+.config-status--incomplete > span {
+    background: #fff0d8;
+}
+
+.config-field-order {
+    display: grid;
+    gap: 12px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.config-field-list {
+    background: #fafbfb;
+    border: 1px solid #e1e4e6;
+    border-radius: 4px;
+    min-height: 132px;
+    padding: 10px;
+}
+
+.config-field-list--selected {
+    background: #f5fafb;
+    border-color: #b8d5de;
+}
+
+.config-field-list-heading {
+    align-items: center;
+    margin-bottom: 7px;
+}
+
+.config-field-list-heading > span {
+    background: #e5eaed;
+    border-radius: 10px;
+    min-width: 20px;
+    padding: 2px 6px;
+    text-align: center;
+}
+
+.config-field-list .sortableList {
+    border: 0;
+    cursor: default;
+    display: flex;
+    margin: 0;
+    padding: 0;
+    width: 100%;
+}
+
+.config-sortable-item {
+    align-items: center;
+    background: #fff;
+    border: 1px solid #e1e4e6;
+    border-radius: 3px;
+    display: flex;
+    gap: 6px;
+    justify-content: space-between;
+    margin-top: 5px;
+    min-height: 32px;
+    padding: 3px 7px;
+}
+
+.config-sortable-item > span:not(.config-drag-handle) {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.config-drag-handle {
+    cursor: grab;
+    display: inline-flex;
+}
+
+.config-empty-state {
+    color: var(--config-muted);
+    padding: 18px 4px;
+    text-align: center;
+}
+
+.config-formula {
+    margin-top: 14px;
+}
+
+.config-formula code {
+    background: #fff;
+    border: 1px solid #d7e3e7;
+    display: block;
+    margin-top: 8px;
+    overflow-x: auto;
+    padding: 8px;
+    white-space: nowrap;
+}
+
+.config-option-row {
+    align-items: center;
+    display: flex;
+    gap: 18px;
+    justify-content: space-between;
+}
+
+.config-option-row > div {
+    min-width: 0;
+}
+
+.config-option-row p {
+    margin-top: 2px;
+}
+
+.config-option-row input[type='checkbox'] {
+    flex: 0 0 auto;
+}
+
+.config-revealed-options,
+.config-title-field,
+.config-stepper-field {
+    border-top: 1px solid #eceeef;
+    margin-top: 13px;
+    padding-top: 13px;
+}
+
+.config-muted-note {
+    background: #f6f7f8;
+    margin-top: 12px;
+    padding: 9px 10px;
+}
+
+.config-advanced {
+    background: #fff;
+    border: 1px solid var(--config-border);
+    border-radius: 5px;
+}
+
+.config-advanced > summary {
+    cursor: pointer;
+    list-style: none;
+    padding: 13px 16px;
+    position: relative;
+}
+
+.config-advanced > summary::-webkit-details-marker {
+    display: none;
+}
+
+.config-advanced > summary::after {
+    content: '+';
+    font-size: 18px;
+    position: absolute;
+    right: 16px;
+    top: 15px;
+}
+
+.config-advanced[open] > summary::after {
+    content: '−';
+}
+
+.config-advanced > summary span {
+    display: flex;
+    flex-direction: column;
+    padding-right: 26px;
+}
+
+.config-advanced > summary small {
+    color: var(--config-muted);
+    margin-top: 2px;
+}
+
+.config-advanced > .config-section {
+    border: 0;
+    border-radius: 0;
+    border-top: 1px solid #eceeef;
+}
+
+.config-toggle-field {
+    border-top: 1px solid #eceeef;
+    padding-top: 12px;
+}
+
+.config-toggle-field:first-of-type {
+    border-top: 0;
+    padding-top: 0;
+}
+
+.config-toggle-field .config-field {
+    margin: 9px 0 0 24px;
+    max-width: 420px;
+}
+
+.config-parameter-check {
+    background: #f7f8f9;
+    border-radius: 4px;
+    margin-top: 14px;
+    padding: 12px;
+}
+
+.config-parameter-check ul {
+    list-style: none;
+    margin: 10px 0 0;
+    padding: 0;
+}
+
+.config-parameter-check li {
+    align-items: flex-start;
+    display: flex;
+    margin-top: 8px;
+}
+
+.config-parameter-check li > span:last-child {
+    display: flex;
+    flex-direction: column;
+}
+
+.config-parameter-check li small {
+    color: var(--config-muted);
+}
+
+.config-review-heading {
+    margin-bottom: 12px;
+}
+
+.config-review-grid {
+    display: grid;
+    gap: 0;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin: 0;
+}
+
+.config-review-grid > div {
+    border-top: 1px solid #eceeef;
+    min-width: 0;
+    padding: 10px 8px 10px 0;
+}
+
+.config-review-grid dt {
+    color: var(--config-muted);
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: .03em;
+    text-transform: uppercase;
+}
+
+.config-review-grid dd {
+    font-weight: 600;
+    margin: 3px 0 0;
+    overflow-wrap: anywhere;
+}
+
+.config-display-options .config-option-row + .config-option-row {
+    border-top: 1px solid #eceeef;
+    margin-top: 12px;
+    padding-top: 12px;
+}
+
+.config-color-grid {
+    display: grid;
+    gap: 12px;
+}
+
+.config-color-field {
+    align-items: flex-end;
+    display: grid;
+    gap: 8px;
+    grid-template-columns: minmax(0, 1fr) 28px;
+}
+
+.config-color-field input[type='color'] {
+    border: 1px solid #899197;
+    border-radius: 3px;
+    height: 28px;
+    margin: 0 0 1px;
+    width: 28px;
+}
+
+.config-area-field {
+    margin-top: 12px;
+}
+
+.config-field-grid > .config-area-field {
+    margin-top: 0;
+}
+
+.config-icon-preview {
+    background: #f7f8f9;
+    border: 1px solid #e1e4e6;
+    line-height: 1.7;
+    margin-top: 14px;
+    padding: 10px;
+}
+
+.config-icon-preview strong {
+    display: block;
+    margin-bottom: 5px;
+}
+
+.config-icon-child {
+    padding-left: 24px;
+}
+
+.config-stepper-field label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 6px;
+}
+
+.config-stepper-field p {
+    margin-top: 6px;
+}
+
+.config-footer {
+    align-items: center;
+    background: #fff;
+    border-top: 1px solid var(--config-border);
+    bottom: 0;
+    display: flex;
+    gap: 16px;
+    justify-content: space-between;
+    min-height: 58px;
+    padding: 9px 20px;
+    position: sticky;
+    z-index: 3;
+}
+
+.config-footer-status {
+    color: #8b4e15;
+    font-size: 10px;
+}
+
+.config-footer-actions {
+    display: flex;
+    gap: 8px;
+    margin-left: auto;
+}
+
+@media (max-width: 700px) {
+    .config-app-header,
+    .config-progress,
+    .config-main,
+    .config-footer {
+        padding-left: 12px;
+        padding-right: 12px;
+    }
+
+    .config-step-copy small {
+        display: none;
+    }
+
+    .config-steps {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        min-width: 0;
+    }
+
+    .config-step button {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 4px;
+        min-height: 66px;
+    }
+
+    .config-step-copy strong {
+        white-space: normal;
+    }
+
+    .config-choice-grid,
+    .config-field-order,
+    .config-field-grid,
+    .config-field-grid--two,
+    .config-color-grid,
+    .config-review-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .config-field-grid .config-field + .config-field {
+        margin-top: 0;
+    }
+}
+
+@media (max-width: 460px) {
+    .config-app-header > div > span,
+    .config-app-header > .config-status {
+        display: none;
+    }
+
+    .config-main {
+        padding-top: 14px;
+    }
+
+    .config-section,
+    .config-choice {
+        padding: 13px;
+    }
+
+    .config-footer {
+        align-items: flex-end;
+        flex-direction: column;
+        gap: 5px;
+    }
+
+    .config-footer-actions {
+        justify-content: flex-end;
+        width: 100%;
+    }
+}

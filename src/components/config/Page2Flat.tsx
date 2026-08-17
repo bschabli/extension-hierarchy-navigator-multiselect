@@ -3,11 +3,12 @@ import { InputAttrs } from '@tableau/tableau-ui/lib/src/utils/NativeProps';
 import {arrayMoveImmutable} from 'array-move';
 import React, { useEffect, useState } from 'react';
 import { SortableContainer, SortableElement } from 'react-sortable-hoc';
-import { Button as RSButton, Col, Container, Row } from 'reactstrap';
+import { Button as RSButton } from 'reactstrap';
 import dragHandle from '../../images/Drag-handle-01.png';  //'. /src/images/Drag-handle-01.png';
 import { HierarchyProps, Status } from '../API/Interfaces';
 import { withHTMLSpaces } from '../API/Utils';
 import { Selector } from '../shared/Selector';
+import { ConfigSection, ConfigStatus, ConfigStepIntro } from './ConfigPrimitives';
 const extend=require('extend');
 
 interface Props {
@@ -62,15 +63,17 @@ export function Page2Flat(props: Props) {
                 return '';
         }
     };
-    const DragHandle=(() => <img src={dragHandle} width='25px' height='25px' />);
-    const SortableItem=SortableElement(({ value }: any) => <li value={value}><DragHandle />{withHTMLSpaces(value)}
-        <RSButton value={value} onClick={removeFromList} color='white' size='xs' style={{ color: 'red' }}>X</RSButton>
+    const DragHandle=(() => <img src={dragHandle} width='20px' height='20px' alt='' />);
+    const SortableItem=SortableElement(({ value }: any) => <li value={value} className='config-sortable-item'>
+        <span className='config-drag-handle' title='Drag to reorder'><DragHandle /></span>
+        <span>{withHTMLSpaces(value)}</span>
+        <RSButton value={value} onClick={removeFromList} color='link' size='sm' aria-label={`Remove ${withHTMLSpaces(value)}`}>Remove</RSButton>
     </li>);
 
     const SortableList=SortableContainer(({ items }: any) => {
         if(!items) { return (<li>No items</li>); }
         return (
-            <ul className={'sortableList'}>
+            <ul className='sortableList'>
                 {items.map((value: any, index: any) => (
                     <SortableItem key={`item-${ value }`} index={index} value={value} />
                 ))}
@@ -78,14 +81,15 @@ export function Page2Flat(props: Props) {
         );
     });
 
-    const StaticFieldsItem=SortableElement(({ value }: any) => <li value={value}>{withHTMLSpaces(value)}
-        <RSButton value={value} onClick={addToList} color='white' size='xs' style={{ color: 'blue' }}>Add</RSButton>
+    const StaticFieldsItem=SortableElement(({ value }: any) => <li value={value} className='config-sortable-item'>
+        <span>{withHTMLSpaces(value)}</span>
+        <RSButton value={value} onClick={addToList} color='link' size='sm'>Add</RSButton>
     </li>);
 
     const StaticFieldsList=SortableContainer(({ items }: any) => {
         if(!items) { return (<li>No items</li>); }
         return (
-            <ul className={'sortableList'}>
+            <ul className='sortableList'>
                 {items.map((value: any, index: any) => (
                     <StaticFieldsItem key={`item-${ value }`} index={index} value={value} disabled={true}/>
                 ))}
@@ -126,14 +130,14 @@ export function Page2Flat(props: Props) {
     const inputProps: TextFieldProps & InputAttrs & React.RefAttributes<HTMLInputElement>={
         message: undefined,
         kind: 'line' as 'line'|'outline'|'search',
-        label: `Separator for ${ props.data.worksheet.childId } field formula.`,
+        label: 'Path separator',
         onChange: (e: any) => {
             props.setUpdates({ type: 'SET_SEPARATOR', data: e.target.value });
         },
         onClear: () => {
             props.setUpdates({ type: 'SET_SEPARATOR', data: '|' });
         },
-        style: { width: 200, paddingLeft: '9px' },
+        style: { width: '100%' },
         value: props.data.separator,
     };
 
@@ -149,63 +153,85 @@ export function Page2Flat(props: Props) {
     };
 
     return (
-        <div className='sectionStyle mb-5'>
-            <b>Worksheet and Fields</b>
-            <p />
-            <Selector
-                title={worksheetTitle()}
-                status={props.data.worksheet.status}
-                selected={props.data.worksheet.name}
-                list={props.data.dashboardItems.worksheets}
-                onChange={worksheetChange}
+        <div className='config-page'>
+            <ConfigStepIntro
+                eyebrow='Step 2 of 4'
+                title='Map the source worksheet'
+                description='Choose the hierarchy worksheet, then build the hierarchy from broadest level to most detailed level.'
             />
-            <Selector
-                title='ID Column'
-                status={availFields.length>0? Status.set:Status.hidden}
-                list={availFields}
-                onChange={setChild}
-                selected={props.data.worksheet.childId}
-            />
-            <TextField {...inputProps} />
-            <br />
-            <div style={{ marginLeft: '9px' }}>
-                The source sheet for the hierarchy should have the {props.data.worksheet.childId} field with the below formula.  If it does not, please add/edit it and re-configure the extension:
-                <br />
-                <span style={{ fontStyle: 'italic', marginLeft: '5px' }}>{`   ${ formula() }`}</span>
-            </div>
-            <br />
-            <Container style={{ border: '1px solid #e6e6e6', padding: '1px', marginLeft: '9px' }}>
-                <Row>
-
-                    <Col>
+            <ConfigSection
+                title='Source worksheet'
+                description='This worksheet supplies the hierarchy values. It may be hidden on the finished dashboard.'
+            >
+                <Selector
+                    title={worksheetTitle()}
+                    status={props.data.worksheet.status}
+                    selected={props.data.worksheet.name}
+                    list={props.data.dashboardItems.worksheets}
+                    onChange={worksheetChange}
+                    required={true}
+                />
+            </ConfigSection>
+            <ConfigSection
+                title='Hierarchy levels'
+                description='Add fields to the left column and drag them into order. Start with the root level.'
+            >
+                <div className='config-field-order'>
+                    <div className='config-field-list config-field-list--selected'>
+                        <div className='config-field-list-heading'>
+                            <strong>Selected levels</strong>
+                            <span>{props.data.worksheet.fields.length}</span>
+                        </div>
                         {props.data.worksheet.fields&&props.data.worksheet.fields.length?
-                            <div>Hierarchy fields (in order)
-                <SortableList
-                                    items={props.data.worksheet.fields}
-                                    onSortEnd={onSortEnd}
-                                    lockAxis='y'
-                                    helperClass={'draggingSort'}
-                                />
-                            </div>
-                            :<span style={{ border: '1px solid #e6e6e6', padding: '1px' }}>No fields in hierarchy.</span>}
-                    </Col>
-                    <Col xs='auto'>
-                        <RSButton onClick={addToList} color='primary' size='xs' disabled={!availFieldsSansChildId.length}>{`<<`}</RSButton>
-                    </Col>
-                    <Col>
+                            <SortableList
+                                items={props.data.worksheet.fields}
+                                onSortEnd={onSortEnd}
+                                lockAxis='y'
+                                helperClass='draggingSort'
+                            />:
+                            <p className='config-empty-state'>No levels selected yet.</p>
+                        }
+                    </div>
+                    <div className='config-field-list'>
+                        <div className='config-field-list-heading'>
+                            <strong>Available fields</strong>
+                            <RSButton onClick={addToList} color='link' size='sm' disabled={!availFieldsSansChildId.length}>Add all</RSButton>
+                        </div>
                         {availFieldsSansChildId.length>0?
-                            <>
-                                <StaticFieldsList
-                                    items={availFieldsSansChildId}
-                                    lockAxis='y'
-                                />
-
-                            </>
-                            :allFields.length? 'All fields are used':'No fields available'}
-                        <p />
-
-                    </Col>
-                </Row>
-            </Container>
+                            <StaticFieldsList items={availFieldsSansChildId} lockAxis='y' />:
+                            <p className='config-empty-state'>{allFields.length?'All available fields are selected.':'No fields available.'}</p>
+                        }
+                    </div>
+                </div>
+            </ConfigSection>
+            <ConfigSection
+                title='Unique path ID'
+                description='The extension uses one calculated field to distinguish identical labels that appear under different parents.'
+            >
+                <div className='config-field-grid config-field-grid--two'>
+                    <Selector
+                        title='Unique path ID field'
+                        description='Choose the calculated field that contains the full hierarchy path.'
+                        required={true}
+                        status={availFields.length>0? Status.set:Status.hidden}
+                        list={availFields}
+                        onChange={setChild}
+                        selected={props.data.worksheet.childId}
+                    />
+                    <div className='config-text-field'><TextField {...inputProps} /></div>
+                </div>
+                <div className='config-formula'>
+                    <strong>Expected Tableau formula</strong>
+                    <p>Create or update <b>{withHTMLSpaces(props.data.worksheet.childId)||'the ID field'}</b> with this formula, then reopen configuration if needed.</p>
+                    <code>{formula()||'Select at least one hierarchy level to generate the formula.'}</code>
+                </div>
+                <div className='config-inline-status'>
+                    <ConfigStatus
+                        complete={Boolean(props.data.worksheet.name&&props.data.worksheet.childId&&props.data.worksheet.fields.length)}
+                        completeLabel='Required source fields are mapped'
+                        incompleteLabel='Choose a worksheet, at least one level, and an ID field'
+                    />
+                </div>
+            </ConfigSection>
         </div>);
 }

@@ -5,6 +5,7 @@ import React, { useEffect, useState } from 'react';
 import { debugOverride, HierarchyProps, Status } from '../API/Interfaces';
 import { withHTMLSpaces } from '../API/Utils';
 import { Selector } from '../shared/Selector';
+import { ConfigSection, ConfigStepIntro } from './ConfigPrimitives';
 import { TargetFilterControls } from './TargetFilterControls';
 
 interface Props {
@@ -39,7 +40,12 @@ export function Page3Flat(props: Props) {
     // function to set the 
     const checkLevelParam = () => {
         const check=async () => {
-            await window.tableau.extensions.dashboardContent!.dashboard.getParametersAsync()
+            const dashboardContent=window.tableau&&window.tableau.extensions.dashboardContent;
+            if(!dashboardContent) {
+                setLevelParam(false);
+                return;
+            }
+            await dashboardContent.dashboard.getParametersAsync()
                 .then(params => {
 
                     if(debug) { console.log(`parameters found`); }
@@ -65,7 +71,7 @@ export function Page3Flat(props: Props) {
         onClear: () => {
             props.setUpdates({ type: 'SET_PARAM_SUFFiX', data: ' Param' });
         },
-        style: { width: 200, paddingLeft: '9px' },
+        style: { width: '100%' },
         value: props.data.paramSuffix,
     };
 
@@ -82,50 +88,65 @@ export function Page3Flat(props: Props) {
         return props.data.dashboardItems.parameters.includes(`${ param }`)? yes:no;
     };
     return (
-        <>
-            <div className='sectionStyle mb-2'>
-                <b>Parameters</b>
-                <br />
-                <div style={{ marginLeft: '9px' }}>
-                    <TextField {...inputProps} />
-                    <br />
+        <div className='config-page'>
+            <ConfigStepIntro
+                eyebrow='Step 3 of 4'
+                title='Choose what a selection controls'
+                description='Filtering is the usual choice. Parameters and source mark selection are optional integrations for more advanced dashboards.'
+            />
+            <TargetFilterControls {...props} />
+            <details className='config-advanced' open={props.data.parameters.childLabelEnabled}>
+                <summary>
+                    <span>
+                        <strong>Advanced: write values to parameters</strong>
+                        <small>Expose selected hierarchy values to calculations and parameter actions.</small>
+                    </span>
+                </summary>
+                <ConfigSection
+                    title='Parameter outputs'
+                    description='The extension looks for parameters named after each hierarchy field plus the suffix below. Create them in Tableau before enabling this integration.'
+                    optional={true}
+                >
+                    <div className='config-field config-compact-field'>
+                        <TextField {...inputProps} />
+                        <p className='config-field-help'>Example: a field named Category with the default suffix maps to Category Param.</p>
+                    </div>
+                    <div className='config-toggle-field'>
                     <Checkbox
                         disabled={!props.data.dashboardItems.flatParameters.length}
                         checked={props.data.parameters.childLabelEnabled}
                         onChange={props.changeEnabled}
                         data-type='label'
                     >
-                        Parameter for Label (current value of any selected hierarchy member)
-        </Checkbox>
-                    <br />
-                    <Selector
-                        // For label field'
-                        status={props.data.parameters.childLabelEnabled?
-                            (props.data.dashboardItems.parameters.length? Status.set:Status.notpossible):Status.notpossible}
-                        onChange={props.changeParam}
-                        list={props.data.dashboardItems.flatParameters}
-                        selected={props.data.parameters.childLabel}
-                        type='label'
-                    />
-
-            This Extension will attempt to set the following parameters for metadata:
-            <br />
-
-                    <ul>
-                        <li style={{ listStyleType: 'none', marginLeft: '-1.2em' }}>{levelParam? yes:no} [{props.data.parameters.level}]: Current level of selected item in the hierarchy (1..n)</li>
-                        <li style={{ listStyleType: 'none', marginLeft: '-1.2em' }}>{idPresent()} {`[${ withHTMLSpaces(props.data.parameters.childId) }]`}: ID of the current selected field </li>
-                        {props.data.parameters.childLabelEnabled? (<li style={{ listStyleType: 'none', marginLeft: '-1.2em' }}>{labelPresent()} {`[${ withHTMLSpaces(props.data.parameters.childLabel) }]`}: Label of the current selected field</li>):<></>}
-                    </ul>
-                And parameters for the fields in the hierarchy:
-            <ul>
+                        Also write the selected item label to a parameter
+                    </Checkbox>
+                    {props.data.parameters.childLabelEnabled&&
+                        <Selector
+                            title='Selected label parameter'
+                            status={props.data.dashboardItems.parameters.length? Status.set:Status.notpossible}
+                            onChange={props.changeParam}
+                            list={props.data.dashboardItems.flatParameters}
+                            selected={props.data.parameters.childLabel}
+                            type='label'
+                        />
+                    }
+                    </div>
+                    <div className='config-parameter-check'>
+                        <strong>Parameters the extension expects</strong>
+                        <p>Green checks are ready. Warnings mean the parameter still needs to be created or renamed in Tableau.</p>
+                        <ul>
+                            <li>{levelParam? yes:no}<span><b>{withHTMLSpaces(props.data.parameters.level)}</b><small>Current selected level (1…n)</small></span></li>
+                            <li>{idPresent()}<span><b>{withHTMLSpaces(props.data.parameters.childId)}</b><small>Unique ID of the selected item</small></span></li>
+                            {props.data.parameters.childLabelEnabled&&
+                                <li>{labelPresent()}<span><b>{withHTMLSpaces(props.data.parameters.childLabel)}</b><small>Visible label of the selected item</small></span></li>
+                            }
                         {props.data.parameters.fields.map((param) => {
-                            return <li style={{ listStyleType: 'none', marginLeft: '-1.2em' }} key={param+'_item'} value={param}>{paramPresent(param)} {`[${withHTMLSpaces(param)}]`}: Value of field or Null</li>;
+                                return <li key={param+'_item'} value={param}>{paramPresent(param)}<span><b>{withHTMLSpaces(param)}</b><small>Selected value for this hierarchy level</small></span></li>;
                         })}
-                    </ul>
-                </div>
-            </div>
-
-            <TargetFilterControls {...props} />
-        </>
+                        </ul>
+                    </div>
+                </ConfigSection>
+            </details>
+        </div>
     );
 }
