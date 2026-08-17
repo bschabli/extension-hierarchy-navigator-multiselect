@@ -10,7 +10,8 @@ interface Props {
 }
 
 function ParamHandler(props: Props) {
-    const [lastUpdated, setLastUpdated]=useState<Date>(new Date());
+    const [reapplySelectionsVersion, setReapplySelectionsVersion]=useState(0);
+    const [refreshVersion, setRefreshVersion]=useState(0);
     const [currentId, setCurrentId]=useState<string>('');
     const [currentLabel, setCurrentLabel]=useState<string>('');
     const [dataFromExtension, setDataFromExtension]=useState<HierarchySelectionPayload>();
@@ -33,18 +34,44 @@ function ParamHandler(props: Props) {
         }
     }, [dataFromExtension]);
 
-    // any time configure is completed (aka lastUpdated is changed) find new params and reset filter/marks    
+    // Reload hierarchy data after configuration changes. The Hierarchy component
+    // decides whether the source definition changed or this is a refresh whose UI
+    // state should be retained.
     useEffect(() => {
         async function clear() {
             // if data changes, clear event handlers
             if(debug) { console.log(`clearing events/filters/marks...`); }
             await clearFilterAndMarksAsync();
             if(debug) { console.log(`done clearing events/filters/marks...`); }
-            setLastUpdated(new Date());
+            setReapplySelectionsVersion(current => current+1);
+            setRefreshVersion(current => current+1);
         }
         if(props.data.configComplete) { clear(); }
 
     }, [props.data]);
+
+    // Refresh the source hierarchy when Tableau reports new summary data. The
+    // listener is scoped to the configured source worksheet and removed whenever
+    // that worksheet or dashboard instance changes.
+    useEffect(() => {
+        const worksheets=(props.dashboard as Dashboard|undefined)?.worksheets;
+        const sourceWorksheet=worksheets?.find(worksheet => worksheet.name===props.data.worksheet.name);
+        if(!sourceWorksheet||typeof sourceWorksheet.addEventListener!=='function') { return; }
+
+        try {
+            const unregister=sourceWorksheet.addEventListener(
+                tableau.TableauEventType.SummaryDataChanged,
+                () => {
+                    setRefreshVersion(current => current+1);
+                }
+            );
+            return () => { unregister(); };
+        }
+        catch(error) {
+            console.warn('Unable to listen for hierarchy source refreshes.', error);
+            return;
+        }
+    }, [props.dashboard, props.data.worksheet.name]);
 
     // if any of the parameters change via configure, (re)set event listeners
     useEffect(() => {
@@ -328,7 +355,8 @@ function ParamHandler(props: Props) {
     return (
         <Hierarchy
             data={props.data}
-            lastUpdated={lastUpdated}
+            reapplySelectionsVersion={reapplySelectionsVersion}
+            refreshVersion={refreshVersion}
             setDataFromExtension={setDataFromExtension}
             currentLabel={currentLabel}
             currentId={currentId}
