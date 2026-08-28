@@ -112,6 +112,7 @@ const GERMAN_TRANSLATIONS: Record<string, string>={
     'Recommended': 'Empfohlen',
     'Reload Extension': 'Erweiterung neu laden',
     'Reload the extension after confirming that its exact URL is enabled in Tableau Settings → Extensions.': 'Laden Sie die Erweiterung neu, nachdem Sie geprüft haben, dass ihre genaue URL unter Tableau-Einstellungen → Erweiterungen zugelassen ist.',
+    'Retry configuration': 'Konfiguration erneut öffnen',
     'Remove': 'Entfernen',
     'Remove {label}': '{label} entfernen',
     'Reset preview': 'Vorschau zurücksetzen',
@@ -304,6 +305,7 @@ const GERMAN_TRANSLATIONS: Record<string, string>={
     ,'Some dashboard filters could not be cleared: {targets}': 'Einige Dashboard-Filter konnten nicht entfernt werden: {targets}'
     ,'Some dashboard filters could not be updated: {targets}': 'Einige Dashboard-Filter konnten nicht aktualisiert werden: {targets}'
     ,'Suffix for all parameters': 'Suffix für alle Parameter'
+    ,'Tableau is still connecting. The extension will open automatically when initialization finishes.': 'Tableau stellt noch eine Verbindung her. Die Erweiterung wird automatisch geöffnet, sobald die Initialisierung abgeschlossen ist.'
     ,'Target filter field': 'Zielfilterfeld'
     ,'Tell the navigator which row identifies a hierarchy item, which row is its parent, and what users should see.': 'Legen Sie fest, welche Zeile einen Hierarchieeintrag bezeichnet, welche sein übergeordneter Eintrag ist und was Benutzer sehen sollen.'
     ,'Terminal values only': 'Nur Endwerte'
@@ -325,6 +327,7 @@ const GERMAN_TRANSLATIONS: Record<string, string>={
     ,'Unique path ID': 'Eindeutige Pfad-ID'
     ,'Unique path ID field': 'Feld für eindeutige Pfad-ID'
     ,'Unknown Tableau Extensions API error.': 'Unbekannter Fehler der Tableau Extensions API.'
+    ,'Unable to open the configuration dialog: {error}': 'Der Konfigurationsdialog konnte nicht geöffnet werden: {error}'
     ,'Update delay (milliseconds)': 'Aktualisierungsverzögerung (Millisekunden)'
     ,'Use any ASCII character(s)': 'Beliebige ASCII-Zeichen verwenden'
     ,'Use the included': 'Verwenden Sie die enthaltene'

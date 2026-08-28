@@ -630,6 +630,21 @@ select::-ms-expand {
       width: 100%;
 }
 
+.initialization-delay-notice {
+    background: #fff;
+    border: 1px solid #d4d4d4;
+    color: #333;
+    font-size: 12px;
+    left: 50%;
+    line-height: 1.4;
+    margin: 52px 0 0;
+    max-width: min(360px, calc(100vw - 36px));
+    padding: 10px 12px;
+    position: absolute;
+    transform: translateX(-50%);
+    width: max-content;
+}
+
 /* Consistent high-visibility keyboard focus across the extension and wizard. */
 :focus-visible {
     outline: 2px solid #0b6f91;
