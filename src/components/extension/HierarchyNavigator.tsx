@@ -7,6 +7,7 @@ import { debugOverride, defaultSelectedProps, HierarchyProps } from '../API/Inte
 import { resolveSavedSelectionBehavior } from '../API/SelectionBehavior';
 import { LocalizationProvider, useTranslation } from '../localization/I18n';
 import ParamHandler from './ParamHandler';
+import { waitForTableauInitialization } from './TableauInitialization';
 var extend = require('extend');
 
 function hydrateSavedSettings(settingsData: any): HierarchyProps {
@@ -26,6 +27,7 @@ function HierarchyNavigator() {
     const [doneLoading, setDoneLoading] = useState(false);
     const [data, setData] = useState<HierarchyProps>(defaultSelectedProps);
     const [initializationError, setInitializationError] = useState('');
+    const [initializationDelayed, setInitializationDelayed] = useState(false);
 
     useEffect(() => {
         window.dispatchEvent(new Event('hierarchy-app-ready'));
@@ -94,7 +96,7 @@ function HierarchyNavigator() {
     };
 
     React.useEffect(() => {
-        let timeoutId: number|undefined;
+        let delayNoticeId: number|undefined;
 
         const initialize = async (): Promise<void> => {
             try {
@@ -102,19 +104,19 @@ function HierarchyNavigator() {
                     throw new Error('The Tableau Extensions API library did not load.');
                 }
 
-                const timeout = new Promise<never>((_resolve, reject) => {
-                    timeoutId = window.setTimeout(() => {
-                        reject(new Error('Tableau did not complete the extension handshake within 15 seconds.'));
-                    }, 15000);
-                });
-
-                await Promise.race([
-                    tableau.extensions.initializeAsync({ configure }),
-                    timeout
-                ]);
+                await waitForTableauInitialization(
+                    () => tableau.extensions.initializeAsync({ configure }),
+                    () => setInitializationDelayed(true),
+                    15000,
+                    (callback, delayMs) => {
+                        delayNoticeId=window.setTimeout(callback, delayMs);
+                        return delayNoticeId;
+                    },
+                    handle => window.clearTimeout(handle as number)
+                );
                 window.dispatchEvent(new Event('hierarchy-locale-ready'));
 
-                if (typeof timeoutId !== 'undefined') { window.clearTimeout(timeoutId); }
+                setInitializationDelayed(false);
                 setDashboard(tableau.extensions.dashboardContent!.dashboard);
                 const settings = tableau.extensions.settings.getAll();
                 if (typeof settings.data === 'undefined') {
@@ -143,7 +145,7 @@ function HierarchyNavigator() {
                 document.body.style.backgroundColor = data.options.bgColor || defaultSelectedProps.options.bgColor;
             }
             catch (error) {
-                if (typeof timeoutId !== 'undefined') { window.clearTimeout(timeoutId); }
+                setInitializationDelayed(false);
                 console.error('Unable to initialize Tableau extension.', error);
                 setInitializationError(describeError(error));
                 setDoneLoading(true);
@@ -152,7 +154,7 @@ function HierarchyNavigator() {
 
         initialize();
         return () => {
-            if (typeof timeoutId !== 'undefined') { window.clearTimeout(timeoutId); }
+            if (typeof delayNoticeId !== 'undefined') { window.clearTimeout(delayNoticeId); }
         };
     }, []);
 
@@ -196,8 +198,19 @@ function HierarchyNavigator() {
     }, [data.options.fontColor]);
     return (
         <>
-            {!doneLoading ? (<div aria-busy='true' className='overlay'><div className='centerOnPage'><div className='spinnerBg centerOnPage'>{ }</div><Spinner color='light'
-            alt={t('Loading…')} /></div></div>) : undefined}
+            {!doneLoading ? (
+                <div aria-busy='true' className='overlay'>
+                    <div className='centerOnPage'>
+                        <div className='spinnerBg centerOnPage'>{ }</div>
+                        <Spinner color='light' alt={t('Loading…')} />
+                        {initializationDelayed ? (
+                            <p aria-live='polite' className='initialization-delay-notice' role='status'>
+                                {t('Tableau is still connecting. The extension will open automatically when initialization finishes.')}
+                            </p>
+                        ) : undefined}
+                    </div>
+                </div>
+            ) : undefined}
             {initializationError ? (
                 <div className='extension-status' role='alert'>
                     <h2>{t('Hierarchy Navigator could not start')}</h2>
