@@ -1,6 +1,6 @@
 {
   "name": "extension-hierarchy-navigator",
-  "version": "2.9.5",
+  "version": "2.9.6",
   "private": true,
   "engines": {
     "node": ">=22.15.0"

@@ -1,6 +1,6 @@
 import * as t from '@tableau/extensions-api-types';
 import { Spinner } from '@tableau/tableau-ui';
-import  React, { useEffect, useState } from 'react';
+import  React, { useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import '../../css/style.css';
 import { debugOverride, defaultSelectedProps, HierarchyProps } from '../API/Interfaces';
@@ -28,6 +28,8 @@ function HierarchyNavigator() {
     const [data, setData] = useState<HierarchyProps>(defaultSelectedProps);
     const [initializationError, setInitializationError] = useState('');
     const [initializationDelayed, setInitializationDelayed] = useState(false);
+    const [configurationError, setConfigurationError] = useState('');
+    const configurationInProgress = useRef(false);
 
     useEffect(() => {
         window.dispatchEvent(new Event('hierarchy-app-ready'));
@@ -41,6 +43,10 @@ function HierarchyNavigator() {
 
     // Pops open the configure page if extension isn't configured
     const configure = async (): Promise<void> => {
+        if(configurationInProgress.current) { return; }
+        configurationInProgress.current=true;
+        setConfigurationError('');
+
         if (debugOverride) { console.log(`calling CONFIGURE`); }
 
         let popupUrl = `config.html`;
@@ -90,8 +96,14 @@ function HierarchyNavigator() {
                     break;
                 default:
                     console.error(error.message);
-                    setInitializationError(`Unable to open the configuration dialog: ${describeError(error)}`);
+                    setConfigurationError(t(
+                        'Unable to open the configuration dialog: {error}',
+                        {error: describeError(error)}
+                    ));
             }
+        }
+        finally {
+            configurationInProgress.current=false;
         }
     };
 
@@ -121,7 +133,6 @@ function HierarchyNavigator() {
                 const settings = tableau.extensions.settings.getAll();
                 if (typeof settings.data === 'undefined') {
                     setDoneLoading(true);
-                    await configure();
                     return;
                 }
 
@@ -222,7 +233,12 @@ function HierarchyNavigator() {
                 <div className='extension-status'>
                     <h2>{t('Configure Hierarchy Navigator')}</h2>
                     <p>{t('Select the source hierarchy and any target worksheet filters before using the extension.')}</p>
-                    <button type='button' onClick={configure}>{t('Configure')}</button>
+                    {configurationError ? (
+                        <p aria-live='assertive' role='alert'>{configurationError}</p>
+                    ) : undefined}
+                    <button type='button' onClick={configure}>
+                        {t(configurationError?'Retry configuration':'Configure')}
+                    </button>
                 </div>
             ) : doneLoading ? (
                 <div>

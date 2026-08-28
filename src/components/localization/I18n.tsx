@@ -112,6 +112,7 @@ const GERMAN_TRANSLATIONS: Record<string, string>={
     'Recommended': 'Empfohlen',
     'Reload Extension': 'Erweiterung neu laden',
     'Reload the extension after confirming that its exact URL is enabled in Tableau Settings → Extensions.': 'Laden Sie die Erweiterung neu, nachdem Sie geprüft haben, dass ihre genaue URL unter Tableau-Einstellungen → Erweiterungen zugelassen ist.',
+    'Retry configuration': 'Konfiguration erneut öffnen',
     'Remove': 'Entfernen',
     'Remove {label}': '{label} entfernen',
     'Reset preview': 'Vorschau zurücksetzen',
@@ -326,6 +327,7 @@ const GERMAN_TRANSLATIONS: Record<string, string>={
     ,'Unique path ID': 'Eindeutige Pfad-ID'
     ,'Unique path ID field': 'Feld für eindeutige Pfad-ID'
     ,'Unknown Tableau Extensions API error.': 'Unbekannter Fehler der Tableau Extensions API.'
+    ,'Unable to open the configuration dialog: {error}': 'Der Konfigurationsdialog konnte nicht geöffnet werden: {error}'
     ,'Update delay (milliseconds)': 'Aktualisierungsverzögerung (Millisekunden)'
     ,'Use any ASCII character(s)': 'Beliebige ASCII-Zeichen verwenden'
     ,'Use the included': 'Verwenden Sie die enthaltene'
