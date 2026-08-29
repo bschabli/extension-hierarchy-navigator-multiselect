@@ -93,7 +93,8 @@ const dataFetchReducer=(state: HierarchyState, action: { type: string, data?: an
 const hierarchyAPI=(): any => {
     const [currentWorksheetName, setCurrentWorksheetName]=useState('');
     const initAsyncLoading=useRef<boolean>(true);
-    const getWorksheetsRunning=useRef<boolean>(false);
+    const suppressWorksheetRefresh=useRef(false);
+    const worksheetRefreshSequence=useRef(0);
     const [state, dispatch]=useReducer(dataFetchReducer, initialData);
     const debug=isDebugEnabled(state.data.options.debug);
 
@@ -562,13 +563,15 @@ const hierarchyAPI=(): any => {
     // this method will get the current worksheets and fields for the given worksheet.name without populating data.worksheets or data.parameters
     // it is for validating settings after getAll()
     const getWorksheetsFilterAndFieldsFromDashboardAsyncWithoutAssignments=async (_initialData: HierarchyProps): Promise<HierarchyProps> => {
-        getWorksheetsRunning.current=true;
         if(debug) { console.log(`getWorksheetsFilterAndFieldsFromDashboardAsyncWithoutAssignments`); }
         try {
             if(typeof window.tableau.extensions.dashboardContent==='undefined') {
                 await window.tableau.extensions.initializeDialogAsync();
             }
-            setCurrentWorksheetName(_initialData.worksheet.name);
+            if(currentWorksheetName!==_initialData.worksheet.name) {
+                suppressWorksheetRefresh.current=true;
+                setCurrentWorksheetName(_initialData.worksheet.name);
+            }
             await asyncForEach(window.tableau.extensions.dashboardContent!.dashboard.worksheets, async (worksheet: Worksheet) => {
                 const fields=await getWorksheetFieldsAsync(worksheet);
                 const filters=await getWorksheetFilters(worksheet);
@@ -612,7 +615,6 @@ const hierarchyAPI=(): any => {
         }
         finally {
             if(debug) { console.log(`finished getWorksheetsFromDashboardAsyncWithoutAssignment`); }
-            getWorksheetsRunning.current=false;
         }
     };
 
@@ -623,15 +625,21 @@ const hierarchyAPI=(): any => {
      4. set current filters
      5. set childId and childLabel and parentId for default selections
      */
-    const getWorksheetsFilterAndFieldsFromDashboardAsyncWithAssignments=async (_initialData?: HierarchyProps): Promise<void> => {
-        getWorksheetsRunning.current=true;
+    const getWorksheetsFilterAndFieldsFromDashboardAsyncWithAssignments=async (
+        _initialData?: HierarchyProps,
+        requestedWorksheetName=currentWorksheetName,
+        requestId?: number
+    ): Promise<void> => {
+        const effectiveRequestId=typeof requestId==='number'?
+            requestId:++worksheetRefreshSequence.current;
+        const requestIsStale=(): boolean => effectiveRequestId!==worksheetRefreshSequence.current;
         if(debug) { console.log(`getWorksheetsFilterAndFieldsFromDashboardAsyncWithAssignments`); }
         dispatch({ type: 'FETCH_INIT' });
         const sourceData=typeof _initialData==='undefined'?state.data:_initialData;
         const payload: HierarchyProps=extend(true, {}, sourceData);
         try {
             // step 1: Set worksheet name
-            payload.worksheet.name=currentWorksheetName;
+            payload.worksheet.name=requestedWorksheetName;
             if(typeof window.tableau.extensions.dashboardContent==='undefined') { await window.tableau.extensions.initializeDialogAsync(); }
             await asyncForEach(window.tableau.extensions.dashboardContent!.dashboard.worksheets, async (worksheet: Worksheet) => {
                     if(debug) {
@@ -652,11 +660,10 @@ const hierarchyAPI=(): any => {
                         // if worksheets isn't in list, add it
                         if(payload.dashboardItems.worksheets.indexOf(worksheet.name)===-1) { payload.dashboardItems.worksheets.push(worksheet.name); }
                         // if name is blank, assume fresh load or reset and take 1st worksheet found
-                        if(currentWorksheetName===''&&payload.worksheet.name==='') {
-                            initAsyncLoading.current=true; // make sure we don't trigger a loop here
+                        if(requestedWorksheetName===''&&payload.worksheet.name==='') {
                             payload.worksheet.name=worksheet.name;
+                            suppressWorksheetRefresh.current=true;
                             setCurrentWorksheetName(payload.worksheet.name);
-                            initAsyncLoading.current=false;
                         }
                         if(worksheet.name===payload.worksheet.name) {
                             // step 3: set current fields
@@ -689,27 +696,34 @@ const hierarchyAPI=(): any => {
             }
             payload.worksheet.status=Status.set;
             payload.configComplete=evalConfigComplete(payload);
+            if(requestIsStale()) { return; }
             dispatch({ type: 'FETCH_SUCCESS', data: payload });
         }
         catch(error) {
+            if(requestIsStale()) { return; }
             if(debug) { console.log(`error in getWorksheetsFromDashboardAsyncWithAssignments: ${ error }`); }
             payload.worksheet.status=Status.notpossible;
             dispatch({ type: 'FETCH_FAILURE', data: describeError(error) });
             throw error;
         }
         finally {
-            getWorksheetsRunning.current=false;
             if(debug) { console.log(`finished getWorksheetsFromDashboardAsyncWithAssignments`); }
         }
     };
 
     useEffect(() => {
-        /*         console.log(`initasyncloading: ${initAsyncLoading}; getWorksheetsRunning: ${getWorksheetsRunning.current}`) */
-        if(!initAsyncLoading.current&&!getWorksheetsRunning.current) {
-            getWorksheetsFilterAndFieldsFromDashboardAsyncWithAssignments()
-                .catch(error => console.error('Unable to refresh configuration worksheet metadata.', error));
+        if(suppressWorksheetRefresh.current) {
+            suppressWorksheetRefresh.current=false;
+            return;
         }
-    }, [currentWorksheetName, initAsyncLoading, getWorksheetsRunning]);
+        if(initAsyncLoading.current) { return; }
+        const requestId=++worksheetRefreshSequence.current;
+        getWorksheetsFilterAndFieldsFromDashboardAsyncWithAssignments(
+            undefined,
+            currentWorksheetName,
+            requestId
+        ).catch(error => console.error('Unable to refresh configuration worksheet metadata.', error));
+    }, [currentWorksheetName]);
 
     // solve forEach with promise issue - https://codeburst.io/javascript-async-await-with-foreach-b6ba62bbf404
     const asyncForEach=async (array: any[], callback: any) => {

@@ -5,7 +5,7 @@ import {
     validateRecursiveHierarchy
 } from '../API/HierarchyValidation';
 import { HierarchyProps, HierType } from '../API/Interfaces';
-import { loadSummaryDataset } from '../API/SummaryData';
+import { loadSummaryDataset, resolveSummaryColumnIndexes } from '../API/SummaryData';
 import {
     NormalizedTreeNode,
     buildFlatTree,
@@ -67,21 +67,15 @@ export function useHierarchyValidation(
                         'Validation must inspect the complete source worksheet.'
                     );
                 }
-                const columnIndexes=new Map<string, number>();
-                dataset.columns.forEach(column => columnIndexes.set(column.fieldName, column.index));
-                const getColumnIndex=(fieldName: string): number => {
-                    const index=columnIndexes.get(fieldName);
-                    if(typeof index!=='number') {
-                        throw new Error(`Mapped field “${ fieldName }” is not present in the source worksheet data.`);
-                    }
-                    return index;
-                };
-
                 let previewTree: NormalizedTreeNode[]|undefined;
                 let result: HierarchyValidationResult;
                 if(data.type===HierType.FLAT) {
-                    const idColumnIndex=getColumnIndex(data.worksheet.childId);
-                    const levelColumnIndexes=data.worksheet.fields.map(getColumnIndex);
+                    const columnIndexes=resolveSummaryColumnIndexes(
+                        dataset.columns,
+                        data.worksheet.fields.concat(data.worksheet.childId)
+                    );
+                    const idColumnIndex=columnIndexes[columnIndexes.length-1];
+                    const levelColumnIndexes=columnIndexes.slice(0, -1);
                     result=validateFlatHierarchy(dataset.rows, {
                         idColumnIndex,
                         levelColumnIndexes,
@@ -98,9 +92,12 @@ export function useHierarchyValidation(
                     }
                 }
                 else {
-                    const idColumnIndex=getColumnIndex(data.worksheet.childId);
-                    const labelColumnIndex=getColumnIndex(data.worksheet.childLabel);
-                    const parentIdColumnIndex=getColumnIndex(data.worksheet.parentId);
+                    const [parentIdColumnIndex, idColumnIndex, labelColumnIndex]=
+                        resolveSummaryColumnIndexes(dataset.columns, [
+                            data.worksheet.parentId,
+                            data.worksheet.childId,
+                            data.worksheet.childLabel
+                        ]);
                     result=validateRecursiveHierarchy(dataset.rows, {
                         idColumnIndex,
                         labelColumnIndex,

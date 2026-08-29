@@ -165,10 +165,7 @@ export function Page2Flat(props: Props) {
                                         }}
                                         onDrop={event => {
                                             event.preventDefault();
-                                            const sourceValue=event.dataTransfer.getData('text/plain');
-                                            const sourceIndex=sourceValue===''?undefined:Number(sourceValue);
-                                            const oldIndex=typeof sourceIndex==='number'&&Number.isInteger(sourceIndex)?
-                                                sourceIndex:draggedFieldIndex.current;
+                                            const oldIndex=draggedFieldIndex.current;
                                             if(typeof oldIndex==='number') { moveField(oldIndex, index); }
                                             draggedFieldIndex.current=undefined;
                                         }}

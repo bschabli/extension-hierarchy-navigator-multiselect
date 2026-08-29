@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import TreeMenu, { TreeMenuItem } from 'react-simple-tree-menu';
 import { defaultSelectedProps, HierarchyProps, HierType, isDebugEnabled } from '../API/Interfaces';
 import { SelectionBehavior } from '../API/SelectionBehavior';
-import { loadSummaryDataset } from '../API/SummaryData';
+import { loadSummaryDataset, resolveSummaryColumnIndexes } from '../API/SummaryData';
 import { HighlightedHierarchyLabel } from '../shared/HighlightedHierarchyLabel';
 import { useTranslation } from '../localization/I18n';
 import {
@@ -302,24 +302,23 @@ function Hierarchy(props: Props) {
                 `Tableau returned ${ dataTable.rows.length } of ${ dataTable.totalRowCount } hierarchy rows.`
             );
         }
-        const columnIndexes=new Map<string, number>();
-        dataTable.columns.forEach(column => columnIndexes.set(column.fieldName, column.index));
-
         let nextTree: NormalizedTreeNode[]=[];
         if(props.data.type===HierType.FLAT) {
-            const levelIndexes=props.data.worksheet.fields.map(field => columnIndexes.get(field));
-            const idIndex=columnIndexes.get(props.data.worksheet.childId);
-            if(levelIndexes.every(index => typeof index==='number')&&typeof idIndex==='number') {
-                nextTree=buildFlatTree(dataTable.rows, levelIndexes as number[], idIndex, props.data.separator);
-            }
+            const columnIndexes=resolveSummaryColumnIndexes(
+                dataTable.columns,
+                props.data.worksheet.fields.concat(props.data.worksheet.childId)
+            );
+            const idIndex=columnIndexes[columnIndexes.length-1];
+            const levelIndexes=columnIndexes.slice(0, -1);
+            nextTree=buildFlatTree(dataTable.rows, levelIndexes, idIndex, props.data.separator);
         }
         else {
-            const parentIndex=columnIndexes.get(props.data.worksheet.parentId);
-            const idIndex=columnIndexes.get(props.data.worksheet.childId);
-            const labelIndex=columnIndexes.get(props.data.worksheet.childLabel);
-            if(typeof parentIndex==='number'&&typeof idIndex==='number'&&typeof labelIndex==='number') {
-                nextTree=buildRecursiveTree(dataTable.rows, parentIndex, idIndex, labelIndex);
-            }
+            const [parentIndex, idIndex, labelIndex]=resolveSummaryColumnIndexes(dataTable.columns, [
+                props.data.worksheet.parentId,
+                props.data.worksheet.childId,
+                props.data.worksheet.childLabel
+            ]);
+            nextTree=buildRecursiveTree(dataTable.rows, parentIndex, idIndex, labelIndex);
         }
 
         if(requestId!==loadSequenceRef.current) { return; }
@@ -423,6 +422,9 @@ function Hierarchy(props: Props) {
     }
 
     function selectNodeFromDashboard(type: 'id'|'label', value: string): void {
+        // Preserve a parameter update that arrives before the refreshed hierarchy has loaded.
+        if(type==='id') { currentIdRef.current=value; }
+        else { currentLabelRef.current=value; }
         const match=pathMap.find(node => type==='id'? node.hierarchyValue===value:node.label===value);
         if(typeof match==='undefined') { return; }
         const nextOpenNodes=makePath(match.path);

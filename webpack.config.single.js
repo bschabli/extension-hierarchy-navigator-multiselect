@@ -8,9 +8,11 @@ module.exports = {
     path: path.join(__dirname, '/dist'),
     filename: 'bundle.js'
   },
-  devtool: 'inline-source-map',
   devServer: {
-    static: './dist',
+    static: {
+      directory: path.join(__dirname, 'dist'),
+      watch: false,
+    },
   },
   module: {
     rules: [

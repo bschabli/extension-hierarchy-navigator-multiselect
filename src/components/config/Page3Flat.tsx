@@ -21,50 +21,41 @@ export function Page3Flat(props: Props) {
     const {t}=useTranslation();
     const [levelParam, setLevelParam]=useState<boolean>(false);
     const debug=isDebugEnabled(props.data.options.debug);
-    // check level param upon page load
-    useEffect(() => {
-        if(debug) { console.log(`checking if ${props.data.parameters.level} is a viable numeric parameter`); }
-        checkLevelParam();
 
-        // legacy... to upgrade to new parameters format
+    // Legacy migration: keep generated field parameter names aligned with the hierarchy levels.
+    useEffect(() => {
         if (props.data.parameters.fields.length !== props.data.worksheet.fields.length){
             props.setUpdates({type: 'SET_FIELDS', data: props.data.worksheet.fields});
         }
     }, []);
 
-    // Is there a parameter that exists that matches the name/type?
-    // This is used on Page3Flat to check if the Level parameter of type int is present
-    // String parameters are the only one stored hence the need for an additional check
+    // Tableau parameter metadata can resolve out of order while the suffix is edited.
     useEffect(() => {
-        checkLevelParam();
-    }, [props.data.paramSuffix]);
-
-    // function to set the 
-    const checkLevelParam = () => {
-        const check=async () => {
+        let cancelled=false;
+        const check=async (): Promise<void> => {
+            if(debug) {
+                console.log(`checking if ${props.data.parameters.level} is a viable numeric parameter`);
+            }
             const dashboardContent=window.tableau&&window.tableau.extensions.dashboardContent;
             if(!dashboardContent) {
-                setLevelParam(false);
+                if(!cancelled) { setLevelParam(false); }
                 return;
             }
-            await dashboardContent.dashboard.getParametersAsync()
-                .then(params => {
-
-                    if(debug) { console.log(`parameters found`); }
-                    for(const p of params) {
-                        if(debug) { console.log(p); }
-                        if(p.dataType==='int'&&p.name===props.data.parameters.level ) {
-                            return setLevelParam(true);
-                        }
-                    }
-                    setLevelParam(false);
-                });
+            const params=await dashboardContent.dashboard.getParametersAsync();
+            if(cancelled) { return; }
+            if(debug) { console.log(`parameters found`); }
+            setLevelParam(params.some(parameter => {
+                if(debug) { console.log(parameter); }
+                return parameter.dataType==='int'&&parameter.name===props.data.parameters.level;
+            }));
         };
         check().catch(error => {
+            if(cancelled) { return; }
             console.warn('Unable to inspect dashboard parameters.', error);
             setLevelParam(false);
         });
-    }
+        return () => { cancelled=true; };
+    }, [props.data.parameters.level]);
 
     const inputProps: TextFieldProps & React.RefAttributes<HTMLInputElement>={
         message: undefined,

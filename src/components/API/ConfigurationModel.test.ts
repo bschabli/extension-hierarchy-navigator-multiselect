@@ -78,6 +78,39 @@ function testSettingsAndIntegerNormalization(): void {
         (settings.worksheet as { filterTargets: unknown[] }).filterTargets.length===1,
         'Malformed filter targets should be discarded.'
     );
+    const malformedScalars=normalizeHierarchySettingsRecord({
+        configComplete: 'yes',
+        options: {
+            debounce: 'fast',
+            fontFamily: null,
+            itemCSS: [],
+            searchEnabled: 'true'
+        },
+        parameters: { childId: 42, childIdEnabled: 'true' },
+        separator: '',
+        type: 'unknown',
+        worksheet: { filterEnabled: 'yes', name: null, status: 99 }
+    });
+    assert(!('configComplete' in malformedScalars), 'Malformed completion state should not replace the default.');
+    assert(!('separator' in malformedScalars), 'Blank separators should not replace the default.');
+    assert(!('type' in malformedScalars), 'Unknown hierarchy types should not replace the default.');
+    assert(
+        !('fontFamily' in (malformedScalars.options as Record<string, unknown>)),
+        'Malformed display settings should not replace safe defaults.'
+    );
+    assert(
+        !('childId' in (malformedScalars.parameters as Record<string, unknown>)),
+        'Malformed parameter mappings should not replace safe defaults.'
+    );
+    assert(
+        !('name' in (malformedScalars.worksheet as Record<string, unknown>)),
+        'Malformed worksheet mappings should not replace safe defaults.'
+    );
+    const boundedSettings=normalizeHierarchySettingsRecord({ options: { debounce: 20000 } });
+    assert(
+        (boundedSettings.options as { debounce: number }).debounce===10000,
+        'Persisted debounce delays should be constrained to the supported range.'
+    );
     assert(parseIntegerParameterValue('42')===42, 'Complete integer strings should be converted.');
     assert(parseIntegerParameterValue('-7')===-7, 'Signed integer strings should be converted.');
     assert(typeof parseIntegerParameterValue('12abc')==='undefined', 'Partial numeric strings must not be truncated.');

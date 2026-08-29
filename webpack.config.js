@@ -24,7 +24,12 @@ module.exports = {
     filename: '[name].js'
   },
   devServer: {
-    static: './docs',
+    static: {
+      directory: path.join(__dirname, 'docs'),
+      // Webpack already watches source files; generated assets do not need a
+      // second filesystem watcher.
+      watch: false,
+    },
   },
   module: {
     rules: [

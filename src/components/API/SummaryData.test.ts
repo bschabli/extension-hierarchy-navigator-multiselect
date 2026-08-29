@@ -1,5 +1,10 @@
 import { Column, DataTable, DataValue } from '@tableau/extensions-api-types';
-import { SummaryDataWorksheet, loadSummaryColumns, loadSummaryDataset } from './SummaryData';
+import {
+    SummaryDataWorksheet,
+    loadSummaryColumns,
+    loadSummaryDataset,
+    resolveSummaryColumnIndexes
+} from './SummaryData';
 
 function assert(condition: boolean, message: string): void {
     if(!condition) { throw new Error(message); }
@@ -7,6 +12,23 @@ function assert(condition: boolean, message: string): void {
 
 async function run(): Promise<void> {
     const columns=[{ fieldName: 'ID', index: 0 }] as Column[];
+    const mappedColumns=[
+        { fieldName: 'Region', index: 3 },
+        { fieldName: 'ID', index: 7 }
+    ] as Column[];
+    const resolvedIndexes=resolveSummaryColumnIndexes(mappedColumns, ['Region', 'ID']);
+    assert(resolvedIndexes.join(',')==='3,7', 'Mapped fields should resolve in the requested order.');
+    let missingFieldMessage='';
+    try {
+        resolveSummaryColumnIndexes(mappedColumns, ['Missing level', 'Missing ID']);
+    }
+    catch(error) {
+        missingFieldMessage=error instanceof Error?error.message:String(error);
+    }
+    assert(
+        missingFieldMessage.includes('Missing level')&&missingFieldMessage.includes('Missing ID'),
+        'Missing source fields should produce a descriptive mapping error.'
+    );
     const firstRow=[[{ value: 'A' }]] as DataValue[][];
     const secondRow=[[{ value: 'B' }]] as DataValue[][];
     let released=false;

@@ -57,20 +57,72 @@ export function normalizeHierarchySettingsRecord(value: unknown): Record<string,
         dashboardItems: _discardedDashboardItems,
         ...persistedSettings
     }=settings;
-    const parameters=normalizeSettingsRecord(settings.parameters);
-    const worksheet=normalizeSettingsRecord(settings.worksheet);
+    removeInvalidSettingsProperties(persistedSettings, {
+        configComplete: isBoolean,
+        paramSuffix: isString,
+        separator: value => typeof value==='string'&&value.length>0,
+        type: value => value==='flat'||value==='recursive'
+    });
+
+    const options={ ...normalizeSettingsRecord(settings.options) };
+    removeInvalidSettingsProperties(options, {
+        bgColor: isString,
+        closedIconAscii: isString,
+        closedIconBase64Image: isString,
+        closedIconType: isIconType,
+        dashboardListenersEnabled: isBoolean,
+        debug: isBoolean,
+        debounce: value => typeof value==='number'&&Number.isFinite(value),
+        fontColor: isString,
+        fontFamily: isString,
+        fontSize: isString,
+        highlightColor: isString,
+        itemCSS: isItemCss,
+        openedIconAscii: isString,
+        openedIconBase64Image: isString,
+        openedIconType: isIconType,
+        searchAutoExpand: isBoolean,
+        searchEnabled: isBoolean,
+        selectionBehavior: value => value==='terminal'||value==='subtree'||value==='node',
+        title: isString,
+        titleEnabled: isBoolean,
+        warningEnabled: isBoolean
+    });
+    if(typeof options.debounce==='number') {
+        options.debounce=normalizeDebounceDelay(options.debounce);
+    }
+
+    const parameters={ ...normalizeSettingsRecord(settings.parameters) };
+    removeInvalidSettingsProperties(parameters, {
+        childId: isString,
+        childIdEnabled: isBoolean,
+        childLabel: isString,
+        childLabelEnabled: isBoolean,
+        level: isString
+    });
+    parameters.fields=stringArray(parameters.fields);
+
+    const worksheet={ ...normalizeSettingsRecord(settings.worksheet) };
+    removeInvalidSettingsProperties(worksheet, {
+        childId: isString,
+        childLabel: isString,
+        enableMarkSelection: isBoolean,
+        filter: isString,
+        filterEnabled: isBoolean,
+        name: isString,
+        parentId: isString,
+        status: value => typeof value==='number'&&Number.isInteger(value)&&value>=0&&value<=3,
+        targetFilter: isString,
+        targetName: isString
+    });
+    worksheet.fields=stringArray(worksheet.fields);
+    worksheet.filterTargets=filterTargetArray(worksheet.filterTargets);
+
     return {
         ...persistedSettings,
-        options: normalizeSettingsRecord(settings.options),
-        parameters: {
-            ...parameters,
-            fields: stringArray(parameters.fields)
-        },
-        worksheet: {
-            ...worksheet,
-            fields: stringArray(worksheet.fields),
-            filterTargets: filterTargetArray(worksheet.filterTargets)
-        }
+        options,
+        parameters,
+        worksheet
     };
 }
 
@@ -85,6 +137,27 @@ export function parseIntegerParameterValue(value: string): number|undefined {
 function isItemCss(value: unknown): value is CSSProperties {
     if(typeof value!=='object'||value===null||Array.isArray(value)) { return false; }
     return Object.values(value).every(item => typeof item==='string'||typeof item==='number');
+}
+
+function isBoolean(value: unknown): value is boolean {
+    return typeof value==='boolean';
+}
+
+function isIconType(value: unknown): boolean {
+    return value==='Default'||value==='Base64 Image'||value==='Ascii';
+}
+
+function isString(value: unknown): value is string {
+    return typeof value==='string';
+}
+
+function removeInvalidSettingsProperties(
+    settings: Record<string, unknown>,
+    validators: Record<string, (value: unknown) => boolean>
+): void {
+    Object.entries(validators).forEach(([key, validator]) => {
+        if(key in settings&&!validator(settings[key])) { delete settings[key]; }
+    });
 }
 
 function stringArray(value: unknown): string[] {
