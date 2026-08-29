@@ -35,6 +35,7 @@ export interface Options {
 }
 export interface HierarchyProps {
     configComplete: boolean;
+    schemaVersion: number;
     options: Options;
     separator: string;
     type: HierType;
@@ -81,6 +82,7 @@ export interface SelectedWorksheet {
 
 export const defaultSelectedProps: HierarchyProps={
     configComplete: false,
+    schemaVersion: 3,
     dashboardItems: {
         allCurrentWorksheetItems: {
             fields: [],

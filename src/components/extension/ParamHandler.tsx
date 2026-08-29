@@ -1,5 +1,5 @@
 import { Dashboard, Parameter, Worksheet } from '@tableau/extensions-api-types';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
     FilterTarget,
     resolveFilterTargets,
@@ -12,6 +12,11 @@ import { useTranslation } from '../localization/I18n';
 import Hierarchy, { HierarchySelectionPayload } from './Hierarchy';
 import { normalizeDebounceDelay, parseIntegerParameterValue } from '../API/ConfigurationModel';
 import { resolveMappedFilterValues } from './FilterTargetValues';
+import {
+    HierarchyRuntimeDiagnostics,
+    detectTableauApiCapabilities
+} from './DiagnosticsModel';
+import { DiagnosticsPanel } from './DiagnosticsPanel';
 
 interface Props {
     data: HierarchyProps;
@@ -36,6 +41,23 @@ function ParamHandler(props: Props) {
     const [currentLabel, setCurrentLabel]=useState<string>('');
     const [dataFromExtension, setDataFromExtension]=useState<HierarchySelectionPayload>();
     const [outputError, setOutputError]=useState('');
+    const [diagnostics, setDiagnostics]=useState<HierarchyRuntimeDiagnostics>({
+        capabilities: {
+            categoricalFiltering: false,
+            pagedSummaryData: false,
+            settingsPersistence: false,
+            sourceDataEvents: false,
+            sourceMarkSelection: false,
+            summaryColumnMetadata: false
+        },
+        filtersApplied: 0,
+        loadTimeMs: 0,
+        nodeCount: 0,
+        refreshMode: 'full',
+        reusedNodeCount: 0,
+        rowCount: 0,
+        virtualizationEnabled: false
+    });
     const filterQueue=useRef<Promise<void>>(Promise.resolve());
     const appliedFilterTargets=useRef<FilterTarget[]>([]);
     const appliedMarkTarget=useRef<FilterTarget>();
@@ -46,6 +68,28 @@ function ParamHandler(props: Props) {
     const currentIdRef=useRef('');
     const currentLabelRef=useRef('');
     const debug=isDebugEnabled(props.data.options.debug);
+    const updateLoadDiagnostics=useCallback((loadDiagnostics: Omit<HierarchyRuntimeDiagnostics, 'capabilities'|'filtersApplied'>) => {
+        setDiagnostics(current => ({ ...current, ...loadDiagnostics }));
+    }, []);
+    const updateVirtualizationDiagnostics=useCallback((active: boolean) => {
+        setDiagnostics(current => current.virtualizationEnabled===active?current:{
+            ...current,
+            virtualizationEnabled: active
+        });
+    }, []);
+
+    useEffect(() => {
+        const sourceWorksheet=props.dashboard.worksheets.find(
+            worksheet => worksheet.name===props.data.worksheet.name
+        );
+        setDiagnostics(current => ({
+            ...current,
+            capabilities: detectTableauApiCapabilities(
+                sourceWorksheet as unknown as Record<string, unknown>|undefined,
+                window.tableau.extensions as unknown as Record<string, unknown>
+            )
+        }));
+    }, [props.dashboard, props.data.worksheet.name]);
 
 
     // will be called with user selects new value in hierarchy
@@ -286,6 +330,10 @@ function ParamHandler(props: Props) {
                     }
                 );
                 appliedFilterTargets.current=failedTargets;
+                setDiagnostics(current => ({
+                    ...current,
+                    filtersApplied: appliedFilterTargets.current.length
+                }));
                 setOutputError(failedTargets.length?t('Some dashboard filters could not be cleared: {targets}', {
                     targets: describeFilterTargets(failedTargets)
                 }):'');
@@ -455,6 +503,10 @@ function ParamHandler(props: Props) {
                 appliedFilterTargets.current=selectedValues.length?resolveFilterTargets({
                     filterTargets: successfulTargets.concat(failedTargets)
                 }):failedTargets;
+                setDiagnostics(current => ({
+                    ...current,
+                    filtersApplied: appliedFilterTargets.current.length
+                }));
                 setOutputError(failedTargets.length?t('Some dashboard filters could not be updated: {targets}', {
                     targets: describeFilterTargets(failedTargets)
                 }):'');
@@ -491,10 +543,13 @@ function ParamHandler(props: Props) {
                 data={props.data}
                 reapplySelectionsVersion={reapplySelectionsVersion}
                 refreshVersion={refreshVersion}
+                onDiagnosticsChange={updateLoadDiagnostics}
+                onVirtualizationChange={updateVirtualizationDiagnostics}
                 setDataFromExtension={setDataFromExtension}
                 currentLabel={currentLabel}
                 currentId={currentId}
             />
+            <DiagnosticsPanel diagnostics={diagnostics} />
         </>
     );
 }

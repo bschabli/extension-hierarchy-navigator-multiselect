@@ -62,15 +62,21 @@ export function normalizeHierarchySettingsRecord(value: unknown): Record<string,
         dashboardItems: _discardedDashboardItems,
         ...persistedSettings
     }=settings;
-    removeInvalidSettingsProperties(persistedSettings, {
+    const rootValidators: Record<string, (value: unknown) => boolean>={
         configComplete: isBoolean,
         paramSuffix: isString,
+        schemaVersion: value => typeof value==='number'&&Number.isInteger(value)&&value>=1,
         separator: value => typeof value==='string'&&value.length>0,
         type: value => value==='flat'||value==='recursive'
-    });
+    };
+    removeUnknownSettingsProperties(
+        persistedSettings,
+        Object.keys(rootValidators).concat('options', 'parameters', 'worksheet')
+    );
+    removeInvalidSettingsProperties(persistedSettings, rootValidators);
 
     const options={ ...normalizeSettingsRecord(settings.options) };
-    removeInvalidSettingsProperties(options, {
+    const optionValidators: Record<string, (value: unknown) => boolean>={
         bgColor: isString,
         closedIconAscii: isString,
         closedIconBase64Image: isString,
@@ -92,23 +98,27 @@ export function normalizeHierarchySettingsRecord(value: unknown): Record<string,
         title: isString,
         titleEnabled: isBoolean,
         warningEnabled: isBoolean
-    });
+    };
+    removeUnknownSettingsProperties(options, Object.keys(optionValidators));
+    removeInvalidSettingsProperties(options, optionValidators);
     if(typeof options.debounce==='number') {
         options.debounce=normalizeDebounceDelay(options.debounce);
     }
 
     const parameters={ ...normalizeSettingsRecord(settings.parameters) };
-    removeInvalidSettingsProperties(parameters, {
+    const parameterValidators: Record<string, (value: unknown) => boolean>={
         childId: isString,
         childIdEnabled: isBoolean,
         childLabel: isString,
         childLabelEnabled: isBoolean,
         level: isString
-    });
+    };
+    removeUnknownSettingsProperties(parameters, Object.keys(parameterValidators).concat('fields'));
+    removeInvalidSettingsProperties(parameters, parameterValidators);
     parameters.fields=stringArray(parameters.fields);
 
     const worksheet={ ...normalizeSettingsRecord(settings.worksheet) };
-    removeInvalidSettingsProperties(worksheet, {
+    const worksheetValidators: Record<string, (value: unknown) => boolean>={
         childId: isString,
         childLabel: isString,
         enableMarkSelection: isBoolean,
@@ -119,7 +129,9 @@ export function normalizeHierarchySettingsRecord(value: unknown): Record<string,
         status: value => typeof value==='number'&&Number.isInteger(value)&&value>=0&&value<=3,
         targetFilter: isString,
         targetName: isString
-    });
+    };
+    removeUnknownSettingsProperties(worksheet, Object.keys(worksheetValidators).concat('fields', 'filterTargets'));
+    removeInvalidSettingsProperties(worksheet, worksheetValidators);
     worksheet.fields=stringArray(worksheet.fields);
     worksheet.filterTargets=filterTargetArray(worksheet.filterTargets);
 
@@ -162,6 +174,13 @@ function removeInvalidSettingsProperties(
 ): void {
     Object.entries(validators).forEach(([key, validator]) => {
         if(key in settings&&!validator(settings[key])) { delete settings[key]; }
+    });
+}
+
+function removeUnknownSettingsProperties(settings: Record<string, unknown>, allowedKeys: string[]): void {
+    const allowed=new Set(allowedKeys);
+    Object.keys(settings).forEach(key => {
+        if(!allowed.has(key)) { delete settings[key]; }
     });
 }
 

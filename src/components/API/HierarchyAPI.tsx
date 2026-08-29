@@ -18,8 +18,18 @@ import { LocalizedText, TranslationValues } from '../localization/I18n';
 import {
     normalizeDebounceDelay,
     normalizeHierarchySettingsRecord,
+    normalizeSettingsRecord,
     updateParameterSelection
 } from './ConfigurationModel';
+import {
+    CURRENT_CONFIGURATION_SCHEMA_VERSION,
+    ConfigurationMigrationReport,
+    migrateHierarchyConfiguration
+} from './ConfigurationMigration';
+import {
+    hydrateImportedConfiguration,
+    parseHierarchyConfiguration
+} from './ConfigurationPackage';
 
 const extend=require('extend');
 
@@ -96,6 +106,12 @@ const hierarchyAPI=(): any => {
     const suppressWorksheetRefresh=useRef(false);
     const worksheetRefreshSequence=useRef(0);
     const [state, dispatch]=useReducer(dataFetchReducer, initialData);
+    const [migrationReport, setMigrationReport]=useState<ConfigurationMigrationReport>({
+        changes: [],
+        fromVersion: CURRENT_CONFIGURATION_SCHEMA_VERSION,
+        migrated: false,
+        toVersion: CURRENT_CONFIGURATION_SCHEMA_VERSION
+    });
     const debug=isDebugEnabled(state.data.options.debug);
 
     // if we are loading, or reset the data, re-init
@@ -106,7 +122,9 @@ const hierarchyAPI=(): any => {
 
         await window.tableau.extensions.initializeDialogAsync();
         window.dispatchEvent(new Event('hierarchy-locale-ready'));
-        const _settings=loadSettings();
+        const loadedSettings=loadSettings();
+        const _settings=loadedSettings.settings;
+        setMigrationReport(loadedSettings.report);
         if(debug) {
             console.log(`loading _settings: vvv`);
             console.log(_settings);
@@ -117,7 +135,7 @@ const hierarchyAPI=(): any => {
         // true means all good; false means some data didn't pass the logic
         // skip if current worksheet name is blank (initial load)
         if(typeof _settings.configComplete!=='undefined'&&_settings.configComplete) {
-            const savedSelectionBehavior=_settings.options?.selectionBehavior;
+            const savedSelectionBehavior=normalizeSettingsRecord(_settings.options).selectionBehavior;
             extend(true, _initialData, _settings);
             // Preserve the previous effective behavior for saved workbooks:
             // Flat trees included every represented endpoint, while
@@ -154,18 +172,27 @@ const hierarchyAPI=(): any => {
     };
 
     // load settings from Extension
-    const loadSettings=(): any => {
+    const loadSettings=(): { report: ConfigurationMigrationReport, settings: Record<string, unknown> } => {
         const _settings=window.tableau.extensions.settings.getAll();
-        let res={};
+        const currentReport: ConfigurationMigrationReport={
+            changes: [],
+            fromVersion: CURRENT_CONFIGURATION_SCHEMA_VERSION,
+            migrated: false,
+            toVersion: CURRENT_CONFIGURATION_SCHEMA_VERSION
+        };
         if(debug) { console.log(`loadSettings: raw settings = ${ JSON.stringify(_settings) }`); }
-        if(typeof _settings.data==='undefined') { return res; }
+        if(typeof _settings.data==='undefined') { return { report: currentReport, settings: {} }; }
         try {
-            res=normalizeHierarchySettingsRecord(JSON.parse(_settings.data));
+            const migrated=migrateHierarchyConfiguration(JSON.parse(_settings.data));
+            return {
+                report: migrated.report,
+                settings: normalizeHierarchySettingsRecord(migrated.settings)
+            };
         }
         catch(error) {
             console.warn('Saved hierarchy settings are invalid; starting with a fresh configuration.', error);
+            return { report: currentReport, settings: {} };
         }
-        return res;
     };
 
     const changeHierType=(hierType: HierType) => {
@@ -584,6 +611,27 @@ const hierarchyAPI=(): any => {
                     // enable/disable warning
                     payload.options.warningEnabled=false;
                     return dispatch({ type: 'FETCH_SUCCESS', data: payload });
+                }
+            case 'IMPORT_CONFIGURATION':
+                {
+                    try {
+                        const imported=parseHierarchyConfiguration(action.data);
+                        const importedData=hydrateImportedConfiguration(imported.settings, payload);
+                        importedData.options.selectionBehavior=resolveSavedSelectionBehavior(
+                            normalizeSettingsRecord(imported.settings.options).selectionBehavior,
+                            importedData.configComplete,
+                            importedData.type
+                        );
+                        importedData.configComplete=evalConfigComplete(importedData);
+                        setMigrationReport(imported.report);
+                        return dispatch({ type: 'FETCH_SUCCESS', data: importedData });
+                    }
+                    catch(error) {
+                        return dispatch({
+                            type: 'ERROR',
+                            data: `Configuration import failed: ${ describeError(error) }`
+                        });
+                    }
                 }
             case 'CHANGE_HIER_TYPE':
                 changeHierType(action.data);
@@ -1041,7 +1089,7 @@ const hierarchyAPI=(): any => {
             return { result: 'SUCCESS' };
         }
     };
-    return [state, setCurrentWorksheetName, setUpdates];
+    return [state, setCurrentWorksheetName, setUpdates, migrationReport];
 };
 
 

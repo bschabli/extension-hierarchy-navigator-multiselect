@@ -34,6 +34,14 @@ import {
     HierarchyFilterValueRecord,
     buildHierarchyFilterValueRecords
 } from './FilterTargetValues';
+import {
+    HierarchyDatasetSnapshot,
+    createHierarchyDatasetSnapshot,
+    hierarchyDatasetSnapshotsEqual,
+    reconcileNormalizedTree
+} from './IncrementalTreeModel';
+import { getVirtualWindow } from './VirtualizationModel';
+import { HierarchyLoadDiagnostics } from './DiagnosticsModel';
 
 export interface HierarchySelectionPayload {
     currentFieldValues?: Array<string|undefined>;
@@ -56,8 +64,14 @@ interface Props {
     data: HierarchyProps;
     reapplySelectionsVersion: number;
     refreshVersion: number;
+    onDiagnosticsChange: (diagnostics: HierarchyLoadDiagnostics) => void;
+    onVirtualizationChange: (active: boolean) => void;
     setDataFromExtension: (data: HierarchySelectionPayload) => void;
 }
+
+const VIRTUALIZATION_THRESHOLD=250;
+const VIRTUAL_ROW_HEIGHT=32;
+const VIRTUAL_OVERSCAN=8;
 
 interface CheckboxTreeItemProps {
     checkboxState: CheckboxState;
@@ -75,6 +89,8 @@ interface CheckboxTreeItemProps {
     setRef: (element: HTMLLIElement|null) => void;
     style: React.CSSProperties;
     searchTerm: string;
+    setSize?: number;
+    positionInSet?: number;
     tabIndex: number;
     toggleNode?: () => void;
     toggleDisabled: boolean;
@@ -99,6 +115,8 @@ function CheckboxTreeItem(props: CheckboxTreeItemProps) {
             aria-checked={props.checkboxState==='some'?'mixed':props.checkboxState==='all'}
             aria-disabled={props.disabled||undefined}
             aria-selected={props.checkboxState!=='none'}
+            aria-posinset={props.positionInSet}
+            aria-setsize={props.setSize}
             aria-label={`${ props.label }, ${ selectionDescription }`}
             onClick={props.onClick}
             onFocus={props.onFocus}
@@ -158,7 +176,10 @@ function Hierarchy(props: Props) {
     const childRef=useRef<TreeMenu|null>(null);
     const lastReappliedSelectionsVersionRef=useRef(0);
     const loadSequenceRef=useRef(0);
+    const datasetSnapshotRef=useRef<HierarchyDatasetSnapshot>();
     const treeItemRefs=useRef<Map<string, HTMLLIElement>>(new Map());
+    const treeViewportRef=useRef<HTMLDivElement|null>(null);
+    const virtualItemsRef=useRef<TreeMenuItem[]>([]);
     const typeaheadRef=useRef({ text: '', updatedAt: 0 });
     const selectedRef=useRef<Set<string>>(new Set(initialUiState.selectedValues));
     const selectionBehaviorRef=useRef(selectionBehavior);
@@ -171,11 +192,16 @@ function Hierarchy(props: Props) {
     const currentIdRef=useRef(props.currentId);
     const [pathMap, setPathMap]=useState<PathMap[]>([]);
     const [tree, setTree]=useState<NormalizedTreeNode[]>([]);
+    const treeRef=useRef<NormalizedTreeNode[]>([]);
     const [searchVal, setSearchVal]=useState(initialUiState.searchText);
     const [openNodes, setOpenNodes]=useState<string[]>(initialUiState.openNodes);
     const [focusedTreePath, setFocusedTreePath]=useState('');
     const [screenReaderAnnouncement, setScreenReaderAnnouncement]=useState('');
     const [loadError, setLoadError]=useState('');
+    const [treeScrollTop, setTreeScrollTop]=useState(0);
+    const [treeViewportHeight, setTreeViewportHeight]=useState(() =>
+        Math.max(160, typeof window==='undefined'?320:window.innerHeight-190)
+    );
     const hierarchyDefinitionRef=useRef(hierarchyDefinitionSignature);
     const persistedUiStorageKeyRef=useRef(uiStorageKey);
 
@@ -211,6 +237,14 @@ function Hierarchy(props: Props) {
         if(!searchActive||!autoExpandSearch) { return openNodes; }
         return Array.from(new Set(openNodes.concat(searchResult.autoExpandedPaths)));
     }, [autoExpandSearch, openNodes, searchActive, searchResult.autoExpandedPaths]);
+    const visibleItemCount=useMemo(
+        () => countVisibleTreeNodes(visibleTree, new Set(effectiveOpenNodes)),
+        [effectiveOpenNodes, visibleTree]
+    );
+
+    useEffect(() => {
+        props.onVirtualizationChange(visibleItemCount>VIRTUALIZATION_THRESHOLD);
+    }, [props.onVirtualizationChange, visibleItemCount]);
 
     useEffect(() => {
         if(persistedUiStorageKeyRef.current!==uiStorageKey) {
@@ -234,6 +268,16 @@ function Hierarchy(props: Props) {
     useEffect(() => {
         if(!props.data.options.searchEnabled) { setSearchVal(''); }
     }, [props.data.options.searchEnabled]);
+
+    useEffect(() => {
+        const updateViewportHeight=(): void => {
+            const viewport=treeViewportRef.current;
+            setTreeViewportHeight(viewport?.clientHeight||Math.max(160, window.innerHeight-190));
+        };
+        updateViewportHeight();
+        window.addEventListener('resize', updateViewportHeight);
+        return () => window.removeEventListener('resize', updateViewportHeight);
+    }, []);
 
     useEffect(() => {
         if(props.data.options.openedIconType==='Default') { setOpenedIcon(defaultOpenedIcon); }
@@ -295,6 +339,7 @@ function Hierarchy(props: Props) {
         preserveUiState: boolean,
         reapplySelectionsVersion: number
     ): Promise<void> {
+        const loadStartedAt=readPerformanceTime();
         const worksheet=window.tableau.extensions.dashboardContent!.dashboard.worksheets.find(
             candidate => candidate.name===props.data.worksheet.name
         );
@@ -307,7 +352,9 @@ function Hierarchy(props: Props) {
                 `Tableau returned ${ dataTable.rows.length } of ${ dataTable.totalRowCount } hierarchy rows.`
             );
         }
-        let nextTree: NormalizedTreeNode[]=[];
+        if(requestId!==loadSequenceRef.current) { return; }
+        let relevantColumnIndexes: number[];
+        let buildTree: () => NormalizedTreeNode[];
         if(props.data.type===HierType.FLAT) {
             const columnIndexes=resolveSummaryColumnIndexes(
                 dataTable.columns,
@@ -315,7 +362,8 @@ function Hierarchy(props: Props) {
             );
             const idIndex=columnIndexes[columnIndexes.length-1];
             const levelIndexes=columnIndexes.slice(0, -1);
-            nextTree=buildFlatTree(dataTable.rows, levelIndexes, idIndex, props.data.separator);
+            relevantColumnIndexes=columnIndexes;
+            buildTree=() => buildFlatTree(dataTable.rows, levelIndexes, idIndex, props.data.separator);
         }
         else {
             const [parentIndex, idIndex, labelIndex]=resolveSummaryColumnIndexes(dataTable.columns, [
@@ -323,12 +371,54 @@ function Hierarchy(props: Props) {
                 props.data.worksheet.childId,
                 props.data.worksheet.childLabel
             ]);
-            nextTree=buildRecursiveTree(dataTable.rows, parentIndex, idIndex, labelIndex);
+            relevantColumnIndexes=[parentIndex, idIndex, labelIndex];
+            buildTree=() => buildRecursiveTree(dataTable.rows, parentIndex, idIndex, labelIndex);
         }
+
+        const nextSnapshot=createHierarchyDatasetSnapshot(dataTable.rows, relevantColumnIndexes);
+        const unchanged=preserveUiState&&hierarchyDatasetSnapshotsEqual(datasetSnapshotRef.current, nextSnapshot);
+        const reapplyRequested=reapplySelectionsVersion>lastReappliedSelectionsVersionRef.current&&
+            selectedRef.current.size>0;
+        datasetSnapshotRef.current=nextSnapshot;
+        if(unchanged&&!reapplyRequested) {
+            lastReappliedSelectionsVersionRef.current=Math.max(
+                lastReappliedSelectionsVersionRef.current,
+                reapplySelectionsVersion
+            );
+            const currentNodeCount=countTreeNodes(treeRef.current);
+            props.onDiagnosticsChange({
+                loadTimeMs: Math.round(readPerformanceTime()-loadStartedAt),
+                nodeCount: currentNodeCount,
+                refreshMode: 'unchanged',
+                reusedNodeCount: currentNodeCount,
+                rowCount: dataTable.rows.length,
+                virtualizationEnabled: false
+            });
+            return;
+        }
+        const rebuiltTree=unchanged?treeRef.current:buildTree();
 
         if(requestId!==loadSequenceRef.current) { return; }
 
-        const nextPathMap=buildPathMap(nextTree);
+        const previousTree=treeRef.current;
+        const unchangedTree=rebuiltTree===previousTree;
+        const reconciliation=unchangedTree?{
+            changedNodeCount: 0,
+            nodeCount: countTreeNodes(previousTree),
+            reusedNodeCount: countTreeNodes(previousTree),
+            tree: previousTree
+        }:preserveUiState&&previousTree.length?
+            reconcileNormalizedTree(previousTree, rebuiltTree):{
+                changedNodeCount: countTreeNodes(rebuiltTree),
+                nodeCount: countTreeNodes(rebuiltTree),
+                reusedNodeCount: 0,
+                tree: rebuiltTree
+            };
+        const nextTree=reconciliation.tree;
+        const refreshMode=unchangedTree?'unchanged':
+            preserveUiState&&previousTree.length?'incremental':'full';
+
+        const nextPathMap=refreshMode==='unchanged'?pathMap:buildPathMap(nextTree);
         const previousSelectedValues=Array.from(selectedRef.current);
         const reconciledUiState=preserveUiState?reconcileHierarchyUiState(nextTree, {
             openNodes,
@@ -356,9 +446,20 @@ function Hierarchy(props: Props) {
             selectedValues: []
         }, selectionBehavior).openNodes:[]);
         if(!preserveUiState) { setSearchVal(''); }
-        setTree(nextTree);
-        setPathMap(nextPathMap);
+        treeRef.current=nextTree;
+        if(refreshMode!=='unchanged') {
+            setTree(nextTree);
+            setPathMap(nextPathMap);
+        }
         const itemCount=countTreeNodes(nextTree);
+        props.onDiagnosticsChange({
+            loadTimeMs: Math.round(readPerformanceTime()-loadStartedAt),
+            nodeCount: reconciliation.nodeCount,
+            refreshMode,
+            reusedNodeCount: reconciliation.reusedNodeCount,
+            rowCount: dataTable.rows.length,
+            virtualizationEnabled: false
+        });
         setScreenReaderAnnouncement(
             t(itemCount===1?'Hierarchy updated. {count} item is available.':
                 'Hierarchy updated. {count} items are available.', { count: itemCount })
@@ -388,11 +489,15 @@ function Hierarchy(props: Props) {
 
     function resetHierarchyUiState(): void {
         selectedRef.current=new Set<string>();
+        datasetSnapshotRef.current=undefined;
         setSelectedLeafValues(new Set<string>());
+        treeRef.current=[];
         setTree([]);
         setPathMap([]);
         setSearchVal('');
         setOpenNodes([]);
+        setTreeScrollTop(0);
+        if(treeViewportRef.current) { treeViewportRef.current.scrollTop=0; }
     }
 
     function buildPathMap(nodes: NormalizedTreeNode[], parentPath=''): PathMap[] {
@@ -474,7 +579,15 @@ function Hierarchy(props: Props) {
 
     function focusTreeItem(key: string): void {
         setFocusedTreePath(key);
-        window.requestAnimationFrame(() => treeItemRefs.current.get(key)?.focus());
+        const itemIndex=virtualItemsRef.current.findIndex(item => item.key===key);
+        if(itemIndex>=0&&virtualItemsRef.current.length>VIRTUALIZATION_THRESHOLD&&treeViewportRef.current) {
+            const nextScrollTop=itemIndex*VIRTUAL_ROW_HEIGHT;
+            treeViewportRef.current.scrollTop=nextScrollTop;
+            setTreeScrollTop(nextScrollTop);
+        }
+        window.requestAnimationFrame(() => window.requestAnimationFrame(
+            () => treeItemRefs.current.get(key)?.focus()
+        ));
     }
 
     function handleTreeItemKeyDown(
@@ -660,8 +773,23 @@ function Hierarchy(props: Props) {
                 ref={childRef}
             >
                 {({ items }) => {
-                    const currentFocusPath=items.some(candidate => candidate.key===focusedTreePath)?
-                        focusedTreePath:items[0]?.key;
+                    virtualItemsRef.current=items;
+                    const virtualized=items.length>VIRTUALIZATION_THRESHOLD;
+                    const virtualWindow=virtualized?getVirtualWindow(
+                        items.length,
+                        treeScrollTop,
+                        treeViewportHeight,
+                        VIRTUAL_ROW_HEIGHT,
+                        VIRTUAL_OVERSCAN
+                    ):{
+                        endIndex: items.length,
+                        paddingBottom: 0,
+                        paddingTop: 0,
+                        startIndex: 0
+                    };
+                    const renderedItems=items.slice(virtualWindow.startIndex, virtualWindow.endIndex);
+                    const currentFocusPath=renderedItems.some(candidate => candidate.key===focusedTreePath)?
+                        focusedTreePath:renderedItems[0]?.key;
                     return (<>
                         <TextField
                             kind='search'
@@ -673,9 +801,13 @@ function Hierarchy(props: Props) {
                             value={searchVal}
                             onChange={(event: React.ChangeEvent<HTMLInputElement>) => {
                                 setSearchVal(event.target.value);
+                                setTreeScrollTop(0);
+                                if(treeViewportRef.current) { treeViewportRef.current.scrollTop=0; }
                             }}
                             onClear={() => {
                                 setSearchVal('');
+                                setTreeScrollTop(0);
+                                if(treeViewportRef.current) { treeViewportRef.current.scrollTop=0; }
                             }}
                         />
                         {props.data.options.searchEnabled&&searchActive&&
@@ -692,15 +824,24 @@ function Hierarchy(props: Props) {
                                     }) } · ${ t('ancestor context shown') }`}
                             </div>
                         }
-                        <ul
-                            id='hierarchy-tree'
-                            className='rstm-tree-item-group'
-                            role='tree'
-                            aria-label={t('Hierarchy navigator')}
-                            aria-describedby='hierarchy-keyboard-help'
-                            aria-multiselectable='true'
+                        <div
+                            ref={treeViewportRef}
+                            className={`hierarchy-tree-viewport${ virtualized?' hierarchy-tree-viewport--virtualized':'' }`}
+                            onScroll={event => setTreeScrollTop(event.currentTarget.scrollTop)}
                         >
-                            {items.map(item => {
+                            <ul
+                                id='hierarchy-tree'
+                                className={`rstm-tree-item-group${ virtualized?' hierarchy-tree-list--virtualized':'' }`}
+                                role='tree'
+                                aria-label={t('Hierarchy navigator')}
+                                aria-describedby='hierarchy-keyboard-help'
+                                aria-multiselectable='true'
+                                style={virtualized?{
+                                    paddingBottom: virtualWindow.paddingBottom,
+                                    paddingTop: virtualWindow.paddingTop
+                                }:undefined}
+                            >
+                            {renderedItems.map((item, renderedIndex) => {
                                 const nodeId=item.key.split('/').pop()||'';
                                 const node=nodeById.get(nodeId);
                                 if(!node) { return null; }
@@ -727,11 +868,19 @@ function Hierarchy(props: Props) {
                                         openedIcon={openedIcon}
                                         closedIcon={closedIcon}
                                         searchTerm={searchVal}
-                                        style={itemStyle}
+                                        setSize={virtualized?items.length:undefined}
+                                        positionInSet={virtualized?
+                                            virtualWindow.startIndex+renderedIndex+1:undefined}
+                                        style={virtualized?{
+                                            ...itemStyle,
+                                            boxSizing: 'border-box',
+                                            height: VIRTUAL_ROW_HEIGHT
+                                        }:itemStyle}
                                     />
                                 );
                             })}
-                        </ul>
+                            </ul>
+                        </div>
                     </>);
                 }}
             </TreeMenu>
@@ -747,6 +896,21 @@ function getSessionStorage(): Storage|undefined {
 
 function countTreeNodes(nodes: readonly NormalizedTreeNode[]): number {
     return nodes.reduce((count, node) => count+1+countTreeNodes(node.nodes), 0);
+}
+
+function countVisibleTreeNodes(
+    nodes: readonly NormalizedTreeNode[],
+    openPaths: ReadonlySet<string>,
+    parentPath=''
+): number {
+    return nodes.reduce((count, node) => {
+        const path=parentPath?`${ parentPath }/${ node.key }`:node.key;
+        return count+1+(openPaths.has(path)?countVisibleTreeNodes(node.nodes, openPaths, path):0);
+    }, 0);
+}
+
+function readPerformanceTime(): number {
+    return typeof performance!=='undefined'&&typeof performance.now==='function'?performance.now():Date.now();
 }
 
 export default Hierarchy;
