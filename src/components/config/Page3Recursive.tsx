@@ -6,12 +6,14 @@ import { ConfigSection, ConfigStepIntro } from './ConfigPrimitives';
 import { SelectionBehaviorControls } from './SelectionBehaviorControls';
 import { TargetFilterControls } from './TargetFilterControls';
 import { Checkbox } from '../shared/UiComponents';
+import { NormalizedTreeNode } from '../extension/TreeModel';
 
 interface Props {
     data: HierarchyProps;
     setUpdates: (obj: { type: string, data: any; }) => void;
     changeEnabled: (s: React.MouseEvent<HTMLInputElement, MouseEvent>|React.ChangeEvent<HTMLInputElement>) => void;
     changeParam: (e: React.ChangeEvent<HTMLSelectElement>) => void;
+    previewTree?: NormalizedTreeNode[];
 
 }
 

@@ -195,6 +195,7 @@ function Configure() {
                         setUpdates={setUpdates}
                         changeEnabled={changeEnabled}
                         changeParam={changeParam}
+                        previewTree={validation.previewTree}
                     />;
                 }
                 else {
@@ -203,6 +204,7 @@ function Configure() {
                         setUpdates={setUpdates}
                         changeEnabled={changeEnabled}
                         changeParam={changeParam}
+                        previewTree={validation.previewTree}
 
                     />;
                 }

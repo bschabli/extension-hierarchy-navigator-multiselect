@@ -11,6 +11,7 @@ import { HierarchyProps, HierType, isDebugEnabled } from '../API/Interfaces';
 import { useTranslation } from '../localization/I18n';
 import Hierarchy, { HierarchySelectionPayload } from './Hierarchy';
 import { normalizeDebounceDelay, parseIntegerParameterValue } from '../API/ConfigurationModel';
+import { resolveMappedFilterValues } from './FilterTargetValues';
 
 interface Props {
     data: HierarchyProps;
@@ -412,22 +413,45 @@ function ParamHandler(props: Props) {
 
         if(typeof incomingData.selectedLeafValues!=='undefined') {
             const selectedValues=incomingData.selectedLeafValues;
+            const selectedFilterValues=incomingData.selectedFilterValues||selectedValues.map(id => ({
+                id,
+                label: id,
+                levels: [id],
+                path: id
+            }));
             const configuredTargets=resolveFilterTargetsExcludingWorksheet(
                 props.data.worksheet,
                 props.data.worksheet.name
             );
             if(shouldUpdateFilterTargets(props.data.worksheet.filterEnabled, configuredTargets)) {
                 const failedTargets: FilterTarget[]=[];
-                const successfulTargets=await updateFilterTargets(
-                    configuredTargets,
-                    props.dashboard.worksheets,
-                    selectedValues,
-                    tableau.FilterUpdateType.Replace,
-                    (target, error) => {
+                const successfulTargets: FilterTarget[]=[];
+                for(const target of configuredTargets) {
+                    const mappedValues=resolveMappedFilterValues(target, selectedFilterValues);
+                    if(selectedValues.length>0&&mappedValues.length===0) {
                         failedTargets.push(target);
-                        console.error(`Unable to update hierarchy filter '${target.fieldName}' on '${target.worksheetName}'.`, error);
+                        console.error(
+                            `Unable to update hierarchy filter '${target.fieldName}' on '${target.worksheetName}': `+
+                            'the selected hierarchy values are empty for this target mapping.'
+                        );
+                        continue;
                     }
-                );
+                    const applied=await updateFilterTargets(
+                        [target],
+                        props.dashboard.worksheets,
+                        mappedValues,
+                        tableau.FilterUpdateType.Replace,
+                        (failedTarget, error) => {
+                            failedTargets.push(failedTarget);
+                            console.error(
+                                `Unable to update hierarchy filter '${failedTarget.fieldName}' on `+
+                                `'${failedTarget.worksheetName}'.`,
+                                error
+                            );
+                        }
+                    );
+                    successfulTargets.push(...applied);
+                }
                 appliedFilterTargets.current=selectedValues.length?resolveFilterTargets({
                     filterTargets: successfulTargets.concat(failedTargets)
                 }):failedTargets;

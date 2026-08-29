@@ -68,7 +68,10 @@ function testSettingsAndIntegerNormalization(): void {
         parameters: { fields: ['valid', 1] },
         worksheet: {
             fields: 'invalid',
-            filterTargets: ['invalid', { worksheetName: 'Sales', fieldName: 'ID' }]
+            filterTargets: [
+                'invalid',
+                { worksheetName: 'Sales', fieldName: 'ID', valueSource: 'level', levelIndex: 1 }
+            ]
         }
     });
     assert(!('dashboardItems' in settings), 'Live dashboard metadata must not be restored from saved settings.');
@@ -77,6 +80,13 @@ function testSettingsAndIntegerNormalization(): void {
     assert(
         (settings.worksheet as { filterTargets: unknown[] }).filterTargets.length===1,
         'Malformed filter targets should be discarded.'
+    );
+    const persistedTarget=(settings.worksheet as {
+        filterTargets: Array<{ valueSource?: string, levelIndex?: number }>
+    }).filterTargets[0];
+    assert(
+        persistedTarget.valueSource==='level'&&persistedTarget.levelIndex===1,
+        'Target value mappings should survive persisted-settings normalization.'
     );
     const malformedScalars=normalizeHierarchySettingsRecord({
         configComplete: 'yes',
