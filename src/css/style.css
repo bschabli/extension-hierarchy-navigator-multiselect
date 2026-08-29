@@ -515,57 +515,6 @@ select::-ms-expand {
     }
 
 
-/* For nav circles */
-.btn-circle {
-    margin: auto;
-    width: 30px;
-    height: 30px;
-    padding: 6px 0px;
-    border-radius: 15px;
-    text-align: center;
-    font-size: 12px;
-    line-height: 1.42857;
-}
-.btn-circle:hover{
-    cursor: default; 
-}
-.navcontainer {
-    background: #F5F5F5;
-    box-sizing: border-box;
-    display: block;
-    font-size: 12px;
-    margin-left: 0;
-    margin-right: 0;
-    max-width: none !important;
-    padding-bottom: 10px;
-    padding-top: 8px;
-    text-align: center;
-    width: 100%;
-}
-.config-steps {
-    align-items: flex-start;
-    display: flex;
-    width: 100%;
-}
-.config-step {
-    align-items: center;
-    display: flex;
-    flex: 0 0 86px;
-    flex-direction: column;
-    gap: 4px;
-}
-.config-step-connector {
-    border-top: 2px solid #8c8c8c;
-    flex: 1 1 24px;
-    margin: 14px 5px 0;
-    min-width: 12px;
-}
-.config-step-label {
-    line-height: 16px;
-    min-height: 16px;
-    white-space: nowrap;
-}
-
 /* dragging for SortableList */
 .sortableList {
     border: 1px solid rgb(212, 212, 212);
@@ -584,37 +533,62 @@ select::-ms-expand {
 }
     
   
-/* overlay for loading */
-.overlay {
-    position: fixed; /* Sit on top of the page content */
-    width: 100%; /* Full width (cover the whole page) */
-    height: 100%; /* Full height (cover the whole page) */
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: rgba(0,0,0,0.5); /* Black background with opacity */
-    z-index: 2; /* Specify a stack order in case you're using a different order for other elements */
-    cursor: pointer; /* Add a pointer on hover */
+/* Shared loading state for the configuration dialog and dashboard extension. */
+.loading-overlay {
+    align-items: center;
+    background: rgba(247, 248, 249, .9);
+    box-sizing: border-box;
+    cursor: wait;
+    display: flex;
+    inset: 0;
+    justify-content: center;
+    padding: 20px;
+    position: fixed;
+    z-index: 1000;
 }
-      
-.centerOnPage{
-    position: absolute;
-    top: 55%;
-    left: 50%;
-    font-size: 50px;
-    /* color: white; */
-    transform: translate(-50%,-50%);
-    -ms-transform: translate(-50%,-50%);
-  }
 
-  .spinnerBg {
-    background-image: radial-gradient(22% 38%, rgba(255,255,255,0.00) 21%, rgba(102,102,102,0.50) 4%, #666666 10%);
-    border-radius: 10px;
-    /* color: White, 60%; */
-    width: 65px;
-    height: 65px;
-  }
+.loading-panel {
+    align-items: center;
+    background: #fff;
+    border: 1px solid #d7dce0;
+    border-radius: 7px;
+    box-shadow: 0 8px 24px rgba(31, 43, 50, .12);
+    box-sizing: border-box;
+    color: #202428;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-width: 340px;
+    padding: 18px 22px;
+    text-align: center;
+    width: min(100%, 340px);
+}
+
+.loading-spinner {
+    animation: loading-spinner-rotate .8s linear infinite;
+    border: 3px solid #d7e9ee;
+    border-radius: 50%;
+    border-top-color: #0b6f91;
+    box-sizing: border-box;
+    display: block;
+    height: 32px;
+    width: 32px;
+}
+
+.loading-label {
+    font-size: 12px;
+    line-height: 1.3;
+}
+
+@keyframes loading-spinner-rotate {
+    to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .loading-spinner {
+        animation: none;
+    }
+}
 
   /* For search box override  */
     ::placeholder {
@@ -631,18 +605,10 @@ select::-ms-expand {
 }
 
 .initialization-delay-notice {
-    background: #fff;
-    border: 1px solid #d4d4d4;
-    color: #333;
-    font-size: 12px;
-    left: 50%;
+    color: #5f6870;
+    font-size: 11px;
     line-height: 1.4;
-    margin: 52px 0 0;
-    max-width: min(360px, calc(100vw - 36px));
-    padding: 10px 12px;
-    position: absolute;
-    transform: translateX(-50%);
-    width: max-content;
+    margin: 0;
 }
 
 /* Consistent high-visibility keyboard focus across the extension and wizard. */
@@ -665,11 +631,19 @@ select::-ms-expand {
     min-height: 100vh;
 }
 
+.config-shell,
+.config-shell *,
+.config-shell *::before,
+.config-shell *::after {
+    box-sizing: border-box;
+}
+
 .config-app-header {
     align-items: center;
     background: #fff;
     border-bottom: 1px solid var(--config-border);
     display: flex;
+    gap: 16px;
     justify-content: space-between;
     min-height: 48px;
     padding: 0 20px;
@@ -678,7 +652,9 @@ select::-ms-expand {
 .config-app-header > div {
     align-items: baseline;
     display: flex;
+    flex-wrap: wrap;
     gap: 8px;
+    min-width: 0;
 }
 
 .config-app-header strong {
@@ -687,6 +663,10 @@ select::-ms-expand {
 
 .config-app-header > div > span {
     color: var(--config-muted);
+}
+
+.config-app-header > .config-status {
+    flex: 0 0 auto;
 }
 
 .config-progress {
@@ -710,6 +690,7 @@ select::-ms-expand {
 
 .config-step {
     display: block;
+    min-width: 0;
 }
 
 .config-step button {
@@ -721,7 +702,9 @@ select::-ms-expand {
     cursor: pointer;
     display: flex;
     gap: 9px;
+    height: 100%;
     min-height: 50px;
+    min-width: 0;
     padding: 6px 8px;
     text-align: left;
     width: 100%;
@@ -763,6 +746,10 @@ select::-ms-expand {
     font-weight: 600;
     height: 26px;
     justify-content: center;
+    line-height: 1;
+    min-height: 26px;
+    min-width: 26px;
+    width: 26px;
 }
 
 .config-step--active .config-step-number,
@@ -779,12 +766,18 @@ select::-ms-expand {
 }
 
 .config-step-copy strong {
+    display: block;
     font-size: 11px;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
 }
 
 .config-step-copy small {
+    display: block;
     font-size: 9px;
+    line-height: 1.25;
     margin-top: 2px;
+    overflow-wrap: anywhere;
 }
 
 .config-main {
@@ -1006,6 +999,12 @@ select::-ms-expand {
 .config-section-heading {
     gap: 14px;
     margin-bottom: 14px;
+}
+
+.config-section-heading > div,
+.config-choice-heading > div,
+.config-review-heading > div {
+    min-width: 0;
 }
 
 .config-section-heading h2 {
@@ -1821,6 +1820,7 @@ select::-ms-expand {
     }
 
     .config-steps {
+        gap: 4px;
         grid-template-columns: repeat(4, minmax(0, 1fr));
         min-width: 0;
     }
@@ -1830,9 +1830,15 @@ select::-ms-expand {
         flex-direction: column;
         gap: 4px;
         min-height: 66px;
+        padding: 6px;
+    }
+
+    .config-step-copy {
+        width: 100%;
     }
 
     .config-step-copy strong {
+        hyphens: auto;
         white-space: normal;
     }
 

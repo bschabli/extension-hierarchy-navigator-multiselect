@@ -1,7 +1,7 @@
 import '../../css/bootstrap.css';
 import '../../css/style.css';
 import { Extensions } from '@tableau/extensions-api-types';
-import { Button, Spinner } from '@tableau/tableau-ui';
+import { Button } from '@tableau/tableau-ui';
 import React, { useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { Alert } from 'reactstrap';
@@ -10,6 +10,7 @@ import recursiveHier from '../../images/RecursiveHier.jpeg';
 import HierarchyAPI from '../API/HierarchyAPI';
 import { HierarchyProps, HierType, isDebugEnabled } from '../API/Interfaces';
 import { LocalizationProvider, useTranslation } from '../localization/I18n';
+import { LoadingOverlay } from '../shared/LoadingOverlay';
 import { ConfigStatus, ConfigStepIntro } from './ConfigPrimitives';
 import { Page2Flat } from './Page2Flat';
 import { Page2Recursive } from './Page2Recursive';
@@ -225,8 +226,7 @@ function Configure() {
     };
     return (
         <div className='config-shell'>
-            {!doneLoading ? (<div aria-busy='true' className='overlay'><div className='centerOnPage'><div className='spinnerBg centerOnPage'>{ }</div><Spinner color='light'
-            alt={t('Loading…')} /></div></div>) : undefined}
+            {!doneLoading ? <LoadingOverlay label={t('Loading…')} /> : undefined}
             <header className='config-app-header'>
                 <div>
                     <strong>Hierarchy Navigator</strong>
