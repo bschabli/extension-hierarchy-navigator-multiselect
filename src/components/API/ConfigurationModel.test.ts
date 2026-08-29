@@ -121,6 +121,18 @@ function testSettingsAndIntegerNormalization(): void {
         (boundedSettings.options as { debounce: number }).debounce===10000,
         'Persisted debounce delays should be constrained to the supported range.'
     );
+    const unknownSettings=normalizeHierarchySettingsRecord(JSON.parse(
+        '{"unknownRoot":true,"options":{"unknownOption":true},"worksheet":{"unknownField":true}}'
+    ));
+    assert(!('unknownRoot' in unknownSettings), 'Unknown root settings should be discarded.');
+    assert(
+        !('unknownOption' in (unknownSettings.options as Record<string, unknown>)),
+        'Unknown option settings should be discarded.'
+    );
+    assert(
+        !('unknownField' in (unknownSettings.worksheet as Record<string, unknown>)),
+        'Unknown worksheet settings should be discarded.'
+    );
     assert(parseIntegerParameterValue('42')===42, 'Complete integer strings should be converted.');
     assert(parseIntegerParameterValue('-7')===-7, 'Signed integer strings should be converted.');
     assert(typeof parseIntegerParameterValue('12abc')==='undefined', 'Partial numeric strings must not be truncated.');

@@ -18,9 +18,12 @@ import { ConfigSection, ConfigStatus, ConfigStepIntro } from './ConfigPrimitives
 import { DataValidationPreview } from './DataValidationPreview';
 import { HierarchyPreview } from './HierarchyPreview';
 import { HierarchyValidationState } from './useHierarchyValidation';
+import { ConfigurationMigrationReport } from '../API/ConfigurationMigration';
+import { ConfigurationAdministration } from './ConfigurationAdministration';
 
 interface Props {
     data: HierarchyProps;
+    migrationReport: ConfigurationMigrationReport;
     onRetryValidation: () => void;
     setUpdates: (obj: { type: string, data: any; }) => void;
     validation: HierarchyValidationState;
@@ -297,6 +300,14 @@ export function Page4(props: Props) {
             </ConfigSection>
             <DataValidationPreview validation={props.validation} onRetry={props.onRetryValidation} />
             <HierarchyPreview data={props.data} validation={props.validation} />
+            <ConfigurationAdministration
+                data={props.data}
+                migrationReport={props.migrationReport}
+                onImport={configuration => props.setUpdates({
+                    type: 'IMPORT_CONFIGURATION',
+                    data: configuration
+                })}
+            />
             <ConfigSection
                 title={t('Display')}
                 description={t('These defaults work well in most dashboards and can be changed later.')}

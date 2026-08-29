@@ -9,10 +9,12 @@ import { LoadingOverlay } from '../shared/LoadingOverlay';
 import ParamHandler from './ParamHandler';
 import { waitForTableauInitialization } from './TableauInitialization';
 import { normalizeHierarchySettingsRecord, normalizeSettingsRecord } from '../API/ConfigurationModel';
+import { migrateHierarchyConfiguration } from '../API/ConfigurationMigration';
 var extend = require('extend');
 
 function hydrateSavedSettings(settingsData: unknown): HierarchyProps {
-    const normalizedSettings=normalizeHierarchySettingsRecord(settingsData);
+    const migrated=migrateHierarchyConfiguration(settingsData);
+    const normalizedSettings=normalizeHierarchySettingsRecord(migrated.settings);
     const normalizedOptions=normalizeSettingsRecord(normalizedSettings.options);
     const savedSelectionBehavior=normalizedOptions.selectionBehavior;
     const hydrated=extend(true, {}, defaultSelectedProps, normalizedSettings) as HierarchyProps;

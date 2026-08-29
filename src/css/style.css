@@ -87,6 +87,77 @@ body {
     outline-offset: -2px;
 }
 
+.hierarchy-tree-viewport--virtualized {
+    border-bottom: 1px solid #ccc;
+    max-height: calc(100vh - 190px);
+    min-height: 160px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}
+
+.hierarchy-tree-list--virtualized {
+    display: block !important;
+    margin: 0;
+}
+
+.hierarchy-diagnostics {
+    border-top: 1px solid #d9dddf;
+    color: rgba(0, 0, 0, .72);
+    margin-top: 8px;
+    padding: 7px 8px;
+}
+
+.hierarchy-diagnostics > summary {
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.hierarchy-diagnostics-grid {
+    display: grid;
+    gap: 6px 10px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin: 9px 0 12px;
+}
+
+.hierarchy-diagnostics-grid > div {
+    background: rgba(255, 255, 255, .55);
+    padding: 5px 6px;
+}
+
+.hierarchy-diagnostics-grid dt {
+    font-size: 9px;
+    opacity: .72;
+    text-transform: uppercase;
+}
+
+.hierarchy-diagnostics-grid dd {
+    font-weight: 600;
+    margin: 2px 0 0;
+}
+
+.hierarchy-capability-list {
+    display: grid;
+    gap: 4px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    list-style: none;
+    margin: 7px 0 0;
+    padding: 0;
+}
+
+.hierarchy-capability-list li {
+    align-items: baseline;
+    display: flex;
+    gap: 5px;
+}
+
+.hierarchy-capability--supported span {
+    color: #176a3a;
+}
+
+.hierarchy-capability--missing {
+    opacity: .58;
+}
+
 .extension-status {
     background: #fff;
     border: 1px solid #d4d4d4;
@@ -1026,6 +1097,37 @@ select::-ms-expand {
     align-items: flex-start;
     display: flex;
     justify-content: space-between;
+}
+
+.config-migration-report {
+    background: #f3f7f8;
+    border-left: 3px solid var(--config-accent);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 10px 11px;
+}
+
+.config-migration-report ul {
+    margin: 3px 0 0;
+    padding-left: 18px;
+}
+
+.config-json-editor {
+    margin-top: 12px;
+}
+
+.config-json-editor textarea {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 10px;
+    min-height: 180px;
+}
+
+.config-admin-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+    margin-top: 10px;
 }
 
 .config-choice-heading > div {

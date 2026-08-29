@@ -10,6 +10,10 @@ Hierarchy Navigator Multiselect is a Tableau dashboard extension for navigating 
 - Configurable parent selection behavior: terminal values, entire subtree, or direct node only
 - Filtering across multiple target worksheets with independent field and value mappings (ID, label, path, or hierarchy level)
 - Live source-to-target value compatibility previews and actionable setup guidance
+- Virtualized rendering when more than 250 hierarchy rows are visible
+- Incremental refreshes that skip unchanged datasets and reuse unchanged tree branches
+- Portable JSON configuration import/export with schema migration reporting
+- Runtime diagnostics for rows, nodes, load time, refresh behavior, filters, and Tableau API capabilities
 - Optional parameter output and source-sheet mark selection
 - Data validation for duplicate IDs, orphaned children, cycles, blank labels, and malformed paths
 - Live hierarchy preview during configuration
@@ -42,6 +46,8 @@ npm start
 ```
 
 Use `src/hierarchynavigator-1.0.local.trex` with the local development server.
+
+The configuration review step can export a portable JSON backup or import settings from another dashboard. Live Tableau worksheet metadata is excluded from exports, and imported mappings should be reviewed and validated before saving.
 
 Build and validate the project with:
 

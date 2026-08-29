@@ -24,7 +24,7 @@ declare global {
 
 function Configure() {
     const {t}=useTranslation();
-    const [state, setCurrentWorksheetName, setUpdates] = HierarchyAPI();
+    const [state, setCurrentWorksheetName, setUpdates, migrationReport] = HierarchyAPI();
     const [selectedTabIndex, setSelectedTabIndex] = useState(0);
     const { data, isError, errorStr, doneLoading }: { data: HierarchyProps, isLoading: boolean, isError: boolean, errorStr: React.ReactNode, doneLoading: boolean; } = state;
     const debug=isDebugEnabled(state.data.options.debug);
@@ -211,6 +211,7 @@ function Configure() {
             case 3:
                 return <Page4
                     data={data}
+                    migrationReport={migrationReport}
                     validation={validation}
                     onRetryValidation={retryValidation}
                     setUpdates={setUpdates}
