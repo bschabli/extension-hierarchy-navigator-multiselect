@@ -43,6 +43,15 @@ assert(
     resolveMappedFilterValues({ valueSource: 'level', levelIndex: 1 }, flatRecords).join(',')==='Chairs,Tables',
     'Flat level mappings should use values at the original field positions.'
 );
+const repeatedLabels=resolveMappedFilterValues({ valueSource: 'label' }, [
+    { id: '1', label: 'Second', levels: [], path: 'Second' },
+    { id: '2', label: 'First', levels: [], path: 'First' },
+    { id: '3', label: 'Second', levels: [], path: 'Second again' }
+]);
+assert(
+    repeatedLabels.join(',')==='Second,First',
+    'Mapped values should be de-duplicated while preserving their first-seen order.'
+);
 assert(getHierarchyDepth(flatTree)===2, 'Flat tree depth should reflect the deepest visible branch.');
 
 const recursiveTree=buildRecursiveTree([

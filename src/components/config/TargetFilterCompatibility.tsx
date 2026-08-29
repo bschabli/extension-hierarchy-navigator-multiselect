@@ -88,14 +88,14 @@ export function TargetFilterCompatibility(props: Props) {
                     });
                     return;
                 }
-                const targetValues=table.data.reduce<string[]>((values, row) => {
+                const targetValues=new Set<string>();
+                table.data.forEach(row => {
                     const value=normalizeHierarchyValue(row[column.index]);
-                    if(typeof value==='string'&&!values.includes(value)) { values.push(value); }
-                    return values;
-                }, []);
+                    if(typeof value==='string') { targetValues.add(value); }
+                });
                 setState({
                     limited: Boolean(table.isTotalRowCountLimited)||table.data.length<table.totalRowCount,
-                    result: compareFilterValueSamples(sourceValues, targetValues),
+                    result: compareFilterValueSamples(sourceValues, Array.from(targetValues)),
                     status: 'ready'
                 });
             })
@@ -112,7 +112,7 @@ export function TargetFilterCompatibility(props: Props) {
                 });
             });
         return () => { cancelled=true; };
-    }, [props.previewTree, props.target.fieldName, props.target.worksheetName, sourceSignature]);
+    }, [props.previewTree, props.target.fieldName, props.target.worksheetName, sourceSignature, t]);
 
     const visualStatus=state.status==='ready'&&state.result.matchPercent<100?'warning':state.status;
     return (

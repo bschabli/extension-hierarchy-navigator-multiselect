@@ -51,14 +51,14 @@ export function resolveMappedFilterValues(
 ): string[] {
     const valueSource=resolveFilterValueSource(target.valueSource);
     const levelIndex=resolveFilterTargetLevel(target.levelIndex);
-    const values=records.reduce<string[]>((result, record) => {
+    const values=new Set<string>();
+    records.forEach(record => {
         const value=valueSource==='label'?record.label:
             valueSource==='path'?record.path:
                 valueSource==='level'?record.levels[levelIndex]:record.id;
-        if(typeof value==='string'&&value!==''&&!result.includes(value)) { result.push(value); }
-        return result;
-    }, []);
-    return values;
+        if(typeof value==='string'&&value!=='') { values.add(value); }
+    });
+    return Array.from(values);
 }
 
 /** Return the greatest visual depth represented by a hierarchy tree. */
