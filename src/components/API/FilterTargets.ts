@@ -19,15 +19,18 @@ export interface FilterableWorksheet {
 /** Return valid, unique targets with a legacy single-target fallback. */
 export function resolveFilterTargets(settings: FilterTargetSettings): FilterTarget[] {
     const configured=Array.isArray(settings.filterTargets)?settings.filterTargets:[];
-    const candidates=configured.length?configured:[{
+    const candidates: unknown[]=configured.length?configured:[{
         worksheetName: settings.targetName||'',
         fieldName: settings.targetFilter||settings.filter||''
     }];
     const seen=new Set<string>();
 
-    return candidates.filter(target => {
-        if(!target||target.worksheetName===''||target.fieldName==='') { return false; }
-        const key=`${target.worksheetName}\u0000${target.fieldName}`;
+    return candidates.filter((target): target is FilterTarget => {
+        if(typeof target!=='object'||target===null) { return false; }
+        const candidate=target as Partial<FilterTarget>;
+        if(typeof candidate.worksheetName!=='string'||candidate.worksheetName===''||
+            typeof candidate.fieldName!=='string'||candidate.fieldName==='') { return false; }
+        const key=`${candidate.worksheetName}\u0000${candidate.fieldName}`;
         if(seen.has(key)) { return false; }
         seen.add(key);
         return true;

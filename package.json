@@ -6,16 +6,14 @@
     "node": ">=22.15.0"
   },
   "dependencies": {
-    "array-move": "^4.0.0",
     "extend": "^3.0.2",
     "react-simple-tree-menu": "^1.1.18",
-    "react-sortable-hoc": "^2.0.0",
     "tslib": "^2.4.0"
   },
   "scripts": {
     "start": "npm run copy-resources && webpack-dev-server --open --mode development --hot",
     "build": "npm run copy-resources && webpack --mode production --no-devtool",
-    "test": "tsc -p tsconfig.test.json && node /tmp/hierarchy-navigator-tests/API/DebugOverride.test.js && node /tmp/hierarchy-navigator-tests/API/FilterTargets.test.js && node /tmp/hierarchy-navigator-tests/API/HierarchyValidation.test.js && node /tmp/hierarchy-navigator-tests/API/SummaryData.test.js && node /tmp/hierarchy-navigator-tests/extension/TableauInitialization.test.js && node /tmp/hierarchy-navigator-tests/extension/TreeModel.test.js && node /tmp/hierarchy-navigator-tests/extension/SearchModel.test.js && node /tmp/hierarchy-navigator-tests/extension/TreeKeyboardNavigation.test.js && node /tmp/hierarchy-navigator-tests/extension/UiStateModel.test.js && node /tmp/hierarchy-navigator-tests/config/HierarchyPreviewModel.test.js && NODE_PATH=./node_modules node /tmp/hierarchy-navigator-tests/localization/I18n.test.js",
+    "test": "tsc -p tsconfig.test.json && node /tmp/hierarchy-navigator-tests/API/ConfigurationModel.test.js && node /tmp/hierarchy-navigator-tests/API/DebugOverride.test.js && node /tmp/hierarchy-navigator-tests/API/FilterTargets.test.js && node /tmp/hierarchy-navigator-tests/API/HierarchyValidation.test.js && node /tmp/hierarchy-navigator-tests/API/SummaryData.test.js && node /tmp/hierarchy-navigator-tests/extension/TableauInitialization.test.js && node /tmp/hierarchy-navigator-tests/extension/TreeModel.test.js && node /tmp/hierarchy-navigator-tests/extension/SearchModel.test.js && node /tmp/hierarchy-navigator-tests/extension/TreeKeyboardNavigation.test.js && node /tmp/hierarchy-navigator-tests/extension/UiStateModel.test.js && node /tmp/hierarchy-navigator-tests/config/HierarchyPreviewModel.test.js && NODE_PATH=./node_modules node /tmp/hierarchy-navigator-tests/localization/I18n.test.js",
     "typecheck": "tsc --noEmit",
     "sandbox": "webpack --mode production --watch --progress --no-devtool & npx tabextsandbox --config sandbox-config.json",
     "copy-resources": "mkdir -p ./docs/resources && cp src/*.ico ./docs/ && cp src/*.trex ./docs/ && cp src/*.twbx ./docs/ && cp src/hierarchynavigator-1.0.trex ./docs/hierarchynavigator-multiselect.trex && cp src/resources/*.js ./docs/resources/"
@@ -27,19 +25,16 @@
     "@babel/preset-typescript": "^7.17.12",
     "@tableau/extensions-api-types": "^1.8.1",
     "@tableau/tabextsandbox": "^1.2.1",
-    "@tableau/tableau-ui": "^3.7.0",
     "@types/node": "^14.18.12",
-    "@types/react": "^17.0.43",
+    "@types/react": "^18.0.0",
     "@types/react-dom": "^18.0.5",
     "@types/react-router-dom": "^5.3.3",
-    "@types/reactstrap": "^8.7.2",
     "css-loader": "^6.7.1",
     "html-loader": "^3.1.0",
     "html-webpack-plugin": "^5.5.0",
     "minimizer-webpack-plugin": "^5.6.1",
     "react": "^18.0.0",
     "react-dom": "^18.0.0",
-    "reactstrap": "^9.0.1",
     "style-loader": "^3.3.1",
     "ts-loader": "^9.2.8",
     "typescript": "^4.6.3",

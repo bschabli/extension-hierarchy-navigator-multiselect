@@ -1,16 +1,11 @@
-import { TextField, TextFieldProps } from '@tableau/tableau-ui';
-import { InputAttrs } from '@tableau/tableau-ui/lib/src/utils/NativeProps';
-import {arrayMoveImmutable} from 'array-move';
-import React, { useEffect, useState } from 'react';
-import { SortableContainer, SortableElement } from 'react-sortable-hoc';
-import { Button as RSButton } from 'reactstrap';
+import React, { useEffect, useRef, useState } from 'react';
 import dragHandle from '../../images/Drag-handle-01.png';  //'. /src/images/Drag-handle-01.png';
 import { HierarchyProps, Status } from '../API/Interfaces';
 import { withHTMLSpaces } from '../API/Utils';
 import { useTranslation } from '../localization/I18n';
 import { Selector } from '../shared/Selector';
+import { Button, TextField, TextFieldProps } from '../shared/UiComponents';
 import { ConfigSection, ConfigStatus, ConfigStepIntro } from './ConfigPrimitives';
-const extend=require('extend');
 
 interface Props {
     data: HierarchyProps;
@@ -25,6 +20,7 @@ export function Page2Flat(props: Props) {
     const [availFields, setAvailFields]=useState<string[]>([]);
     // sans child is all available fields except child id field; used for left ul
     const [availFieldsSansChildId, setAvailFieldsSansChildId]=useState<string[]>([]);
+    const draggedFieldIndex=useRef<number>();
     const { fields: allFields }=props.data.dashboardItems.allCurrentWorksheetItems;
 
     useEffect(() => {
@@ -40,7 +36,7 @@ export function Page2Flat(props: Props) {
         }
         setAvailFields(avail);
         setAvailFieldsSansChildId(sansChildId);
-    }, [props.data.worksheet.fields, props.data.worksheet.childId]);
+    }, [allFields, props.data.worksheet.fields, props.data.worksheet.childId]);
 
     // Handles selection in worksheet selection dropdown
     const worksheetChange=(e: React.ChangeEvent<HTMLSelectElement>): void => {
@@ -63,60 +59,29 @@ export function Page2Flat(props: Props) {
                 return '';
         }
     };
-    const DragHandle=(() => <img src={dragHandle} width='20px' height='20px' alt='' />);
-    const SortableItem=SortableElement(({ value }: any) => <li value={value} className='config-sortable-item'>
-        <span className='config-drag-handle' title={t('Drag to reorder')}><DragHandle /></span>
-        <span>{withHTMLSpaces(value)}</span>
-        <RSButton value={value} onClick={removeFromList} color='link' size='sm' aria-label={t('Remove {label}', { label: withHTMLSpaces(value) })}>{t('Remove')}</RSButton>
-    </li>);
-
-    const SortableList=SortableContainer(({ items }: any) => {
-        if(!items) { return (<li>{t('No items')}</li>); }
-        return (
-            <ul className='sortableList'>
-                {items.map((value: any, index: any) => (
-                    <SortableItem key={`item-${ value }`} index={index} value={value} />
-                ))}
-            </ul>
-        );
-    });
-
-    const StaticFieldsItem=SortableElement(({ value }: any) => <li value={value} className='config-sortable-item'>
-        <span>{withHTMLSpaces(value)}</span>
-        <RSButton value={value} onClick={addToList} color='link' size='sm'>{t('Add')}</RSButton>
-    </li>);
-
-    const StaticFieldsList=SortableContainer(({ items }: any) => {
-        if(!items) { return (<li>{t('No items')}</li>); }
-        return (
-            <ul className='sortableList'>
-                {items.map((value: any, index: any) => (
-                    <StaticFieldsItem key={`item-${ value }`} index={index} value={value} disabled={true}/>
-                ))}
-            </ul>
-        );
-    });
-
-    // sort lists
-    const onSortEnd=({ oldIndex, newIndex }: any) => {
-        const newOrder=arrayMoveImmutable(props.data.worksheet.fields, oldIndex, newIndex);
+    const moveField=(oldIndex: number, newIndex: number): void => {
+        if(oldIndex===newIndex||oldIndex<0||newIndex<0||
+            oldIndex>=props.data.worksheet.fields.length||newIndex>=props.data.worksheet.fields.length) { return; }
+        const newOrder=props.data.worksheet.fields.slice();
+        const [movedField]=newOrder.splice(oldIndex, 1);
+        newOrder.splice(newIndex, 0, movedField);
         props.setUpdates({ type: 'SET_FIELDS', data: newOrder });
     };
 
     // remove from list
-    const removeFromList=(evt: any) => {
+    const removeFromList=(evt: React.MouseEvent<HTMLButtonElement>) => {
         const filteredItems=props.data.worksheet.fields.filter((item: string) => {
-            return item!==evt.target.value;
+            return item!==evt.currentTarget.value;
         }
         );
         props.setUpdates({ type: 'SET_FIELDS', data: filteredItems });
     };
 
     // add to list
-    const addToList=(evt?: any) => {
-        const fields: string[]=extend(true, [], props.data.worksheet.fields);
-        if(evt.target&&evt.target.value) {
-            fields.push(evt.target.value);
+    const addToList=(evt: React.MouseEvent<HTMLButtonElement>) => {
+        const fields=props.data.worksheet.fields.slice();
+        if(evt.currentTarget&&evt.currentTarget.value) {
+            fields.push(evt.currentTarget.value);
         }
         else {
             allFields.forEach(el => {
@@ -127,7 +92,7 @@ export function Page2Flat(props: Props) {
         }
         props.setUpdates({ type: 'SET_FIELDS', data: fields });
     };
-    const inputProps: TextFieldProps & InputAttrs & React.RefAttributes<HTMLInputElement>={
+    const inputProps: TextFieldProps & React.RefAttributes<HTMLInputElement>={
         message: undefined,
         kind: 'line' as 'line'|'outline'|'search',
         label: t('Path separator'),
@@ -183,22 +148,79 @@ export function Page2Flat(props: Props) {
                             <span>{props.data.worksheet.fields.length}</span>
                         </div>
                         {props.data.worksheet.fields&&props.data.worksheet.fields.length?
-                            <SortableList
-                                items={props.data.worksheet.fields}
-                                onSortEnd={onSortEnd}
-                                lockAxis='y'
-                                helperClass='draggingSort'
-                            />:
+                            <ul className='sortableList'>
+                                {props.data.worksheet.fields.map((field, index) => (
+                                    <li
+                                        className='config-sortable-item'
+                                        draggable={true}
+                                        key={field}
+                                        onDragStart={event => {
+                                            draggedFieldIndex.current=index;
+                                            event.dataTransfer.setData('text/plain', String(index));
+                                            event.dataTransfer.effectAllowed='move';
+                                        }}
+                                        onDragOver={event => {
+                                            event.preventDefault();
+                                            event.dataTransfer.dropEffect='move';
+                                        }}
+                                        onDrop={event => {
+                                            event.preventDefault();
+                                            const sourceValue=event.dataTransfer.getData('text/plain');
+                                            const sourceIndex=sourceValue===''?undefined:Number(sourceValue);
+                                            const oldIndex=typeof sourceIndex==='number'&&Number.isInteger(sourceIndex)?
+                                                sourceIndex:draggedFieldIndex.current;
+                                            if(typeof oldIndex==='number') { moveField(oldIndex, index); }
+                                            draggedFieldIndex.current=undefined;
+                                        }}
+                                        onDragEnd={() => { draggedFieldIndex.current=undefined; }}
+                                    >
+                                        <span className='config-drag-handle' title={t('Drag to reorder')}>
+                                            <img src={dragHandle} width='20' height='20' alt='' />
+                                        </span>
+                                        <span>{withHTMLSpaces(field)}</span>
+                                        <span className='config-reorder-actions'>
+                                            <Button
+                                                kind='lowEmphasis'
+                                                density='high'
+                                                disabled={index===0}
+                                                onClick={() => moveField(index, index-1)}
+                                                aria-label={t('Move {label} up', { label: withHTMLSpaces(field) })}
+                                            >↑</Button>
+                                            <Button
+                                                kind='lowEmphasis'
+                                                density='high'
+                                                disabled={index===props.data.worksheet.fields.length-1}
+                                                onClick={() => moveField(index, index+1)}
+                                                aria-label={t('Move {label} down', { label: withHTMLSpaces(field) })}
+                                            >↓</Button>
+                                            <Button
+                                                kind='lowEmphasis'
+                                                density='high'
+                                                value={field}
+                                                onClick={removeFromList}
+                                                aria-label={t('Remove {label}', { label: withHTMLSpaces(field) })}
+                                            >{t('Remove')}</Button>
+                                        </span>
+                                    </li>
+                                ))}
+                            </ul>:
                             <p className='config-empty-state'>{t('No levels selected yet.')}</p>
                         }
                     </div>
                     <div className='config-field-list'>
                         <div className='config-field-list-heading'>
                             <strong>{t('Available fields')}</strong>
-                            <RSButton onClick={addToList} color='link' size='sm' disabled={!availFieldsSansChildId.length}>{t('Add all')}</RSButton>
+                            <Button kind='lowEmphasis' density='high' onClick={addToList} disabled={!availFieldsSansChildId.length}>{t('Add all')}</Button>
                         </div>
                         {availFieldsSansChildId.length>0?
-                            <StaticFieldsList items={availFieldsSansChildId} lockAxis='y' />:
+                            <ul className='sortableList'>
+                                {availFieldsSansChildId.map(field => (
+                                    <li className='config-sortable-item' key={field}>
+                                        <span>{withHTMLSpaces(field)}</span>
+                                        <Button kind='lowEmphasis' density='high' value={field} onClick={addToList}>{t('Add')}</Button>
+                                    </li>
+                                ))}
+                            </ul>:
                             <p className='config-empty-state'>{allFields.length?t('All available fields are selected.'):t('No fields available.')}</p>
                         }
                     </div>

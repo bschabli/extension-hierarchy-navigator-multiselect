@@ -10,6 +10,8 @@
     "target": "ES2020"
   },
   "include": [
+    "src/components/API/ConfigurationModel.ts",
+    "src/components/API/ConfigurationModel.test.ts",
     "src/components/API/DebugOverride.tsx",
     "src/components/API/DebugOverride.test.ts",
     "src/components/API/FilterTargets.ts",

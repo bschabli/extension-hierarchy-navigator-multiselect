@@ -1,6 +1,6 @@
-import { Button } from '@tableau/tableau-ui';
 import * as React from 'react';
 import { useTranslation } from '../localization/I18n';
+import { Button } from './UiComponents';
 
 interface SelectedProps {
     onClear?: () => void;

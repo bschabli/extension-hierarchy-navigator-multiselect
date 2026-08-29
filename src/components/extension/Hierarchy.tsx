@@ -1,4 +1,3 @@
-import { Button, TextField } from '@tableau/tableau-ui';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import TreeMenu, { TreeMenuItem } from 'react-simple-tree-menu';
 import { defaultSelectedProps, HierarchyProps, HierType, isDebugEnabled } from '../API/Interfaces';
@@ -29,6 +28,8 @@ import {
     reconcileHierarchyUiState,
     saveHierarchyUiState
 } from './UiStateModel';
+import { normalizeItemCss } from '../API/ConfigurationModel';
+import { Button, TextField } from '../shared/UiComponents';
 
 export interface HierarchySelectionPayload {
     currentFieldValues?: Array<string|undefined>;
@@ -131,6 +132,7 @@ function Hierarchy(props: Props) {
     const debug=isDebugEnabled(props.data.options.debug);
     const selectionBehavior=props.data.options.selectionBehavior||SelectionBehavior.TERMINAL;
     const autoExpandSearch=props.data.options.searchAutoExpand!==false;
+    const itemStyle=normalizeItemCss(props.data.options.itemCSS, defaultSelectedProps.options.itemCSS);
     const hierarchyDefinitionSignature=JSON.stringify([
         props.data.type,
         props.data.worksheet.name,
@@ -168,6 +170,7 @@ function Hierarchy(props: Props) {
     const [openNodes, setOpenNodes]=useState<string[]>(initialUiState.openNodes);
     const [focusedTreePath, setFocusedTreePath]=useState('');
     const [screenReaderAnnouncement, setScreenReaderAnnouncement]=useState('');
+    const [loadError, setLoadError]=useState('');
     const hierarchyDefinitionRef=useRef(hierarchyDefinitionSignature);
     const persistedUiStorageKeyRef=useRef(uiStorageKey);
 
@@ -266,6 +269,7 @@ function Hierarchy(props: Props) {
         const preserveUiState=hierarchyDefinitionRef.current===hierarchyDefinitionSignature;
         hierarchyDefinitionRef.current=hierarchyDefinitionSignature;
         const requestId=++loadSequenceRef.current;
+        setLoadError('');
         if(!preserveUiState) { resetHierarchyUiState(); }
         if(props.data.configComplete) {
             loadHierarchyFromDataSource(
@@ -274,6 +278,9 @@ function Hierarchy(props: Props) {
                 props.reapplySelectionsVersion
             ).catch(error => {
                 console.error('Unable to refresh the hierarchy source data.', error);
+                if(requestId===loadSequenceRef.current) {
+                    setLoadError(error instanceof Error?error.message:String(error));
+                }
             });
         }
     }, [props.refreshVersion]);
@@ -286,7 +293,9 @@ function Hierarchy(props: Props) {
         const worksheet=window.tableau.extensions.dashboardContent!.dashboard.worksheets.find(
             candidate => candidate.name===props.data.worksheet.name
         );
-        if(typeof worksheet==='undefined') { return; }
+        if(typeof worksheet==='undefined') {
+            throw new Error(`Worksheet “${ props.data.worksheet.name }” is no longer available.`);
+        }
         const dataTable=await loadSummaryDataset(worksheet);
         if(dataTable.limited||dataTable.rows.length<dataTable.totalRowCount) {
             throw new Error(
@@ -566,7 +575,7 @@ function Hierarchy(props: Props) {
         fontSize: 'inherit',
         height: '24px',
         paddingLeft: '27px',
-        display: 'flex'
+        display: 'block'
     } as React.CSSProperties:{ display: 'none' };
 
     return (
@@ -598,6 +607,12 @@ function Hierarchy(props: Props) {
             <p id='hierarchy-keyboard-help' className='hierarchy-visually-hidden'>
                 {t('Use Up and Down Arrow to move, Right Arrow to expand or enter a branch, Left Arrow to collapse or return to a parent, Home and End to jump, Space or Enter to select, and type letters to find an item.')}
             </p>
+            {loadError&&
+                <div className='extension-output-error' role='alert'>
+                    <span><strong>{t('Hierarchy data could not be loaded')}</strong> {loadError}</span>
+                    <button type='button' onClick={() => setLoadError('')} aria-label={t('Dismiss')}>×</button>
+                </div>
+            }
             <div
                 className='hierarchy-visually-hidden'
                 role='status'
@@ -684,7 +699,7 @@ function Hierarchy(props: Props) {
                                         openedIcon={openedIcon}
                                         closedIcon={closedIcon}
                                         searchTerm={searchVal}
-                                        style={props.data.options.itemCSS}
+                                        style={itemStyle}
                                     />
                                 );
                             })}

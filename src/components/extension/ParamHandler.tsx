@@ -10,6 +10,7 @@ import {
 import { HierarchyProps, HierType, isDebugEnabled } from '../API/Interfaces';
 import { useTranslation } from '../localization/I18n';
 import Hierarchy, { HierarchySelectionPayload } from './Hierarchy';
+import { normalizeDebounceDelay, parseIntegerParameterValue } from '../API/ConfigurationModel';
 
 interface Props {
     data: HierarchyProps;
@@ -19,6 +20,11 @@ interface Props {
 interface ParameterEventHandlers {
     childId?: () => void;
     childLabel?: () => void;
+}
+
+interface ParameterEventTimers {
+    childId?: number;
+    childLabel?: number;
 }
 
 function ParamHandler(props: Props) {
@@ -33,6 +39,7 @@ function ParamHandler(props: Props) {
     const appliedFilterTargets=useRef<FilterTarget[]>([]);
     const appliedMarkTarget=useRef<FilterTarget>();
     const parameterEventHandlers=useRef<ParameterEventHandlers>({});
+    const parameterEventTimers=useRef<ParameterEventTimers>({});
     const listenerSetupVersion=useRef(0);
     const configurationVersion=useRef(0);
     const currentIdRef=useRef('');
@@ -118,6 +125,7 @@ function ParamHandler(props: Props) {
         props.data.parameters.childIdEnabled,
         props.data.parameters.childLabel,
         props.data.parameters.childLabelEnabled,
+        props.data.options.debounce,
         props.data.type
     ]);
 
@@ -196,8 +204,7 @@ function ParamHandler(props: Props) {
                     parameterEventHandlers.current.childLabel=childLabel.addEventListener(
                         tableau.TableauEventType.ParameterChanged,
                         () => {
-                            eventDashboardChangeLabel()
-                                .catch(error => console.error('Unable to process the label parameter change.', error));
+                            scheduleParameterEvent('childLabel', eventDashboardChangeLabel);
                         }
                     );
                 }
@@ -205,8 +212,7 @@ function ParamHandler(props: Props) {
                     parameterEventHandlers.current.childId=childId.addEventListener(
                         tableau.TableauEventType.ParameterChanged,
                         () => {
-                            eventDashboardChangeId()
-                                .catch(error => console.error('Unable to process the ID parameter change.', error));
+                            scheduleParameterEvent('childId', eventDashboardChangeId);
                         }
                     );
                 }
@@ -237,6 +243,25 @@ function ParamHandler(props: Props) {
             parameterEventHandlers.current.childLabel();
             parameterEventHandlers.current.childLabel=undefined;
         }
+        clearParameterEventTimer('childId');
+        clearParameterEventTimer('childLabel');
+    }
+
+    function scheduleParameterEvent(
+        type: keyof ParameterEventTimers,
+        callback: () => Promise<void>
+    ): void {
+        clearParameterEventTimer(type);
+        parameterEventTimers.current[type]=window.setTimeout(() => {
+            parameterEventTimers.current[type]=undefined;
+            callback().catch(error => console.error(`Unable to process the ${ type==='childId'?'ID':'label' } parameter change.`, error));
+        }, normalizeDebounceDelay(props.data.options.debounce));
+    }
+
+    function clearParameterEventTimer(type: keyof ParameterEventTimers): void {
+        const timer=parameterEventTimers.current[type];
+        if(typeof timer==='number') { window.clearTimeout(timer); }
+        parameterEventTimers.current[type]=undefined;
     }
 
     // clear and filter and marks
@@ -323,8 +348,8 @@ function ParamHandler(props: Props) {
         try {
             if(typeof childId!=='undefined' && (props.data.parameters.childIdEnabled || props.data.type === HierType.FLAT)) {
                 if(childId.dataType===tableau.DataType.Int) {
-                    const converted=parseInt(incomingData.currentId, 10);
-                    if(!isNaN(converted)) { await childId.changeValueAsync(converted); };
+                    const converted=parseIntegerParameterValue(incomingData.currentId);
+                    if(typeof converted==='number') { await childId.changeValueAsync(converted); };
                 }
                 else {
                     await childId.changeValueAsync(incomingData.currentId);
@@ -337,8 +362,8 @@ function ParamHandler(props: Props) {
         try {
             if(typeof childLabel!=='undefined' && props.data.parameters.childLabelEnabled) {
                 if(childLabel.dataType===tableau.DataType.Int) {
-                    const converted=parseInt(incomingData.currentLabel, 10);
-                    if(!isNaN(converted)) { await childLabel.changeValueAsync(converted); };
+                    const converted=parseIntegerParameterValue(incomingData.currentLabel);
+                    if(typeof converted==='number') { await childLabel.changeValueAsync(converted); };
                 }
                 else {
                     if(debug) {
@@ -371,8 +396,8 @@ function ParamHandler(props: Props) {
                     try {
                         if(typeof fields==='undefined') { continue; }
                         if(fields[i].dataType===tableau.DataType.Int) {
-                            const converted=parseInt(fieldVals[i]||'', 10);
-                            if(!isNaN(converted)) { await fields[i].changeValueAsync(converted); };
+                            const converted=parseIntegerParameterValue(fieldVals[i]||'');
+                            if(typeof converted==='number') { await fields[i].changeValueAsync(converted); };
                         }
                         else {
                             await fields[i].changeValueAsync(fieldVals[i]||'Null');

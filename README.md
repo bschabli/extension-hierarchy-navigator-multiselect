@@ -36,7 +36,7 @@ The included [sample workbook](https://bschabli.github.io/extension-hierarchy-na
 Install Node.js 22.15 or newer, then install dependencies and start the development server:
 
 ```sh
-npm install --legacy-peer-deps
+npm install
 npm start
 ```
 

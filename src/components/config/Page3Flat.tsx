@@ -1,6 +1,4 @@
 // import {  DataType } from '@tableau/extensions-api-types/ExternalContract/Namespaces/Tableau';
-import { Checkbox, TextField, TextFieldProps } from '@tableau/tableau-ui';
-import { InputAttrs } from '@tableau/tableau-ui/lib/src/utils/NativeProps';
 import React, { useEffect, useState } from 'react';
 import { HierarchyProps, isDebugEnabled, Status } from '../API/Interfaces';
 import { withHTMLSpaces } from '../API/Utils';
@@ -9,6 +7,7 @@ import { Selector } from '../shared/Selector';
 import { ConfigSection, ConfigStepIntro } from './ConfigPrimitives';
 import { SelectionBehaviorControls } from './SelectionBehaviorControls';
 import { TargetFilterControls } from './TargetFilterControls';
+import { Checkbox, TextField, TextFieldProps } from '../shared/UiComponents';
 
 interface Props {
     data: HierarchyProps;
@@ -61,10 +60,13 @@ export function Page3Flat(props: Props) {
                     setLevelParam(false);
                 });
         };
-        check();
+        check().catch(error => {
+            console.warn('Unable to inspect dashboard parameters.', error);
+            setLevelParam(false);
+        });
     }
 
-    const inputProps: TextFieldProps & InputAttrs & React.RefAttributes<HTMLInputElement>={
+    const inputProps: TextFieldProps & React.RefAttributes<HTMLInputElement>={
         message: undefined,
         kind: 'line' as 'line'|'outline'|'search',
         label: t('Suffix for all parameters'),
