@@ -208,7 +208,8 @@ const hierarchyAPI=(): any => {
             if(worksheetName===''||worksheetName===payload.worksheet.name||!fields.length) { return undefined; }
             return {
                 worksheetName,
-                fieldName: fields.includes(payload.worksheet.childId)?payload.worksheet.childId:fields[0]
+                fieldName: fields.includes(payload.worksheet.childId)?payload.worksheet.childId:fields[0],
+                valueSource: 'id'
             };
         };
         switch(action.type) {
@@ -330,7 +331,13 @@ const hierarchyAPI=(): any => {
                 {
                     const targets=resolveFilterTargetsExcludingWorksheet(payload.worksheet, payload.worksheet.name);
                     const replacement=makeTarget(action.data);
-                    if(replacement) { targets[0]=replacement; }
+                    if(replacement) {
+                        targets[0]={
+                            ...replacement,
+                            valueSource: targets[0]?.valueSource||'id',
+                            levelIndex: targets[0]?.levelIndex
+                        };
+                    }
                     syncLegacyFilterTarget(payload.worksheet, targets);
                     return dispatch({ type: 'FETCH_SUCCESS', data: payload });
                 }
@@ -366,7 +373,14 @@ const hierarchyAPI=(): any => {
                 {
                     const targets=resolveFilterTargetsExcludingWorksheet(payload.worksheet, payload.worksheet.name);
                     const replacement=makeTarget(action.data.worksheetName);
-                    if(replacement&&targets[action.data.index]) { targets[action.data.index]=replacement; }
+                    if(replacement&&targets[action.data.index]) {
+                        const currentTarget=targets[action.data.index];
+                        targets[action.data.index]={
+                            ...replacement,
+                            valueSource: currentTarget.valueSource||'id',
+                            levelIndex: currentTarget.levelIndex
+                        };
+                    }
                     syncLegacyFilterTarget(payload.worksheet, targets);
                     return dispatch({ type: 'FETCH_SUCCESS', data: payload });
                 }
@@ -375,6 +389,34 @@ const hierarchyAPI=(): any => {
                     const targets=resolveFilterTargetsExcludingWorksheet(payload.worksheet, payload.worksheet.name);
                     if(targets[action.data.index]) {
                         targets[action.data.index]={ ...targets[action.data.index], fieldName: action.data.fieldName };
+                    }
+                    syncLegacyFilterTarget(payload.worksheet, targets);
+                    return dispatch({ type: 'FETCH_SUCCESS', data: payload });
+                }
+            case 'SET_FILTER_TARGET_VALUE_SOURCE':
+                {
+                    const targets=resolveFilterTargetsExcludingWorksheet(payload.worksheet, payload.worksheet.name);
+                    if(targets[action.data.index]) {
+                        targets[action.data.index]={
+                            ...targets[action.data.index],
+                            valueSource: action.data.valueSource,
+                            ...(action.data.valueSource==='level'?{
+                                levelIndex: targets[action.data.index].levelIndex||0
+                            }:{ levelIndex: undefined })
+                        };
+                    }
+                    syncLegacyFilterTarget(payload.worksheet, targets);
+                    return dispatch({ type: 'FETCH_SUCCESS', data: payload });
+                }
+            case 'SET_FILTER_TARGET_LEVEL':
+                {
+                    const targets=resolveFilterTargetsExcludingWorksheet(payload.worksheet, payload.worksheet.name);
+                    if(targets[action.data.index]) {
+                        targets[action.data.index]={
+                            ...targets[action.data.index],
+                            valueSource: 'level',
+                            levelIndex: action.data.levelIndex
+                        };
                     }
                     syncLegacyFilterTarget(payload.worksheet, targets);
                     return dispatch({ type: 'FETCH_SUCCESS', data: payload });

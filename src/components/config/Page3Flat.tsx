@@ -8,6 +8,7 @@ import { ConfigSection, ConfigStepIntro } from './ConfigPrimitives';
 import { SelectionBehaviorControls } from './SelectionBehaviorControls';
 import { TargetFilterControls } from './TargetFilterControls';
 import { Checkbox, TextField, TextFieldProps } from '../shared/UiComponents';
+import { NormalizedTreeNode } from '../extension/TreeModel';
 
 interface Props {
     data: HierarchyProps;
@@ -15,6 +16,7 @@ interface Props {
     changeEnabled: (s: React.MouseEvent<HTMLInputElement, MouseEvent>|React.ChangeEvent<HTMLInputElement>) => void;
     changeParam: (e: React.ChangeEvent<HTMLSelectElement>) => void;
     onClear?: () => void;
+    previewTree?: NormalizedTreeNode[];
 }
 
 export function Page3Flat(props: Props) {

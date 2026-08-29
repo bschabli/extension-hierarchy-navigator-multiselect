@@ -1,14 +1,18 @@
 import React from 'react';
-import { resolveFilterTargetsExcludingWorksheet } from '../API/FilterTargets';
-import { HierarchyProps, Status } from '../API/Interfaces';
+import { resolveFilterTargetsExcludingWorksheet, resolveFilterValueSource } from '../API/FilterTargets';
+import { HierarchyProps, HierType, Status } from '../API/Interfaces';
 import { useTranslation } from '../localization/I18n';
 import { Selector } from '../shared/Selector';
 import { ConfigSection } from './ConfigPrimitives';
-import { Button, Checkbox } from '../shared/UiComponents';
+import { Button, Checkbox, DropdownSelect } from '../shared/UiComponents';
+import { NormalizedTreeNode } from '../extension/TreeModel';
+import { getHierarchyDepth } from '../extension/FilterTargetValues';
+import { TargetFilterCompatibility } from './TargetFilterCompatibility';
 
 interface Props {
     changeEnabled: (event: React.MouseEvent<HTMLInputElement, MouseEvent>|React.ChangeEvent<HTMLInputElement>) => void;
     data: HierarchyProps;
+    previewTree?: NormalizedTreeNode[];
     setUpdates: (update: { type: string, data: any }) => void;
 }
 
@@ -23,12 +27,25 @@ export function TargetFilterControls(props: Props) {
         return Boolean(items&&(items.fields.length||items.filters.length));
     });
     const availableWorksheetNames=worksheetsWithFields.filter(name => !usedWorksheetNames.has(name));
+    const otherWorksheetNames=Object.keys(props.data.dashboardItems.allWorksheetItems).filter(
+        name => name!==props.data.worksheet.name
+    );
+    const recursiveLevelCount=Math.max(1, getHierarchyDepth(props.previewTree||[]));
+    const levelOptions=props.data.type===HierType.FLAT?
+        props.data.worksheet.fields.map((fieldName, index) => ({
+            label: t('Level {count}: {field}', { count: index+1, field: fieldName }),
+            value: index
+        })):
+        Array.from({ length: recursiveLevelCount }, (_unused, index) => ({
+            label: t('Level {count}', { count: index+1 }),
+            value: index
+        }));
 
     return (
         <>
             <ConfigSection
                 title={t('Filter dashboard worksheets')}
-                description={t('Apply the selected hierarchy IDs to one or more worksheets. Each worksheet can use its own matching filter field.')}
+                description={t('Apply selected hierarchy values to one or more worksheets. Each target can use its own field and value mapping.')}
             >
                 <div className='config-option-row'>
                     <div>
@@ -43,6 +60,15 @@ export function TargetFilterControls(props: Props) {
                     aria-label={t('Apply selection as a filter')}
                 />
                 </div>
+                {!worksheetsWithFields.length&&
+                    <div className='config-unavailable-note' role='status'>
+                        <strong>{t('Dashboard filtering is unavailable')}</strong>
+                        <span>{otherWorksheetNames.length?
+                            t('Other worksheets were found, but none exposes a string or integer field that can be filtered. Add the matching field to Detail or Filters in Tableau, then reopen configuration.'):
+                            t('Add at least one other worksheet to the dashboard. The hierarchy source worksheet is intentionally excluded from filter targets.')
+                        }</span>
+                    </div>
+                }
                 {props.data.worksheet.filterEnabled?
                     <div className='config-filter-targets config-revealed-options'>
                         {targets.map((target, index) => {
@@ -74,7 +100,7 @@ export function TargetFilterControls(props: Props) {
                                         />
                                         <Selector
                                             title={t('Target filter field')}
-                                            description={t('The field whose values match the selected hierarchy IDs.')}
+                                            description={t('The field whose values match the source value chosen below.')}
                                             required={true}
                                             status={targetFields.length?Status.set:Status.notpossible}
                                             list={targetFields}
@@ -85,6 +111,42 @@ export function TargetFilterControls(props: Props) {
                                             })}
                                         />
                                     </div>
+                                    <div className='config-filter-value-mapping'>
+                                        <DropdownSelect
+                                            label={t('Value sent to this field')}
+                                            value={resolveFilterValueSource(target.valueSource)}
+                                            onChange={event => props.setUpdates({
+                                                type: 'SET_FILTER_TARGET_VALUE_SOURCE',
+                                                data: { index, valueSource: event.target.value }
+                                            })}
+                                        >
+                                            <option value='id'>{t('Unique hierarchy ID')}</option>
+                                            <option value='label'>{t('Visible item label')}</option>
+                                            <option value='path'>{t('Full hierarchy path')}</option>
+                                            <option value='level'>{t('Specific hierarchy level')}</option>
+                                        </DropdownSelect>
+                                        {resolveFilterValueSource(target.valueSource)==='level'&&
+                                            <DropdownSelect
+                                                label={t('Hierarchy level')}
+                                                value={target.levelIndex||0}
+                                                onChange={event => props.setUpdates({
+                                                    type: 'SET_FILTER_TARGET_LEVEL',
+                                                    data: { index, levelIndex: Number(event.target.value) }
+                                                })}
+                                            >
+                                                {levelOptions.map(option =>
+                                                    <option key={option.value} value={option.value}>{option.label}</option>
+                                                )}
+                                            </DropdownSelect>
+                                        }
+                                    </div>
+                                    <p className='config-field-help'>{t('Each target can receive IDs, labels, complete paths, or values from one hierarchy level.')}</p>
+                                    <TargetFilterCompatibility
+                                        previewTree={props.previewTree}
+                                        selectionBehavior={props.data.options.selectionBehavior}
+                                        separator={props.data.separator}
+                                        target={target}
+                                    />
                                 </div>
                             );
                         })}

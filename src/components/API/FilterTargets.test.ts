@@ -22,6 +22,7 @@ async function run(): Promise<void> {
     assert(migrated.length===1, 'Legacy settings should migrate to one filter target.');
     assert(migrated[0].worksheetName==='Sales', 'The legacy worksheet should be preserved.');
     assert(migrated[0].fieldName==='Product Path', 'The legacy field should be preserved.');
+    assert(migrated[0].valueSource==='id', 'Legacy targets should retain the existing ID behavior.');
 
     const normalized=resolveFilterTargets({
         filterTargets: [
@@ -32,6 +33,19 @@ async function run(): Promise<void> {
         ]
     });
     assert(normalized.length===2, 'Duplicate and incomplete filter targets should be removed.');
+    const mappedTargets=resolveFilterTargets({
+        filterTargets: [
+            { worksheetName: 'Labels', fieldName: 'Name', valueSource: 'label' },
+            { worksheetName: 'Levels', fieldName: 'Category', valueSource: 'level', levelIndex: 2 },
+            { worksheetName: 'Paths', fieldName: 'Path', valueSource: 'invalid' as any, levelIndex: -1 }
+        ]
+    });
+    assert(mappedTargets[0].valueSource==='label', 'Supported value mappings should be retained.');
+    assert(
+        mappedTargets[1].valueSource==='level'&&mappedTargets[1].levelIndex===2,
+        'Level mappings should retain a safe zero-based level index.'
+    );
+    assert(mappedTargets[2].valueSource==='id', 'Malformed value mappings should fall back to IDs.');
     const malformed=resolveFilterTargets({
         filterTargets: ['invalid', { worksheetName: 'Sales' }, null] as unknown as FilterTarget[]
     });

@@ -1,4 +1,9 @@
 import type { CSSProperties } from 'react';
+import {
+    FilterTarget,
+    resolveFilterTargetLevel,
+    resolveFilterValueSource
+} from './FilterTargets';
 
 export interface ParameterSelection {
     childId: string;
@@ -164,12 +169,18 @@ function stringArray(value: unknown): string[] {
     return Array.isArray(value)?value.filter((item): item is string => typeof item==='string'):[];
 }
 
-function filterTargetArray(value: unknown): Array<{ worksheetName: string, fieldName: string }> {
+function filterTargetArray(value: unknown): FilterTarget[] {
     if(!Array.isArray(value)) { return []; }
-    return value.reduce<Array<{ worksheetName: string, fieldName: string }>>((targets, item) => {
+    return value.reduce<FilterTarget[]>((targets, item) => {
         const target=normalizeSettingsRecord(item);
         if(typeof target.worksheetName==='string'&&typeof target.fieldName==='string') {
-            targets.push({ worksheetName: target.worksheetName, fieldName: target.fieldName });
+            const valueSource=resolveFilterValueSource(target.valueSource);
+            targets.push({
+                worksheetName: target.worksheetName,
+                fieldName: target.fieldName,
+                valueSource,
+                ...(valueSource==='level'?{ levelIndex: resolveFilterTargetLevel(target.levelIndex) }: {})
+            });
         }
         return targets;
     }, []);

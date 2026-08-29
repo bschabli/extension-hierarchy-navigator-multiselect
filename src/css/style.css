@@ -1433,6 +1433,64 @@ select::-ms-expand {
     margin-bottom: 9px;
 }
 
+.config-filter-value-mapping {
+    display: grid;
+    gap: 12px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin-top: 11px;
+}
+
+.config-filter-value-mapping > :only-child {
+    grid-column: 1 / -1;
+    max-width: calc(50% - 6px);
+}
+
+.config-filter-target > .config-field-help {
+    margin: 5px 0 8px;
+    min-height: 0;
+}
+
+.config-filter-compatibility,
+.config-unavailable-note {
+    border-radius: 4px;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    line-height: 1.4;
+    padding: 9px 10px;
+}
+
+.config-filter-compatibility {
+    background: #eef4f6;
+    border-left: 3px solid #6d8790;
+    color: #46555b;
+    font-size: 10px;
+}
+
+.config-filter-compatibility--ready {
+    background: #edf7f1;
+    border-left-color: #39815a;
+    color: #315b43;
+}
+
+.config-filter-compatibility--unavailable,
+.config-filter-compatibility--warning {
+    background: #fff7e8;
+    border-left-color: #b7791f;
+    color: #744f17;
+}
+
+.config-filter-compatibility small {
+    color: inherit;
+}
+
+.config-unavailable-note {
+    background: #fff7e8;
+    border: 1px solid #ead5ad;
+    color: #664b1f;
+    margin-top: 12px;
+}
+
 .config-add-target {
     align-items: center;
     display: flex;
@@ -2021,6 +2079,15 @@ select::-ms-expand {
     .config-color-grid,
     .config-review-grid {
         grid-template-columns: 1fr;
+    }
+
+    .config-filter-value-mapping {
+        grid-template-columns: 1fr;
+    }
+
+    .config-filter-value-mapping > :only-child {
+        grid-column: auto;
+        max-width: none;
     }
 
     .config-field-grid .config-field + .config-field {

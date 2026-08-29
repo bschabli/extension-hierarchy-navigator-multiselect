@@ -16,6 +16,8 @@
     "src/components/API/DebugOverride.test.ts",
     "src/components/API/FilterTargets.ts",
     "src/components/API/FilterTargets.test.ts",
+    "src/components/extension/FilterTargetValues.ts",
+    "src/components/extension/FilterTargetValues.test.ts",
     "src/components/API/HierarchyValidation.ts",
     "src/components/API/HierarchyValidation.test.ts",
     "src/components/API/SummaryData.ts",
@@ -32,6 +34,8 @@
     "src/components/extension/UiStateModel.test.ts",
     "src/components/config/HierarchyPreviewModel.ts",
     "src/components/config/HierarchyPreviewModel.test.ts",
+    "src/components/config/FilterCompatibilityModel.ts",
+    "src/components/config/FilterCompatibilityModel.test.ts",
     "src/components/localization/I18n.tsx",
     "src/components/localization/I18n.test.ts"
   ]

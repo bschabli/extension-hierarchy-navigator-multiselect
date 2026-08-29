@@ -1,6 +1,10 @@
+export type FilterValueSource='id'|'label'|'path'|'level';
+
 export interface FilterTarget {
     worksheetName: string;
     fieldName: string;
+    valueSource?: FilterValueSource;
+    levelIndex?: number;
 }
 
 export interface FilterTargetSettings {
@@ -16,6 +20,16 @@ export interface FilterableWorksheet {
     clearFilterAsync: (fieldName: string) => Promise<any>;
 }
 
+/** Return a supported target value mapping, falling back to the legacy ID behavior. */
+export function resolveFilterValueSource(value: unknown): FilterValueSource {
+    return value==='label'||value==='path'||value==='level'?value:'id';
+}
+
+/** Return a safe zero-based hierarchy level for level-based target mappings. */
+export function resolveFilterTargetLevel(value: unknown): number {
+    return typeof value==='number'&&Number.isInteger(value)&&value>=0?value:0;
+}
+
 /** Return valid, unique targets with a legacy single-target fallback. */
 export function resolveFilterTargets(settings: FilterTargetSettings): FilterTarget[] {
     const configured=Array.isArray(settings.filterTargets)?settings.filterTargets:[];
@@ -25,16 +39,23 @@ export function resolveFilterTargets(settings: FilterTargetSettings): FilterTarg
     }];
     const seen=new Set<string>();
 
-    return candidates.filter((target): target is FilterTarget => {
-        if(typeof target!=='object'||target===null) { return false; }
+    return candidates.reduce<FilterTarget[]>((targets, target) => {
+        if(typeof target!=='object'||target===null) { return targets; }
         const candidate=target as Partial<FilterTarget>;
         if(typeof candidate.worksheetName!=='string'||candidate.worksheetName===''||
-            typeof candidate.fieldName!=='string'||candidate.fieldName==='') { return false; }
+            typeof candidate.fieldName!=='string'||candidate.fieldName==='') { return targets; }
         const key=`${candidate.worksheetName}\u0000${candidate.fieldName}`;
-        if(seen.has(key)) { return false; }
+        if(seen.has(key)) { return targets; }
         seen.add(key);
-        return true;
-    });
+        const valueSource=resolveFilterValueSource(candidate.valueSource);
+        targets.push({
+            worksheetName: candidate.worksheetName,
+            fieldName: candidate.fieldName,
+            valueSource,
+            ...(valueSource==='level'?{ levelIndex: resolveFilterTargetLevel(candidate.levelIndex) }: {})
+        });
+        return targets;
+    }, []);
 }
 
 /** Resolve targets while excluding a worksheet that must not be filtered. */

@@ -30,12 +30,17 @@ import {
 } from './UiStateModel';
 import { normalizeItemCss } from '../API/ConfigurationModel';
 import { Button, TextField } from '../shared/UiComponents';
+import {
+    HierarchyFilterValueRecord,
+    buildHierarchyFilterValueRecords
+} from './FilterTargetValues';
 
 export interface HierarchySelectionPayload {
     currentFieldValues?: Array<string|undefined>;
     currentId: string;
     currentLabel: string;
     currentLevel?: number;
+    selectedFilterValues?: HierarchyFilterValueRecord[];
     selectedLeafValues?: string[];
 }
 
@@ -364,13 +369,18 @@ function Hierarchy(props: Props) {
         const nextActiveNode=activeNode||nextTree[0];
         if(nextActiveNode) {
             if(!activeNode||selectionChanged) {
-                setActiveNode(nextActiveNode, selectionChanged, nextSelectedValues);
+                setActiveNode(nextActiveNode, selectionChanged, nextSelectedValues, nextTree);
             }
         }
         else if(selectionChanged) {
             props.setDataFromExtension({
                 currentId: currentIdRef.current,
                 currentLabel: currentLabelRef.current,
+                selectedFilterValues: buildHierarchyFilterValueRecords(
+                    nextTree,
+                    nextSelectedValues,
+                    props.data.separator
+                ),
                 selectedLeafValues: reconciledUiState.selectedValues
             });
         }
@@ -407,7 +417,12 @@ function Hierarchy(props: Props) {
         setActiveNode(node, true, next);
     }
 
-    function setActiveNode(node: NormalizedTreeNode, includeSelection: boolean, selection=selectedRef.current): void {
+    function setActiveNode(
+        node: NormalizedTreeNode,
+        includeSelection: boolean,
+        selection=selectedRef.current,
+        selectionTree=tree
+    ): void {
         currentIdRef.current=node.hierarchyValue;
         currentLabelRef.current=node.label;
         setCurrentId(node.hierarchyValue);
@@ -417,6 +432,11 @@ function Hierarchy(props: Props) {
             currentId: node.hierarchyValue,
             currentLabel: node.label,
             currentLevel: node.sourceLevels.length? node.sourceLevels[0]+1:undefined,
+            selectedFilterValues: includeSelection?buildHierarchyFilterValueRecords(
+                selectionTree,
+                selection,
+                props.data.separator
+            ):undefined,
             selectedLeafValues: includeSelection? Array.from(selection):undefined
         });
     }
@@ -533,6 +553,7 @@ function Hierarchy(props: Props) {
         props.setDataFromExtension({
             currentId: currentIdRef.current,
             currentLabel: currentLabelRef.current,
+            selectedFilterValues: [],
             selectedLeafValues: []
         });
     }
@@ -545,6 +566,11 @@ function Hierarchy(props: Props) {
         props.setDataFromExtension({
             currentId: currentIdRef.current,
             currentLabel: currentLabelRef.current,
+            selectedFilterValues: buildHierarchyFilterValueRecords(
+                tree,
+                nextSelection,
+                props.data.separator
+            ),
             selectedLeafValues: allSelectableFilterValues
         });
     }

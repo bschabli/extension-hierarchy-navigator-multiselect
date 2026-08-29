@@ -49,7 +49,7 @@ export function SelectionBehaviorControls(props: Props) {
     return (
         <ConfigSection
             title={t('Selection behavior')}
-            description={t('Choose which IDs a checkbox sends to every configured target filter field.')}
+            description={t('Choose which hierarchy items a checkbox includes. Each target converts those items using its value mapping.')}
         >
             <div className='config-behavior-grid' role='radiogroup' aria-label={t('Selection behavior')}>
                 {CHOICES.map(choice => (
