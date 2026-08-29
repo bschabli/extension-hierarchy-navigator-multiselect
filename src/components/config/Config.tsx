@@ -1,15 +1,14 @@
 import '../../css/bootstrap.css';
 import '../../css/style.css';
 import { Extensions } from '@tableau/extensions-api-types';
-import { Button, Spinner } from '@tableau/tableau-ui';
 import React, { useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { Alert } from 'reactstrap';
 import flatHier from '../../images/FlatHier.jpeg';
 import recursiveHier from '../../images/RecursiveHier.jpeg';
 import HierarchyAPI from '../API/HierarchyAPI';
 import { HierarchyProps, HierType, isDebugEnabled } from '../API/Interfaces';
 import { LocalizationProvider, useTranslation } from '../localization/I18n';
+import { LoadingOverlay } from '../shared/LoadingOverlay';
 import { ConfigStatus, ConfigStepIntro } from './ConfigPrimitives';
 import { Page2Flat } from './Page2Flat';
 import { Page2Recursive } from './Page2Recursive';
@@ -17,6 +16,7 @@ import { Page3Flat } from './Page3Flat';
 import { Page3Recursive } from './Page3Recursive';
 import { Page4 } from './Page4';
 import { useHierarchyValidation } from './useHierarchyValidation';
+import { Alert, Button } from '../shared/UiComponents';
 
 declare global {
     interface Window { tableau: { extensions: Extensions; }; }
@@ -225,8 +225,7 @@ function Configure() {
     };
     return (
         <div className='config-shell'>
-            {!doneLoading ? (<div aria-busy='true' className='overlay'><div className='centerOnPage'><div className='spinnerBg centerOnPage'>{ }</div><Spinner color='light'
-            alt={t('Loading…')} /></div></div>) : undefined}
+            {!doneLoading ? <LoadingOverlay label={t('Loading…')} /> : undefined}
             <header className='config-app-header'>
                 <div>
                     <strong>Hierarchy Navigator</strong>
@@ -258,10 +257,10 @@ function Configure() {
                 </ol>
             </nav>
             <main className='config-main'>
-                <Alert isOpen={data.options.warningEnabled} color='primary' toggle={onDismissWarning}>
+                <Alert isOpen={data.options.warningEnabled} color='primary' toggle={onDismissWarning} closeLabel={t('Close')}>
                     {t('New to the extension? Follow the four steps below. The source hierarchy should live on its own worksheet; it can be hidden after setup.')}
                 </Alert>
-                <Alert color='warning' isOpen={isError} toggle={onDismiss}>
+                <Alert color='warning' isOpen={isError} toggle={onDismiss} closeLabel={t('Close')}>
                     {typeof errorStr==='string'?t(errorStr):errorStr}
                 </Alert>
                 {returnPage(selectedTabIndex)}

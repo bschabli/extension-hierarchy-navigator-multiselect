@@ -1,4 +1,5 @@
 import {
+    FilterTarget,
     FilterableWorksheet,
     findNextFilterTargetWorksheet,
     replaceFilterTargetField,
@@ -31,6 +32,10 @@ async function run(): Promise<void> {
         ]
     });
     assert(normalized.length===2, 'Duplicate and incomplete filter targets should be removed.');
+    const malformed=resolveFilterTargets({
+        filterTargets: ['invalid', { worksheetName: 'Sales' }, null] as unknown as FilterTarget[]
+    });
+    assert(malformed.length===0, 'Malformed persisted filter targets should be ignored safely.');
 
     const externalTargets=resolveFilterTargetsExcludingWorksheet({
         filterTargets: [

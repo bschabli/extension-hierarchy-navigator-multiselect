@@ -1,9 +1,9 @@
-import { Button, ButtonProps, DropdownSelect, DropdownSelectProps } from '@tableau/tableau-ui';
 import * as React from 'react';
 import '../../css/style.css';
 import {Status} from '../API/Interfaces';
 import {withHTMLSpaces} from '../API/Utils';
 import { useTranslation } from '../localization/I18n';
+import { Button, ButtonProps, DropdownSelect, DropdownSelectProps } from './UiComponents';
 export interface SelectorProps {
     title?: string;
     description?: string;
@@ -25,8 +25,7 @@ export const Selector: React.FC<SelectorProps> = (props) => {
         disabled: props.status!==Status.set,
         kind: 'line',
         onChange: props.onChange,
-        onSelect: props.onChange,
-        value: withHTMLSpaces(props.selected),
+        value: props.selected,
     };
     const buttonProps: ButtonProps = {
         disabled: props.status !== Status.set,

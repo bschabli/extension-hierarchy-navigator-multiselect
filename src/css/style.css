@@ -423,7 +423,7 @@ input[type="color"] {
 .dropdown-select {
     flex: 1;
     margin-left: 0;
-    width: '100%';
+    width: 100%;
 }
 
 .delimiter-text-field > input {
@@ -458,7 +458,7 @@ select::-ms-expand {
 }
 .sectionStyle {
     font-size: 12px;
-    font-weight: "bold"; 
+    font-weight: bold;
     padding: 5px 28px 0px 18px;
     margin-top: 18px;
 }
@@ -515,58 +515,7 @@ select::-ms-expand {
     }
 
 
-/* For nav circles */
-.btn-circle {
-    margin: auto;
-    width: 30px;
-    height: 30px;
-    padding: 6px 0px;
-    border-radius: 15px;
-    text-align: center;
-    font-size: 12px;
-    line-height: 1.42857;
-}
-.btn-circle:hover{
-    cursor: default; 
-}
-.navcontainer {
-    background: #F5F5F5;
-    box-sizing: border-box;
-    display: block;
-    font-size: 12px;
-    margin-left: 0;
-    margin-right: 0;
-    max-width: none !important;
-    padding-bottom: 10px;
-    padding-top: 8px;
-    text-align: center;
-    width: 100%;
-}
-.config-steps {
-    align-items: flex-start;
-    display: flex;
-    width: 100%;
-}
-.config-step {
-    align-items: center;
-    display: flex;
-    flex: 0 0 86px;
-    flex-direction: column;
-    gap: 4px;
-}
-.config-step-connector {
-    border-top: 2px solid #8c8c8c;
-    flex: 1 1 24px;
-    margin: 14px 5px 0;
-    min-width: 12px;
-}
-.config-step-label {
-    line-height: 16px;
-    min-height: 16px;
-    white-space: nowrap;
-}
-
-/* dragging for SortableList */
+/* Native hierarchy-level reordering. */
 .sortableList {
     border: 1px solid rgb(212, 212, 212);
     display: inline-flex;
@@ -577,44 +526,62 @@ select::-ms-expand {
     
 }
 
-.draggingSort {
-    list-style-type: none;
-    pointer-events: auto !important;
-    cursor:move !important;
+/* Shared loading state for the configuration dialog and dashboard extension. */
+.loading-overlay {
+    align-items: center;
+    background: rgba(247, 248, 249, .9);
+    box-sizing: border-box;
+    cursor: wait;
+    display: flex;
+    inset: 0;
+    justify-content: center;
+    padding: 20px;
+    position: fixed;
+    z-index: 1000;
 }
-    
-  
-/* overlay for loading */
-.overlay {
-    position: fixed; /* Sit on top of the page content */
-    width: 100%; /* Full width (cover the whole page) */
-    height: 100%; /* Full height (cover the whole page) */
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: rgba(0,0,0,0.5); /* Black background with opacity */
-    z-index: 2; /* Specify a stack order in case you're using a different order for other elements */
-    cursor: pointer; /* Add a pointer on hover */
-}
-      
-.centerOnPage{
-    position: absolute;
-    top: 55%;
-    left: 50%;
-    font-size: 50px;
-    /* color: white; */
-    transform: translate(-50%,-50%);
-    -ms-transform: translate(-50%,-50%);
-  }
 
-  .spinnerBg {
-    background-image: radial-gradient(22% 38%, rgba(255,255,255,0.00) 21%, rgba(102,102,102,0.50) 4%, #666666 10%);
-    border-radius: 10px;
-    /* color: White, 60%; */
-    width: 65px;
-    height: 65px;
-  }
+.loading-panel {
+    align-items: center;
+    background: #fff;
+    border: 1px solid #d7dce0;
+    border-radius: 7px;
+    box-shadow: 0 8px 24px rgba(31, 43, 50, .12);
+    box-sizing: border-box;
+    color: #202428;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-width: 340px;
+    padding: 18px 22px;
+    text-align: center;
+    width: min(100%, 340px);
+}
+
+.loading-spinner {
+    animation: loading-spinner-rotate .8s linear infinite;
+    border: 3px solid #d7e9ee;
+    border-radius: 50%;
+    border-top-color: #0b6f91;
+    box-sizing: border-box;
+    display: block;
+    height: 32px;
+    width: 32px;
+}
+
+.loading-label {
+    font-size: 12px;
+    line-height: 1.3;
+}
+
+@keyframes loading-spinner-rotate {
+    to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .loading-spinner {
+        animation: none;
+    }
+}
 
   /* For search box override  */
     ::placeholder {
@@ -626,29 +593,187 @@ select::-ms-expand {
   }
 
   .fullWidth {
-      display: 'flex'; 
+      display: flex;
       width: 100%;
 }
 
 .initialization-delay-notice {
-    background: #fff;
-    border: 1px solid #d4d4d4;
-    color: #333;
-    font-size: 12px;
-    left: 50%;
+    color: #5f6870;
+    font-size: 11px;
     line-height: 1.4;
-    margin: 52px 0 0;
-    max-width: min(360px, calc(100vw - 36px));
-    padding: 10px 12px;
-    position: absolute;
-    transform: translateX(-50%);
-    width: max-content;
+    margin: 0;
 }
 
 /* Consistent high-visibility keyboard focus across the extension and wizard. */
 :focus-visible {
     outline: 2px solid #0b6f91;
     outline-offset: 2px;
+}
+
+/* Small React 18-native control set used instead of the React 16-only Tableau UI package. */
+.ui-button {
+    background: #fff;
+    border: 1px solid #899197;
+    border-radius: 3px;
+    color: #202428;
+    cursor: pointer;
+    font: inherit;
+    font-weight: 600;
+    line-height: 1.2;
+    min-height: 28px;
+    padding: 6px 12px;
+}
+
+.ui-button:hover:not(:disabled) {
+    background: #f0f3f4;
+    border-color: #5f6870;
+}
+
+.ui-button:disabled {
+    cursor: default;
+    opacity: .45;
+}
+
+.ui-button--primary,
+.ui-button--filledGreen {
+    background: #0b6f91;
+    border-color: #0b6f91;
+    color: #fff;
+}
+
+.ui-button--primary:hover:not(:disabled),
+.ui-button--filledGreen:hover:not(:disabled) {
+    background: #075d77;
+    border-color: #075d77;
+}
+
+.ui-button--lowEmphasis {
+    background: transparent;
+    border-color: transparent;
+    color: #075d77;
+}
+
+.ui-button--density-high {
+    min-height: 24px;
+    padding: 3px 7px;
+}
+
+.ui-alert-close {
+    background: transparent;
+    border: 0;
+    color: currentColor;
+    cursor: pointer;
+    font: inherit;
+    font-size: 18px;
+    line-height: 1;
+    padding: 8px 10px;
+    position: absolute;
+    right: 0;
+    top: 0;
+}
+
+.ui-checkbox {
+    align-items: center;
+    cursor: pointer;
+    display: inline-flex;
+    gap: 7px;
+    line-height: 1.35;
+}
+
+.ui-checkbox input {
+    accent-color: #0b6f91;
+    height: 15px;
+    margin: 0;
+    width: 15px;
+}
+
+.ui-checkbox:has(input:disabled) {
+    cursor: default;
+    opacity: .55;
+}
+
+.ui-field-control {
+    color: inherit;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+}
+
+.ui-field-label {
+    color: inherit;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.ui-input-shell {
+    align-items: center;
+    display: flex;
+    min-width: 0;
+    position: relative;
+}
+
+.ui-field-control input,
+.ui-field-control select,
+.ui-field-control textarea,
+.ui-stepper {
+    background: #fff;
+    border: 1px solid #899197;
+    border-radius: 2px;
+    box-sizing: border-box;
+    color: inherit;
+    font: inherit;
+    min-height: 28px;
+    padding: 5px 8px;
+    width: 100%;
+}
+
+.ui-field-control textarea {
+    min-height: 54px;
+    resize: vertical;
+}
+
+.ui-field-control--search .ui-input-shell,
+.ui-field-control--search input {
+    background: inherit;
+    border-color: inherit;
+    border-radius: inherit;
+    color: inherit;
+}
+
+.ui-field-control--search input {
+    padding-left: inherit;
+    padding-right: 25px;
+}
+
+.ui-field-control--search input::-webkit-search-cancel-button {
+    appearance: none;
+}
+
+.ui-input-clear {
+    background: transparent;
+    border: 0;
+    color: inherit;
+    cursor: pointer;
+    font: inherit;
+    padding: 2px 7px;
+    position: absolute;
+    right: 1px;
+}
+
+.ui-field-control--invalid input,
+.ui-field-control--invalid textarea {
+    border-color: #c9443f;
+}
+
+.ui-field-message {
+    color: #7f1d1d;
+    font-size: 10px;
+    line-height: 1.3;
+}
+
+.ui-stepper {
+    max-width: 180px;
 }
 
 /* Guided configuration wizard */
@@ -665,11 +790,19 @@ select::-ms-expand {
     min-height: 100vh;
 }
 
+.config-shell,
+.config-shell *,
+.config-shell *::before,
+.config-shell *::after {
+    box-sizing: border-box;
+}
+
 .config-app-header {
     align-items: center;
     background: #fff;
     border-bottom: 1px solid var(--config-border);
     display: flex;
+    gap: 16px;
     justify-content: space-between;
     min-height: 48px;
     padding: 0 20px;
@@ -678,7 +811,9 @@ select::-ms-expand {
 .config-app-header > div {
     align-items: baseline;
     display: flex;
+    flex-wrap: wrap;
     gap: 8px;
+    min-width: 0;
 }
 
 .config-app-header strong {
@@ -687,6 +822,10 @@ select::-ms-expand {
 
 .config-app-header > div > span {
     color: var(--config-muted);
+}
+
+.config-app-header > .config-status {
+    flex: 0 0 auto;
 }
 
 .config-progress {
@@ -710,6 +849,7 @@ select::-ms-expand {
 
 .config-step {
     display: block;
+    min-width: 0;
 }
 
 .config-step button {
@@ -721,7 +861,9 @@ select::-ms-expand {
     cursor: pointer;
     display: flex;
     gap: 9px;
+    height: 100%;
     min-height: 50px;
+    min-width: 0;
     padding: 6px 8px;
     text-align: left;
     width: 100%;
@@ -763,6 +905,10 @@ select::-ms-expand {
     font-weight: 600;
     height: 26px;
     justify-content: center;
+    line-height: 1;
+    min-height: 26px;
+    min-width: 26px;
+    width: 26px;
 }
 
 .config-step--active .config-step-number,
@@ -779,12 +925,18 @@ select::-ms-expand {
 }
 
 .config-step-copy strong {
+    display: block;
     font-size: 11px;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
 }
 
 .config-step-copy small {
+    display: block;
     font-size: 9px;
+    line-height: 1.25;
     margin-top: 2px;
+    overflow-wrap: anywhere;
 }
 
 .config-main {
@@ -1008,6 +1160,12 @@ select::-ms-expand {
     margin-bottom: 14px;
 }
 
+.config-section-heading > div,
+.config-choice-heading > div,
+.config-review-heading > div {
+    min-width: 0;
+}
+
 .config-section-heading h2 {
     font-size: 14px;
     line-height: 1.3;
@@ -1178,6 +1336,18 @@ select::-ms-expand {
 .config-drag-handle {
     cursor: grab;
     display: inline-flex;
+}
+
+.config-sortable-item[draggable='true']:active .config-drag-handle {
+    cursor: grabbing;
+}
+
+.config-reorder-actions {
+    align-items: center;
+    display: inline-flex;
+    flex: 0 0 auto !important;
+    gap: 2px;
+    overflow: visible !important;
 }
 
 .config-empty-state {
@@ -1821,6 +1991,7 @@ select::-ms-expand {
     }
 
     .config-steps {
+        gap: 4px;
         grid-template-columns: repeat(4, minmax(0, 1fr));
         min-width: 0;
     }
@@ -1830,9 +2001,15 @@ select::-ms-expand {
         flex-direction: column;
         gap: 4px;
         min-height: 66px;
+        padding: 6px;
+    }
+
+    .config-step-copy {
+        width: 100%;
     }
 
     .config-step-copy strong {
+        hyphens: auto;
         white-space: normal;
     }
 

@@ -1,18 +1,24 @@
 import * as t from '@tableau/extensions-api-types';
-import { Spinner } from '@tableau/tableau-ui';
 import  React, { useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import '../../css/style.css';
 import { debugOverride, defaultSelectedProps, HierarchyProps } from '../API/Interfaces';
 import { resolveSavedSelectionBehavior } from '../API/SelectionBehavior';
 import { LocalizationProvider, useTranslation } from '../localization/I18n';
+import { LoadingOverlay } from '../shared/LoadingOverlay';
 import ParamHandler from './ParamHandler';
 import { waitForTableauInitialization } from './TableauInitialization';
+import { normalizeHierarchySettingsRecord, normalizeSettingsRecord } from '../API/ConfigurationModel';
 var extend = require('extend');
 
-function hydrateSavedSettings(settingsData: any): HierarchyProps {
-    const savedSelectionBehavior=settingsData.options?.selectionBehavior;
-    const hydrated=extend(true, {}, defaultSelectedProps, settingsData) as HierarchyProps;
+function hydrateSavedSettings(settingsData: unknown): HierarchyProps {
+    const normalizedSettings=normalizeHierarchySettingsRecord(settingsData);
+    const normalizedOptions=normalizeSettingsRecord(normalizedSettings.options);
+    const savedSelectionBehavior=normalizedOptions.selectionBehavior;
+    const hydrated=extend(true, {}, defaultSelectedProps, normalizedSettings) as HierarchyProps;
+    if(!hydrated.options||typeof hydrated.options!=='object') {
+        hydrated.options=extend(true, {}, defaultSelectedProps.options);
+    }
     hydrated.options.selectionBehavior=resolveSavedSelectionBehavior(
         savedSelectionBehavior,
         hydrated.configComplete,
@@ -210,17 +216,12 @@ function HierarchyNavigator() {
     return (
         <>
             {!doneLoading ? (
-                <div aria-busy='true' className='overlay'>
-                    <div className='centerOnPage'>
-                        <div className='spinnerBg centerOnPage'>{ }</div>
-                        <Spinner color='light' alt={t('Loading…')} />
-                        {initializationDelayed ? (
-                            <p aria-live='polite' className='initialization-delay-notice' role='status'>
-                                {t('Tableau is still connecting. The extension will open automatically when initialization finishes.')}
-                            </p>
-                        ) : undefined}
-                    </div>
-                </div>
+                <LoadingOverlay
+                    detail={initializationDelayed?
+                        t('Tableau is still connecting. The extension will open automatically when initialization finishes.'):
+                        undefined}
+                    label={t('Loading…')}
+                />
             ) : undefined}
             {initializationError ? (
                 <div className='extension-status' role='alert'>

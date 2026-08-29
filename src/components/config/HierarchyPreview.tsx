@@ -14,6 +14,8 @@ import {
 import { ConfigSection } from './ConfigPrimitives';
 import { getHierarchyPreviewRows } from './HierarchyPreviewModel';
 import { HierarchyValidationState } from './useHierarchyValidation';
+import { normalizeItemCss } from '../API/ConfigurationModel';
+import { defaultSelectedProps } from '../API/Interfaces';
 
 interface Props {
     data: HierarchyProps;
@@ -116,7 +118,7 @@ export function HierarchyPreview(props: Props) {
     const previewReady=props.validation.status==='complete'&&
         Boolean(props.validation.result?.valid)&&tree.length>0;
     const fontFamily=props.data.options.fontFamily.replace(/\s*!important\s*$/i, '');
-    const itemStyle=props.data.options.itemCSS;
+    const itemStyle=normalizeItemCss(props.data.options.itemCSS, defaultSelectedProps.options.itemCSS);
     const previewStyle={
         '--preview-highlight': props.data.options.highlightColor,
         backgroundColor: props.data.options.bgColor,

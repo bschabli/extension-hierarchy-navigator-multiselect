@@ -1,10 +1,10 @@
-import { Button, Checkbox } from '@tableau/tableau-ui';
 import React from 'react';
 import { resolveFilterTargetsExcludingWorksheet } from '../API/FilterTargets';
 import { HierarchyProps, Status } from '../API/Interfaces';
 import { useTranslation } from '../localization/I18n';
 import { Selector } from '../shared/Selector';
 import { ConfigSection } from './ConfigPrimitives';
+import { Button, Checkbox } from '../shared/UiComponents';
 
 interface Props {
     changeEnabled: (event: React.MouseEvent<HTMLInputElement, MouseEvent>|React.ChangeEvent<HTMLInputElement>) => void;

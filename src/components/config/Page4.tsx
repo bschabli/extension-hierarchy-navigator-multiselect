@@ -1,10 +1,19 @@
-import { Checkbox, Stepper, TextField, TextArea, TextFieldProps, TextAreaProps, DropdownSelect, DropdownSelectProps } from '@tableau/tableau-ui';
-import { InputAttrs, TextAreaAttrs } from '@tableau/tableau-ui/lib/src/utils/NativeProps';
 import React, { useEffect, useState } from 'react';
+import { normalizeItemCss, parseItemCss } from '../API/ConfigurationModel';
 import { resolveFilterTargetsExcludingWorksheet } from '../API/FilterTargets';
-import { HierarchyProps, HierType } from '../API/Interfaces';
+import { defaultSelectedProps, HierarchyProps, HierType } from '../API/Interfaces';
 import { SelectionBehavior, getSelectionBehaviorLabel } from '../API/SelectionBehavior';
 import { useTranslation } from '../localization/I18n';
+import {
+    Checkbox,
+    DropdownSelect,
+    DropdownSelectProps,
+    Stepper,
+    TextArea,
+    TextAreaProps,
+    TextField,
+    TextFieldProps
+} from '../shared/UiComponents';
 import { ConfigSection, ConfigStatus, ConfigStepIntro } from './ConfigPrimitives';
 import { DataValidationPreview } from './DataValidationPreview';
 import { HierarchyPreview } from './HierarchyPreview';
@@ -19,7 +28,7 @@ interface Props {
 
 export function Page4(props: Props) {
     const {t}=useTranslation();
-    const setTitleInputProps: TextFieldProps & InputAttrs & React.RefAttributes<HTMLInputElement> = {
+    const setTitleInputProps: TextFieldProps & React.RefAttributes<HTMLInputElement> = {
         disabled: !props.data.options.titleEnabled,
         label: t('Title text'),
         message: undefined,
@@ -33,7 +42,7 @@ export function Page4(props: Props) {
         style: { paddingLeft: '9px' },
         value: props.data.options.title
     };
-    const setFontFamilyInputProps: TextAreaProps & TextAreaAttrs & React.RefAttributes<HTMLTextAreaElement> = {
+    const setFontFamilyInputProps: TextAreaProps & React.RefAttributes<HTMLTextAreaElement> = {
         label: t('Font family'),
         message: undefined,
         onChange: (e: any) => {
@@ -43,7 +52,7 @@ export function Page4(props: Props) {
         value: props.data.options.fontFamily,
         rows: 3
     };
-    const setFontSizeInputProps: TextFieldProps & InputAttrs & React.RefAttributes<HTMLInputElement> = {
+    const setFontSizeInputProps: TextFieldProps & React.RefAttributes<HTMLInputElement> = {
         label: t('Font size'),
         message: undefined,
         kind: 'line' as 'line' | 'outline' | 'search',
@@ -56,17 +65,18 @@ export function Page4(props: Props) {
         style: { paddingLeft: '9px' },
         value: props.data.options.fontSize
     };
-    const [itemCSS, setItemCSS] = useState(JSON.stringify(props.data.options.itemCSS));
+    const safeItemCss=normalizeItemCss(props.data.options.itemCSS, defaultSelectedProps.options.itemCSS);
+    const [itemCSS, setItemCSS] = useState(JSON.stringify(safeItemCss));
     const [itemCSSValid, setItemCSSValid] = useState(true);
     const [itemCSSMessage, setItemCSSMessage] = useState(<br />)
-    const setItemCSSInputProps: TextAreaProps & TextAreaAttrs & React.RefAttributes<HTMLTextAreaElement> = {
+    const setItemCSSInputProps: TextAreaProps & React.RefAttributes<HTMLTextAreaElement> = {
         label: t('CSS for items'),
         message: itemCSSValid ? <br /> : itemCSSMessage,
         valid: itemCSSValid ? undefined : itemCSSValid,
         onChange: (e: any) => {
             setItemCSS(e.target.value);
             try {
-                const json = JSON.parse(e.target.value);
+                const json=parseItemCss(e.target.value);
                 props.setUpdates({ type: 'SET_ITEM_CSS', data: json });
 
                 setItemCSSMessage(<br />);
@@ -100,7 +110,7 @@ export function Page4(props: Props) {
     const makeOption = (item: any, index: number) => <option disabled={item.disabled || item.separator} key={index} value={item.value}>{t(item.value)}</option>;
     const [openedIconState, setOpenedIconState] = useState({ value: props.data.options.openedIconType });
     const [closedIconState, setClosedIconState] = useState({ value: props.data.options.closedIconType });
-    const setOpenedIconInputProps: TextAreaProps & TextAreaAttrs & React.RefAttributes<HTMLTextAreaElement> = {
+    const setOpenedIconInputProps: TextAreaProps & React.RefAttributes<HTMLTextAreaElement> = {
         label: props.data.options.openedIconType === 'Default' ? undefined : props.data.options.openedIconType === 'Base64 Image' ? t('Paste a Base64 image string below') : t('Use any ASCII character(s)'),
         onChange: (e: any) => {
             if (props.data.options.openedIconType === 'Base64 Image') {
@@ -114,7 +124,7 @@ export function Page4(props: Props) {
         value: props.data.options.openedIconType === 'Base64 Image' ? props.data.options.openedIconBase64Image : props.data.options.openedIconAscii,
         rows: props.data.options.openedIconType === 'Base64 Image' ? 3 : 1
     };
-    const setClosedIconInputProps: TextAreaProps & TextAreaAttrs & React.RefAttributes<HTMLTextAreaElement> = {
+    const setClosedIconInputProps: TextAreaProps & React.RefAttributes<HTMLTextAreaElement> = {
         label: props.data.options.closedIconType === 'Default' ? undefined : props.data.options.closedIconType === 'Base64 Image' ? t('Paste a Base64 image string below') : t('Use any ASCII character(s)'),
         onChange: (e: any) => {
             if (props.data.options.closedIconType === 'Base64 Image') {
@@ -166,7 +176,7 @@ export function Page4(props: Props) {
         label: t('Closed icon type'),
         kind: 'line'
     };
-    const setBGColorInputProps: TextFieldProps & InputAttrs & React.RefAttributes<HTMLInputElement> = {
+    const setBGColorInputProps: TextFieldProps & React.RefAttributes<HTMLInputElement> = {
         label: t('Background color'),
         message: undefined,
         kind: 'line' as 'line' | 'outline' | 'search',
@@ -179,7 +189,7 @@ export function Page4(props: Props) {
         style: { paddingLeft: '9px' },
         value: props.data.options.bgColor
     };
-    const setFontColorInputProps: TextFieldProps & InputAttrs & React.RefAttributes<HTMLInputElement> = {
+    const setFontColorInputProps: TextFieldProps & React.RefAttributes<HTMLInputElement> = {
         label: t('Font color'),
         message: undefined,
         kind: 'line' as 'line' | 'outline' | 'search',
@@ -192,7 +202,7 @@ export function Page4(props: Props) {
         style: { paddingLeft: '9px' },
         value: props.data.options.fontColor
     };
-    const setHighlightColorInputProps: TextFieldProps & InputAttrs & React.RefAttributes<HTMLInputElement> = {
+    const setHighlightColorInputProps: TextFieldProps & React.RefAttributes<HTMLInputElement> = {
         label: t('Highlight color'),
         message: undefined,
         kind: 'line' as 'line' | 'outline' | 'search',

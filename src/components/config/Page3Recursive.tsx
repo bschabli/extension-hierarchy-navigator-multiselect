@@ -1,4 +1,3 @@
-import { Checkbox } from '@tableau/tableau-ui';
 import React from 'react';
 import { HierarchyProps, Status } from '../API/Interfaces';
 import { useTranslation } from '../localization/I18n';
@@ -6,6 +5,7 @@ import { Selector } from '../shared/Selector';
 import { ConfigSection, ConfigStepIntro } from './ConfigPrimitives';
 import { SelectionBehaviorControls } from './SelectionBehaviorControls';
 import { TargetFilterControls } from './TargetFilterControls';
+import { Checkbox } from '../shared/UiComponents';
 
 interface Props {
     data: HierarchyProps;

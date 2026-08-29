@@ -15,6 +15,11 @@ import { isSelectionBehavior, resolveSavedSelectionBehavior } from './SelectionB
 import { loadSummaryColumns } from './SummaryData';
 import { withHTMLSpaces } from './Utils';
 import { LocalizedText, TranslationValues } from '../localization/I18n';
+import {
+    normalizeDebounceDelay,
+    normalizeHierarchySettingsRecord,
+    updateParameterSelection
+} from './ConfigurationModel';
 
 const extend=require('extend');
 
@@ -153,7 +158,12 @@ const hierarchyAPI=(): any => {
         let res={};
         if(debug) { console.log(`loadSettings: raw settings = ${ JSON.stringify(_settings) }`); }
         if(typeof _settings.data==='undefined') { return res; }
-        res=JSON.parse(_settings.data);
+        try {
+            res=normalizeHierarchySettingsRecord(JSON.parse(_settings.data));
+        }
+        catch(error) {
+            console.warn('Saved hierarchy settings are invalid; starting with a fresh configuration.', error);
+        }
         return res;
     };
 
@@ -244,24 +254,16 @@ const hierarchyAPI=(): any => {
                 }
             case 'SET_CHILD_ID_PARAMETER':
                 {
-                    // update childId from UI
-                    // if childId = new parentId then switch values
-                    if(payload.parameters.childId===action.data) {
-                        payload.parameters.childId=payload.parameters.childLabel;
-                    }
-                    // only string types allowed her
-                    payload.parameters.childId=action.data;
+                    const updated=updateParameterSelection(payload.parameters, 'childId', action.data);
+                    payload.parameters.childId=updated.childId;
+                    payload.parameters.childLabel=updated.childLabel;
                     return dispatch({ type: 'FETCH_SUCCESS', data: payload });
                 }
             case 'SET_CHILD_LABEL_PARAMETER': 
                 {
-                    // update childId from UI
-                    // if childId = new parentId then switch values
-                    if(payload.parameters.childLabel===action.data) {
-                        payload.parameters.childLabel=payload.parameters.childId;
-                    }
-                    // only string types allowed her
-                    payload.parameters.childLabel=action.data;
+                    const updated=updateParameterSelection(payload.parameters, 'childLabel', action.data);
+                    payload.parameters.childId=updated.childId;
+                    payload.parameters.childLabel=updated.childLabel;
                     return dispatch({ type: 'FETCH_SUCCESS', data: payload });
                 }
             case 'SET_BG_COLOR':
@@ -524,7 +526,7 @@ const hierarchyAPI=(): any => {
             case 'SET_DEBOUNCE':
                 {
                     // set debounce time
-                    payload.options.debounce=action.data;
+                    payload.options.debounce=normalizeDebounceDelay(action.data);
                     return dispatch({ type: 'FETCH_SUCCESS', data: payload });
                 }
             case 'TOGGLE_DASHBOARD_LISTENERS':
@@ -901,7 +903,9 @@ const hierarchyAPI=(): any => {
                     }
                     else {
                         // just take the last field and set it as the id field
-                        d.worksheet.childId=d.dashboardItems.allCurrentWorksheetItems.fields.splice(d.dashboardItems.allCurrentWorksheetItems.fields.length-1)[0];
+                        d.worksheet.childId=d.dashboardItems.allCurrentWorksheetItems.fields[
+                            d.dashboardItems.allCurrentWorksheetItems.fields.length-1
+                        ];
                     }
                 };
             }

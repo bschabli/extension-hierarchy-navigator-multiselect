@@ -1,6 +1,6 @@
-import { Button } from '@tableau/tableau-ui';
 import { HierarchyValidationCheck } from '../API/HierarchyValidation';
 import { useTranslation } from '../localization/I18n';
+import { Button } from '../shared/UiComponents';
 import { ConfigSection } from './ConfigPrimitives';
 import { HierarchyValidationState } from './useHierarchyValidation';
 
