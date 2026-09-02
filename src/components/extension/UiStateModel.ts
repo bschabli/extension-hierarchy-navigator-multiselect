@@ -3,8 +3,10 @@ import { NormalizedTreeNode, getAllSelectableFilterValues } from './TreeModel';
 
 export interface HierarchyUiState {
     openNodes: string[];
+    recentNodeKeys: string[];
     searchText: string;
     selectedValues: string[];
+    showSelectedOnly: boolean;
 }
 
 export interface HierarchyUiStorage {
@@ -12,7 +14,13 @@ export interface HierarchyUiStorage {
     setItem: (key: string, value: string) => void;
 }
 
-const EMPTY_UI_STATE: HierarchyUiState={ openNodes: [], searchText: '', selectedValues: [] };
+const EMPTY_UI_STATE: HierarchyUiState={
+    openNodes: [],
+    recentNodeKeys: [],
+    searchText: '',
+    selectedValues: [],
+    showSelectedOnly: false
+};
 
 /** Create a per-dashboard-extension-definition key for browser-session persistence. */
 export function createHierarchyUiStorageKey(
@@ -39,8 +47,10 @@ export function loadHierarchyUiState(storage: HierarchyUiStorage|undefined, key:
         const parsed=JSON.parse(serialized) as Partial<HierarchyUiState>;
         return {
             openNodes: stringArray(parsed.openNodes),
+            recentNodeKeys: stringArray(parsed.recentNodeKeys).slice(0, 8),
             searchText: typeof parsed.searchText==='string'?parsed.searchText.slice(0, 1000):'',
-            selectedValues: stringArray(parsed.selectedValues)
+            selectedValues: stringArray(parsed.selectedValues),
+            showSelectedOnly: parsed.showSelectedOnly===true
         };
     }
     catch(_error) {
@@ -58,8 +68,10 @@ export function saveHierarchyUiState(
     try {
         storage.setItem(key, JSON.stringify({
             openNodes: unique(state.openNodes),
+            recentNodeKeys: unique(state.recentNodeKeys).slice(0, 8),
             searchText: state.searchText.slice(0, 1000),
-            selectedValues: unique(state.selectedValues)
+            selectedValues: unique(state.selectedValues),
+            showSelectedOnly: state.showSelectedOnly
         }));
     }
     catch(_error) {
@@ -72,8 +84,8 @@ export function saveHierarchyUiState(
  * Keep refresh-safe UI values that still exist in the latest hierarchy.
  *
  * Search text is user input rather than hierarchy data, so it is retained
- * verbatim. Expanded paths and selected filter values are removed only when
- * their corresponding branch or value no longer exists after the refresh.
+ * verbatim. Expanded paths, recent nodes, and selected filter values are
+ * removed only when their corresponding branch or value no longer exists.
  */
 export function reconcileHierarchyUiState(
     nodes: readonly NormalizedTreeNode[],
@@ -92,10 +104,23 @@ export function reconcileHierarchyUiState(
 
     addOpenPaths(nodes, '');
     const selectableValues=new Set(getAllSelectableFilterValues(nodes, selectionBehavior));
+    const availableNodeKeys=new Set<string>();
+    function addNodeKeys(currentNodes: readonly NormalizedTreeNode[]): void {
+        currentNodes.forEach(node => {
+            availableNodeKeys.add(node.key);
+            addNodeKeys(node.nodes);
+        });
+    }
+    addNodeKeys(nodes);
+    const selectedValues=unique(currentState.selectedValues).filter(value => selectableValues.has(value));
     return {
         openNodes: unique(currentState.openNodes).filter(path => availableOpenPaths.has(path)),
+        recentNodeKeys: unique(currentState.recentNodeKeys)
+            .filter(key => availableNodeKeys.has(key))
+            .slice(0, 8),
         searchText: currentState.searchText,
-        selectedValues: unique(currentState.selectedValues).filter(value => selectableValues.has(value))
+        selectedValues,
+        showSelectedOnly: currentState.showSelectedOnly&&selectedValues.length>0
     };
 }
 
@@ -111,8 +136,10 @@ function stringArray(value: unknown): string[] {
 function copyEmptyState(): HierarchyUiState {
     return {
         openNodes: EMPTY_UI_STATE.openNodes.slice(),
+        recentNodeKeys: EMPTY_UI_STATE.recentNodeKeys.slice(),
         searchText: EMPTY_UI_STATE.searchText,
-        selectedValues: EMPTY_UI_STATE.selectedValues.slice()
+        selectedValues: EMPTY_UI_STATE.selectedValues.slice(),
+        showSelectedOnly: EMPTY_UI_STATE.showSelectedOnly
     };
 }
 

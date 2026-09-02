@@ -91,6 +91,7 @@ function testSettingsAndIntegerNormalization(): void {
     const malformedScalars=normalizeHierarchySettingsRecord({
         configComplete: 'yes',
         options: {
+            compactMode: 'yes',
             debounce: 'fast',
             fontFamily: null,
             itemCSS: [],
@@ -109,6 +110,10 @@ function testSettingsAndIntegerNormalization(): void {
         'Malformed display settings should not replace safe defaults.'
     );
     assert(
+        !('compactMode' in (malformedScalars.options as Record<string, unknown>)),
+        'Malformed compact-mode settings should not replace the boolean default.'
+    );
+    assert(
         !('childId' in (malformedScalars.parameters as Record<string, unknown>)),
         'Malformed parameter mappings should not replace safe defaults.'
     );
@@ -120,6 +125,11 @@ function testSettingsAndIntegerNormalization(): void {
     assert(
         (boundedSettings.options as { debounce: number }).debounce===10000,
         'Persisted debounce delays should be constrained to the supported range.'
+    );
+    const compactSettings=normalizeHierarchySettingsRecord({ options: { compactMode: true } });
+    assert(
+        (compactSettings.options as { compactMode: boolean }).compactMode,
+        'Valid compact-mode settings should survive persisted-settings normalization.'
     );
     const unknownSettings=normalizeHierarchySettingsRecord(JSON.parse(
         '{"unknownRoot":true,"options":{"unknownOption":true},"worksheet":{"unknownField":true}}'

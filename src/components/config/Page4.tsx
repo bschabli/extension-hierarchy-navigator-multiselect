@@ -227,6 +227,9 @@ export function Page4(props: Props) {
     const changeSearchAutoExpand = (e: React.ChangeEvent<HTMLInputElement>): void => {
         props.setUpdates({ type: 'TOGGLE_SEARCH_AUTO_EXPAND', data: e.target.checked });
     };
+    const changeCompactMode = (e: React.ChangeEvent<HTMLInputElement>): void => {
+        props.setUpdates({ type: 'TOGGLE_COMPACT_MODE', data: e.target.checked });
+    };
     // Handles change in background color input
     const bgChange = (color: any): void => {
         props.setUpdates({ type: 'SET_BG_COLOR', data: color.target.value });
@@ -294,6 +297,7 @@ export function Page4(props: Props) {
                     <div><dt>{t('Search')}</dt><dd>{props.data.options.searchEnabled?
                         `${ t('On') } · ${ t('auto-expand {state}', { state: t(props.data.options.searchAutoExpand===false?'off':'on') }) }`:
                         t('Off')}</dd></div>
+                    <div><dt>{t('Compact mode')}</dt><dd>{t(props.data.options.compactMode?'On':'Off')}</dd></div>
                     <div><dt>{t('Parameter output')}</dt><dd>{t(parameterEnabled?'On':'Off')}</dd></div>
                     <div><dt>{t('Source mark selection')}</dt><dd>{t(props.data.worksheet.enableMarkSelection?'On':'Off')}</dd></div>
                 </dl>
@@ -330,6 +334,17 @@ export function Page4(props: Props) {
                             />
                         </div>
                     }
+                    <div className='config-option-row'>
+                        <div>
+                            <strong>{t('Compact mode')}</strong>
+                            <p>{t('Reduce spacing and control sizes for small dashboard zones.')}</p>
+                        </div>
+                        <Checkbox
+                            checked={props.data.options.compactMode}
+                            onChange={changeCompactMode}
+                            aria-label={t('Use compact hierarchy layout')}
+                        />
+                    </div>
                     <div className='config-option-row config-option-row--stackable'>
                         <div><strong>{t('Extension title')}</strong><p>{t('Show a short heading above the navigator.')}</p></div>
                         <Checkbox checked={props.data.options.titleEnabled} onChange={changeTitleEnabled} aria-label={t('Show extension title')} />

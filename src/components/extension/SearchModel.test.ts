@@ -59,8 +59,27 @@ function testBlankSearchPreservesTree(): void {
     assert(result.autoExpandedPaths.length===0&&result.matchCount===0, 'Blank search should not create search state.');
 }
 
+function testFuzzySearch(): void {
+    const subsequence=getHierarchySearchResult(makeTree(), 'frntr');
+    assert(
+        subsequence.matchCount===1&&subsequence.tree[0].label==='Furniture',
+        'A non-contiguous fuzzy term should match a hierarchy label.'
+    );
+    assert(
+        getSearchMatchRanges('Furniture', 'frntr').length>1,
+        'Fuzzy subsequence characters should be available for highlighting.'
+    );
+    const typo=getHierarchySearchResult(makeTree(), 'bokcases');
+    assert(typo.matchCount===1, 'A small spelling mistake should still find the intended hierarchy item.');
+    assert(
+        getHierarchySearchResult(makeTree(), 'zzzzzz').matchCount===0,
+        'Unrelated terms should not create false fuzzy matches.'
+    );
+}
+
 testAncestorContextAndExpansionPaths();
 testDirectParentMatchDoesNotExposeUnrelatedDescendants();
 testRangesAndNormalization();
 testBlankSearchPreservesTree();
+testFuzzySearch();
 console.log('Hierarchy search model acceptance tests passed.');

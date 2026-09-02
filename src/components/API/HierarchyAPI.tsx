@@ -509,6 +509,11 @@ const hierarchyAPI=(): any => {
                     payload.options.searchAutoExpand=action.data;
                     return dispatch({ type: 'FETCH_SUCCESS', data: payload });
                 }
+            case 'TOGGLE_COMPACT_MODE':
+                {
+                    payload.options.compactMode=action.data;
+                    return dispatch({ type: 'FETCH_SUCCESS', data: payload });
+                }
             case 'TOGGLE_TITLE_DISABLED':
                 {
                     // enable/disable title

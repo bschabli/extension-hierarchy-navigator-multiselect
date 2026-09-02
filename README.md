@@ -18,6 +18,9 @@ Hierarchy Navigator Multiselect is a Tableau dashboard extension for navigating 
 - Data validation for duplicate IDs, orphaned children, cycles, blank labels, and malformed paths
 - Live hierarchy preview during configuration
 - Search highlighting, ancestor context, and automatic path expansion
+- Fuzzy search, active-item breadcrumbs, and recently selected shortcuts
+- Selected-only view plus expand, collapse, select, and clear actions for any hierarchy level
+- Result counts beside nodes and an optional compact layout for small dashboard zones
 - Remembered expansion, search, and selection state across data refreshes
 - Keyboard navigation, screen-reader announcements, and English/German localization
 
