@@ -36,6 +36,8 @@
     "src/components/extension/TreeModel.test.ts",
     "src/components/extension/SearchModel.ts",
     "src/components/extension/SearchModel.test.ts",
+    "src/components/extension/NavigationModel.ts",
+    "src/components/extension/NavigationModel.test.ts",
     "src/components/extension/TableauInitialization.ts",
     "src/components/extension/TableauInitialization.test.ts",
     "src/components/extension/TreeKeyboardNavigation.ts",

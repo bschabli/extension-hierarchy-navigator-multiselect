@@ -12,6 +12,7 @@ export enum Status { 'notpossible', 'notset', 'set', 'hidden' }
 
 export interface Options {
     bgColor: string;
+    compactMode: boolean;
     dashboardListenersEnabled: boolean;
     debug: boolean;
     debounce: number;
@@ -96,6 +97,7 @@ export const defaultSelectedProps: HierarchyProps={
     },
     options: {
         bgColor: '#F3F3F3',
+        compactMode: false,
         dashboardListenersEnabled: false,
         debounce: 250,
         debug: false,

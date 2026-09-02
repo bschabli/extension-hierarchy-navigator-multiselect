@@ -42,6 +42,17 @@ import {
 } from './IncrementalTreeModel';
 import { getVirtualWindow, quantizeScrollOffset } from './VirtualizationModel';
 import { HierarchyLoadDiagnostics } from './DiagnosticsModel';
+import {
+    collapseHierarchyLevel,
+    expandHierarchyLevel,
+    filterHierarchyToSelection,
+    getAncestorPaths,
+    getHierarchyBreadcrumbs,
+    getHierarchyLevelCount,
+    getHierarchyLevelSelectionValues,
+    getHierarchyNavigationEntries,
+    updateHierarchyLevelSelection
+} from './NavigationModel';
 
 export interface HierarchySelectionPayload {
     currentFieldValues?: Array<string|undefined>;
@@ -54,6 +65,7 @@ export interface HierarchySelectionPayload {
 
 interface PathMap {
     hierarchyValue: string;
+    key: string;
     label: string;
     path: string;
 }
@@ -70,8 +82,10 @@ interface Props {
 }
 
 const VIRTUALIZATION_THRESHOLD=250;
-const VIRTUAL_ROW_HEIGHT=32;
+const DEFAULT_VIRTUAL_ROW_HEIGHT=32;
+const COMPACT_VIRTUAL_ROW_HEIGHT=26;
 const VIRTUAL_OVERSCAN=8;
+const RECENT_SELECTION_LIMIT=6;
 
 interface CheckboxTreeItemProps {
     checkboxState: CheckboxState;
@@ -91,6 +105,7 @@ interface CheckboxTreeItemProps {
     searchTerm: string;
     setSize?: number;
     positionInSet?: number;
+    resultCount: number;
     tabIndex: number;
     toggleNode?: () => void;
     toggleDisabled: boolean;
@@ -117,7 +132,10 @@ function CheckboxTreeItem(props: CheckboxTreeItemProps) {
             aria-selected={props.checkboxState!=='none'}
             aria-posinset={props.positionInSet}
             aria-setsize={props.setSize}
-            aria-label={`${ props.label }, ${ selectionDescription }`}
+            aria-label={`${ props.label }, ${ t(
+                props.resultCount===1?'{count} result':'{count} results',
+                { count: props.resultCount }
+            ) }, ${ selectionDescription }`}
             onClick={props.onClick}
             onFocus={props.onFocus}
             onKeyDown={props.onKeyDown}
@@ -146,6 +164,7 @@ function CheckboxTreeItem(props: CheckboxTreeItemProps) {
             <span className='hierarchy-node-label'>
                 <HighlightedHierarchyLabel label={props.label} searchTerm={props.searchTerm} />
             </span>
+            <span className='hierarchy-node-count' aria-hidden='true'>{props.resultCount}</span>
         </li>
     );
 }
@@ -155,6 +174,8 @@ function Hierarchy(props: Props) {
     const debug=isDebugEnabled(props.data.options.debug);
     const selectionBehavior=props.data.options.selectionBehavior||SelectionBehavior.TERMINAL;
     const autoExpandSearch=props.data.options.searchAutoExpand!==false;
+    const compactMode=props.data.options.compactMode===true;
+    const virtualRowHeight=compactMode?COMPACT_VIRTUAL_ROW_HEIGHT:DEFAULT_VIRTUAL_ROW_HEIGHT;
     const itemStyle=normalizeItemCss(props.data.options.itemCSS, defaultSelectedProps.options.itemCSS);
     const hierarchyDefinitionSignature=JSON.stringify([
         props.data.type,
@@ -195,12 +216,16 @@ function Hierarchy(props: Props) {
     const treeRef=useRef<NormalizedTreeNode[]>([]);
     const [searchVal, setSearchVal]=useState(initialUiState.searchText);
     const [openNodes, setOpenNodes]=useState<string[]>(initialUiState.openNodes);
+    const [recentNodeKeys, setRecentNodeKeys]=useState<string[]>(initialUiState.recentNodeKeys);
+    const [showSelectedOnly, setShowSelectedOnly]=useState(initialUiState.showSelectedOnly);
+    const [selectedLevel, setSelectedLevel]=useState(0);
+    const [activeNodeKey, setActiveNodeKey]=useState('');
     const [focusedTreePath, setFocusedTreePath]=useState('');
     const [screenReaderAnnouncement, setScreenReaderAnnouncement]=useState('');
     const [loadError, setLoadError]=useState('');
     const [treeScrollTop, setTreeScrollTop]=useState(0);
     const [treeViewportHeight, setTreeViewportHeight]=useState(() =>
-        Math.max(160, typeof window==='undefined'?320:window.innerHeight-190)
+        Math.max(160, typeof window==='undefined'?320:window.innerHeight-(compactMode?145:190))
     );
     const hierarchyDefinitionRef=useRef(hierarchyDefinitionSignature);
     const persistedUiStorageKeyRef=useRef(uiStorageKey);
@@ -214,25 +239,41 @@ function Hierarchy(props: Props) {
     const [openedIcon, setOpenedIcon]=useState<React.ReactNode>(defaultOpenedIcon);
     const [closedIcon, setClosedIcon]=useState<React.ReactNode>(defaultClosedIcon);
 
-    const nodeById=useMemo(() => {
-        const result=new Map<string, NormalizedTreeNode>();
-        function addNodes(nodes: NormalizedTreeNode[]): void {
-            nodes.forEach(node => {
-                result.set(node.key, node);
-                addNodes(node.nodes);
-            });
-        }
-        addNodes(tree);
-        return result;
-    }, [tree]);
+    const navigationEntries=useMemo(() => getHierarchyNavigationEntries(tree), [tree]);
+    const nodeById=useMemo(
+        () => new Map(navigationEntries.map(entry => [entry.node.key, entry.node])),
+        [navigationEntries]
+    );
+    const pathByNodeKey=useMemo(
+        () => new Map(navigationEntries.map(entry => [entry.node.key, entry.path])),
+        [navigationEntries]
+    );
+    const hierarchyLevelCount=useMemo(() => getHierarchyLevelCount(tree), [tree]);
+    const breadcrumbs=useMemo(
+        () => getHierarchyBreadcrumbs(tree, activeNodeKey),
+        [activeNodeKey, tree]
+    );
+    const recentNodes=useMemo(
+        () => recentNodeKeys.map(key => nodeById.get(key)).filter(
+            (node): node is NormalizedTreeNode => typeof node!=='undefined'
+        ),
+        [nodeById, recentNodeKeys]
+    );
 
     const allSelectableFilterValues=useMemo(
         () => getAllSelectableFilterValues(tree, selectionBehavior),
         [selectionBehavior, tree]
     );
-    const searchResult=useMemo(() => getHierarchySearchResult(tree, searchVal), [searchVal, tree]);
+    const selectedOnlyTree=useMemo(
+        () => showSelectedOnly?filterHierarchyToSelection(tree, selectedLeafValues, selectionBehavior):tree,
+        [selectionBehavior, selectedLeafValues, showSelectedOnly, tree]
+    );
+    const searchResult=useMemo(
+        () => getHierarchySearchResult(selectedOnlyTree, searchVal),
+        [searchVal, selectedOnlyTree]
+    );
     const searchActive=searchResult.normalizedTerm!=='';
-    const visibleTree=searchActive?searchResult.tree:tree;
+    const visibleTree=searchActive?searchResult.tree:selectedOnlyTree;
     const effectiveOpenNodes=useMemo(() => {
         if(!searchActive||!autoExpandSearch) { return openNodes; }
         return Array.from(new Set(openNodes.concat(searchResult.autoExpandedPaths)));
@@ -247,22 +288,30 @@ function Hierarchy(props: Props) {
     }, [props.onVirtualizationChange, visibleItemCount]);
 
     useEffect(() => {
+        if(hierarchyLevelCount===0) { setSelectedLevel(0); }
+        else { setSelectedLevel(level => Math.min(level, hierarchyLevelCount-1)); }
+    }, [hierarchyLevelCount]);
+
+    useEffect(() => {
         if(persistedUiStorageKeyRef.current!==uiStorageKey) {
             persistedUiStorageKeyRef.current=uiStorageKey;
             return;
         }
         saveHierarchyUiState(getSessionStorage(), uiStorageKey, {
             openNodes,
+            recentNodeKeys,
             searchText: searchVal,
-            selectedValues: Array.from(selectedLeafValues)
+            selectedValues: Array.from(selectedLeafValues),
+            showSelectedOnly
         });
-    }, [openNodes, searchVal, selectedLeafValues, uiStorageKey]);
+    }, [openNodes, recentNodeKeys, searchVal, selectedLeafValues, showSelectedOnly, uiStorageKey]);
 
     useEffect(() => {
         if(selectionBehaviorRef.current===selectionBehavior) { return; }
         selectionBehaviorRef.current=selectionBehavior;
         selectedRef.current=new Set<string>();
         setSelectedLeafValues(new Set<string>());
+        setShowSelectedOnly(false);
     }, [selectionBehavior]);
 
     useEffect(() => {
@@ -272,12 +321,14 @@ function Hierarchy(props: Props) {
     useEffect(() => {
         const updateViewportHeight=(): void => {
             const viewport=treeViewportRef.current;
-            setTreeViewportHeight(viewport?.clientHeight||Math.max(160, window.innerHeight-190));
+            setTreeViewportHeight(
+                viewport?.clientHeight||Math.max(160, window.innerHeight-(compactMode?145:190))
+            );
         };
         updateViewportHeight();
         window.addEventListener('resize', updateViewportHeight);
         return () => window.removeEventListener('resize', updateViewportHeight);
-    }, []);
+    }, [compactMode]);
 
     useEffect(() => {
         if(props.data.options.openedIconType==='Default') { setOpenedIcon(defaultOpenedIcon); }
@@ -422,12 +473,16 @@ function Hierarchy(props: Props) {
         const previousSelectedValues=Array.from(selectedRef.current);
         const reconciledUiState=preserveUiState?reconcileHierarchyUiState(nextTree, {
             openNodes,
+            recentNodeKeys,
             searchText: searchVal,
-            selectedValues: previousSelectedValues
+            selectedValues: previousSelectedValues,
+            showSelectedOnly
         }, selectionBehavior):{
             openNodes: [],
+            recentNodeKeys: [],
             searchText: '',
-            selectedValues: []
+            selectedValues: [],
+            showSelectedOnly: false
         };
         const nextSelectedValues=new Set(reconciledUiState.selectedValues);
         const shouldReapplySelections=
@@ -440,10 +495,14 @@ function Hierarchy(props: Props) {
 
         selectedRef.current=nextSelectedValues;
         setSelectedLeafValues(nextSelectedValues);
+        setRecentNodeKeys(reconciledUiState.recentNodeKeys);
+        setShowSelectedOnly(reconciledUiState.showSelectedOnly);
         setOpenNodes(currentOpenNodes => preserveUiState?reconcileHierarchyUiState(nextTree, {
             openNodes: currentOpenNodes,
+            recentNodeKeys: [],
             searchText: '',
-            selectedValues: []
+            selectedValues: [],
+            showSelectedOnly: false
         }, selectionBehavior).openNodes:[]);
         if(!preserveUiState) { setSearchVal(''); }
         treeRef.current=nextTree;
@@ -472,6 +531,7 @@ function Hierarchy(props: Props) {
             if(!activeNode||selectionChanged) {
                 setActiveNode(nextActiveNode, selectionChanged, nextSelectedValues, nextTree);
             }
+            else { setActiveNodeKey(activeNode.key); }
         }
         else if(selectionChanged) {
             props.setDataFromExtension({
@@ -496,6 +556,9 @@ function Hierarchy(props: Props) {
         setPathMap([]);
         setSearchVal('');
         setOpenNodes([]);
+        setRecentNodeKeys([]);
+        setShowSelectedOnly(false);
+        setActiveNodeKey('');
         setTreeScrollTop(0);
         if(treeViewportRef.current) { treeViewportRef.current.scrollTop=0; }
     }
@@ -503,7 +566,7 @@ function Hierarchy(props: Props) {
     function buildPathMap(nodes: NormalizedTreeNode[], parentPath=''): PathMap[] {
         return nodes.reduce<PathMap[]>((result, node) => {
             const path=parentPath===''? node.key:`${ parentPath }/${ node.key }`;
-            result.push({ hierarchyValue: node.hierarchyValue, label: node.label, path });
+            result.push({ hierarchyValue: node.hierarchyValue, key: node.key, label: node.label, path });
             return result.concat(buildPathMap(node.nodes, path));
         }, []);
     }
@@ -514,6 +577,11 @@ function Hierarchy(props: Props) {
         const next=toggleNodeSelection(node, selectedRef.current, selectionBehavior);
         selectedRef.current=next;
         setSelectedLeafValues(next);
+        if(!wasSelected) {
+            setRecentNodeKeys(current => [node.key].concat(
+                current.filter(key => key!==node.key)
+            ).slice(0, RECENT_SELECTION_LIMIT));
+        }
         setScreenReaderAnnouncement(
             `${ t(wasSelected?'{label} deselected.':'{label} selected.', { label: node.label }) } ${
                 describeSelection(next.size)
@@ -530,6 +598,7 @@ function Hierarchy(props: Props) {
     ): void {
         currentIdRef.current=node.hierarchyValue;
         currentLabelRef.current=node.label;
+        setActiveNodeKey(node.key);
         setCurrentId(node.hierarchyValue);
         setCurrentLabel(node.label);
         props.setDataFromExtension({
@@ -552,14 +621,64 @@ function Hierarchy(props: Props) {
         else { currentLabelRef.current=value; }
         const match=pathMap.find(node => type==='id'? node.hierarchyValue===value:node.label===value);
         if(typeof match==='undefined') { return; }
-        const nextOpenNodes=makePath(match.path);
+        const nextOpenNodes=getAncestorPaths(match.path);
         setOpenNodes(nextOpenNodes);
         if(childRef.current) { childRef.current.resetOpenNodes(nextOpenNodes, match.path); }
         currentIdRef.current=match.hierarchyValue;
         currentLabelRef.current=match.label;
+        setActiveNodeKey(match.key);
         setCurrentId(match.hierarchyValue);
         setCurrentLabel(match.label);
         props.setDataFromExtension({ currentId: match.hierarchyValue, currentLabel: match.label });
+    }
+
+    function navigateToNode(node: NormalizedTreeNode): void {
+        const path=pathByNodeKey.get(node.key);
+        if(!path) { return; }
+        const nextOpenNodes=Array.from(new Set(openNodes.concat(getAncestorPaths(path))));
+        if(showSelectedOnly&&getSelectionState(node, selectedRef.current, selectionBehavior)==='none') {
+            setShowSelectedOnly(false);
+        }
+        setOpenNodes(nextOpenNodes);
+        if(childRef.current) { childRef.current.resetOpenNodes(nextOpenNodes, path); }
+        setActiveNode(node, false);
+        window.requestAnimationFrame(() => focusTreeItem(path));
+    }
+
+    function expandSelectedLevel(): void {
+        const nextOpenNodes=expandHierarchyLevel(tree, selectedLevel, openNodes);
+        setOpenNodes(nextOpenNodes);
+        setScreenReaderAnnouncement(t('Level {level} expanded.', { level: selectedLevel+1 }));
+    }
+
+    function collapseSelectedLevel(): void {
+        const nextOpenNodes=collapseHierarchyLevel(tree, selectedLevel, openNodes);
+        setOpenNodes(nextOpenNodes);
+        setScreenReaderAnnouncement(t('Level {level} collapsed.', { level: selectedLevel+1 }));
+    }
+
+    function updateSelectedLevelSelection(select: boolean): void {
+        const levelValues=getHierarchyLevelSelectionValues(tree, selectedLevel, selectionBehavior);
+        const next=updateHierarchyLevelSelection(
+            tree,
+            selectedLevel,
+            selectedRef.current,
+            select,
+            selectionBehavior
+        );
+        selectedRef.current=next;
+        setSelectedLeafValues(next);
+        if(next.size===0) { setShowSelectedOnly(false); }
+        setScreenReaderAnnouncement(t(
+            select?'Selected {count} values at level {level}.':'Cleared {count} values at level {level}.',
+            { count: levelValues.length, level: selectedLevel+1 }
+        ));
+        props.setDataFromExtension({
+            currentId: currentIdRef.current,
+            currentLabel: currentLabelRef.current,
+            selectedFilterValues: buildHierarchyFilterValueRecords(tree, next, props.data.separator),
+            selectedLeafValues: Array.from(next)
+        });
     }
 
     function toggleTreeNode(key: string, label: string): void {
@@ -581,7 +700,7 @@ function Hierarchy(props: Props) {
         setFocusedTreePath(key);
         const itemIndex=virtualItemsRef.current.findIndex(item => item.key===key);
         if(itemIndex>=0&&virtualItemsRef.current.length>VIRTUALIZATION_THRESHOLD&&treeViewportRef.current) {
-            const nextScrollTop=itemIndex*VIRTUAL_ROW_HEIGHT;
+            const nextScrollTop=itemIndex*virtualRowHeight;
             treeViewportRef.current.scrollTop=nextScrollTop;
             setTreeScrollTop(nextScrollTop);
         }
@@ -633,15 +752,6 @@ function Hierarchy(props: Props) {
         }
     }
 
-    function makePath(path: string): string[] {
-        const keys=path.split('/');
-        const result: string[]=[];
-        for(let index=0;index<keys.length-1;index++) {
-            result.push(index===0? keys[index]:`${ result[index-1] }/${ keys[index] }`);
-        }
-        return result;
-    }
-
     function findNode(
         nodes: readonly NormalizedTreeNode[],
         predicate: (node: NormalizedTreeNode) => boolean
@@ -662,6 +772,7 @@ function Hierarchy(props: Props) {
         const emptySelection=new Set<string>();
         selectedRef.current=emptySelection;
         setSelectedLeafValues(emptySelection);
+        setShowSelectedOnly(false);
         setScreenReaderAnnouncement(t('Selections reset. All values are shown.'));
         props.setDataFromExtension({
             currentId: currentIdRef.current,
@@ -688,9 +799,40 @@ function Hierarchy(props: Props) {
         });
     }
 
-    const allValuesSelected=allSelectableFilterValues.length>0&&
+    const allValuesSelected=useMemo(() => allSelectableFilterValues.length>0&&
         allSelectableFilterValues.length===selectedLeafValues.size&&
-        allSelectableFilterValues.every(value => selectedLeafValues.has(value));
+        allSelectableFilterValues.every(value => selectedLeafValues.has(value)),
+    [allSelectableFilterValues, selectedLeafValues]);
+    const selectedLevelValues=useMemo(
+        () => getHierarchyLevelSelectionValues(tree, selectedLevel, selectionBehavior),
+        [selectedLevel, selectionBehavior, tree]
+    );
+    const selectedLevelSelectedCount=useMemo(
+        () => selectedLevelValues.reduce(
+            (count, value) => count+(selectedLeafValues.has(value)?1:0),
+            0
+        ),
+        [selectedLeafValues, selectedLevelValues]
+    );
+    const selectedLevelBranchPaths=useMemo(
+        () => navigationEntries
+            .filter(entry => entry.depth===selectedLevel&&entry.node.nodes.length>0)
+            .map(entry => entry.path),
+        [navigationEntries, selectedLevel]
+    );
+    const selectedLevelHasOpenBranches=useMemo(
+        () => selectedLevelBranchPaths.some(branchPath =>
+            openNodes.some(openPath => openPath===branchPath||openPath.startsWith(`${ branchPath }/`))
+        ),
+        [openNodes, selectedLevelBranchPaths]
+    );
+
+    function getLevelLabel(level: number): string {
+        if(props.data.type===HierType.FLAT&&props.data.worksheet.fields[level]) {
+            return props.data.worksheet.fields[level];
+        }
+        return t('Level {level}', { level: level+1 });
+    }
 
     function describeSelection(count: number): string {
         if(count===0) { return t('All values are shown with no filter.'); }
@@ -720,7 +862,10 @@ function Hierarchy(props: Props) {
     } as React.CSSProperties:{ display: 'none' };
 
     return (
-        <div style={{ width: '100%' }}>
+        <div
+            className={`hierarchy-root${ compactMode?' hierarchy-root--compact':'' }`}
+            style={{ width: '100%' }}
+        >
             <div className='hierarchy-toolbar'>
                 {props.data.options.titleEnabled&&<span style={{ fontWeight: 'bold' }}>{props.data.options.title}</span>}
                 <span className='hierarchy-selection-status'>
@@ -743,8 +888,81 @@ function Hierarchy(props: Props) {
                         disabled={selectedLeafValues.size===0}
                         aria-label={t('Reset all hierarchy selections')}
                     >{t('Reset Selections')}</Button>
+                    <Button
+                        kind='outline'
+                        onClick={() => setShowSelectedOnly(current => !current)}
+                        aria-pressed={showSelectedOnly}
+                        aria-label={t('Show selected hierarchy items only')}
+                    >{t(showSelectedOnly?'Show all':'Selected only')}</Button>
                 </div>
             </div>
+            {hierarchyLevelCount>0&&
+                <details className='hierarchy-level-actions'>
+                    <summary>{t('Level actions')}</summary>
+                    <div className='hierarchy-level-actions-panel'>
+                        <label>
+                            <span>{t('Hierarchy level')}</span>
+                            <select
+                                value={selectedLevel}
+                                onChange={event => setSelectedLevel(Number(event.target.value))}
+                            >
+                                {Array.from({ length: hierarchyLevelCount }, (_value, level) =>
+                                    <option key={level} value={level}>{getLevelLabel(level)}</option>
+                                )}
+                            </select>
+                        </label>
+                        <div className='hierarchy-level-action-buttons'>
+                            <Button
+                                kind='outline'
+                                onClick={expandSelectedLevel}
+                                disabled={selectedLevelBranchPaths.length===0}
+                            >{t('Expand level')}</Button>
+                            <Button
+                                kind='outline'
+                                onClick={collapseSelectedLevel}
+                                disabled={!selectedLevelHasOpenBranches}
+                            >{t('Collapse level')}</Button>
+                            <Button
+                                kind='outline'
+                                onClick={() => updateSelectedLevelSelection(true)}
+                                disabled={selectedLevelValues.length===0||
+                                    selectedLevelSelectedCount===selectedLevelValues.length}
+                            >{t('Select level')}</Button>
+                            <Button
+                                kind='outline'
+                                onClick={() => updateSelectedLevelSelection(false)}
+                                disabled={selectedLevelSelectedCount===0}
+                            >{t('Clear level')}</Button>
+                        </div>
+                    </div>
+                </details>
+            }
+            {breadcrumbs.length>0&&
+                <nav className='hierarchy-breadcrumbs' aria-label={t('Active item breadcrumbs')}>
+                    {breadcrumbs.map((node, index) => <React.Fragment key={node.key}>
+                        {index>0&&<span aria-hidden='true'>›</span>}
+                        <button
+                            type='button'
+                            aria-current={index===breadcrumbs.length-1?'page':undefined}
+                            onClick={() => navigateToNode(node)}
+                        >{node.label}</button>
+                    </React.Fragment>)}
+                </nav>
+            }
+            {recentNodes.length>0&&
+                <div className='hierarchy-recent-items' aria-label={t('Recently selected items')}>
+                    <span>{t('Recent')}</span>
+                    {recentNodes.slice(0, compactMode?3:RECENT_SELECTION_LIMIT).map(node =>
+                        <button
+                            key={node.key}
+                            type='button'
+                            aria-current={node.key===activeNodeKey?'true':undefined}
+                            title={getHierarchyBreadcrumbs(tree, node.key).map(item => item.label).join(' › ')}
+                            onClick={() => navigateToNode(node)}
+                        >{node.label}</button>
+                    )}
+                </div>
+            }
             <p id='hierarchy-keyboard-help' className='hierarchy-visually-hidden'>
                 {t('Use Up and Down Arrow to move, Right Arrow to expand or enter a branch, Left Arrow to collapse or return to a parent, Home and End to jump, Space or Enter to select, and type letters to find an item.')}
             </p>
@@ -779,7 +997,7 @@ function Hierarchy(props: Props) {
                         items.length,
                         treeScrollTop,
                         treeViewportHeight,
-                        VIRTUAL_ROW_HEIGHT,
+                        virtualRowHeight,
                         VIRTUAL_OVERSCAN
                     ):{
                         endIndex: items.length,
@@ -824,13 +1042,18 @@ function Hierarchy(props: Props) {
                                     }) } · ${ t('ancestor context shown') }`}
                             </div>
                         }
+                        {showSelectedOnly&&selectedLeafValues.size===0&&
+                            <div className='hierarchy-empty-state' role='status'>
+                                {t('No selected items to show.')}
+                            </div>
+                        }
                         <div
                             ref={treeViewportRef}
                             className={`hierarchy-tree-viewport${ virtualized?' hierarchy-tree-viewport--virtualized':'' }`}
                             onScroll={event => {
                                 const nextScrollTop=quantizeScrollOffset(
                                     event.currentTarget.scrollTop,
-                                    VIRTUAL_ROW_HEIGHT
+                                    virtualRowHeight
                                 );
                                 setTreeScrollTop(current => current===nextScrollTop?current:nextScrollTop);
                             }}
@@ -862,6 +1085,7 @@ function Hierarchy(props: Props) {
                                         onClick={item.onClick}
                                         checkboxState={getSelectionState(node, selectedLeafValues, selectionBehavior)}
                                         disabled={getNodeSelectionValues(node, selectionBehavior).length===0}
+                                        resultCount={getNodeSelectionValues(node, selectionBehavior).length}
                                         onFocus={() => setFocusedTreePath(item.key)}
                                         onKeyDown={event => handleTreeItemKeyDown(event, item, items, node)}
                                         setRef={element => {
@@ -880,7 +1104,7 @@ function Hierarchy(props: Props) {
                                         style={virtualized?{
                                             ...itemStyle,
                                             boxSizing: 'border-box',
-                                            height: VIRTUAL_ROW_HEIGHT
+                                            height: virtualRowHeight
                                         }:itemStyle}
                                     />
                                 );
