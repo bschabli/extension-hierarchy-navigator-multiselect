@@ -61,8 +61,14 @@ export function ConfigurationAdministration(props: Props) {
         const link=document.createElement('a');
         link.href=url;
         link.download=getConfigurationExportFilename(props.data);
-        link.click();
-        URL.revokeObjectURL(url);
+        document.body.appendChild(link);
+        try {
+            link.click();
+        }
+        finally {
+            link.remove();
+            window.setTimeout(() => URL.revokeObjectURL(url), 0);
+        }
         setMessage(t('Configuration JSON downloaded.'));
         setValid(true);
     };
