@@ -1,4 +1,4 @@
-import { getVirtualWindow } from './VirtualizationModel';
+import { getVirtualWindow, quantizeScrollOffset } from './VirtualizationModel';
 
 function assert(condition: boolean, message: string): void {
     if(!condition) { throw new Error(message); }
@@ -15,5 +15,9 @@ assert(middle.endIndex===115, 'Virtualization should overscan after the visible 
 
 const clamped=getVirtualWindow(10, 100000, 320, 32, 5);
 assert(clamped.startIndex===9&&clamped.endIndex===10, 'Stale scroll positions should clamp to the available rows.');
+
+assert(quantizeScrollOffset(63, 32)===32, 'Scroll offsets should use the preceding row boundary.');
+assert(quantizeScrollOffset(64, 32)===64, 'Exact row boundaries should be preserved.');
+assert(quantizeScrollOffset(-8, 32)===0, 'Negative scroll offsets should be clamped.');
 
 console.log('Virtualization model tests passed.');

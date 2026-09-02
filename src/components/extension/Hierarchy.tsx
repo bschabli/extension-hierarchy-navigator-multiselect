@@ -40,7 +40,7 @@ import {
     hierarchyDatasetSnapshotsEqual,
     reconcileNormalizedTree
 } from './IncrementalTreeModel';
-import { getVirtualWindow } from './VirtualizationModel';
+import { getVirtualWindow, quantizeScrollOffset } from './VirtualizationModel';
 import { HierarchyLoadDiagnostics } from './DiagnosticsModel';
 
 export interface HierarchySelectionPayload {
@@ -827,7 +827,13 @@ function Hierarchy(props: Props) {
                         <div
                             ref={treeViewportRef}
                             className={`hierarchy-tree-viewport${ virtualized?' hierarchy-tree-viewport--virtualized':'' }`}
-                            onScroll={event => setTreeScrollTop(event.currentTarget.scrollTop)}
+                            onScroll={event => {
+                                const nextScrollTop=quantizeScrollOffset(
+                                    event.currentTarget.scrollTop,
+                                    VIRTUAL_ROW_HEIGHT
+                                );
+                                setTreeScrollTop(current => current===nextScrollTop?current:nextScrollTop);
+                            }}
                         >
                             <ul
                                 id='hierarchy-tree'

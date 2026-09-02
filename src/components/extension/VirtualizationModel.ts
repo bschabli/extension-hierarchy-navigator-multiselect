@@ -5,6 +5,12 @@ export interface VirtualWindow {
     startIndex: number;
 }
 
+/** Quantize a scroll offset to the row boundary that can change the virtual window. */
+export function quantizeScrollOffset(scrollTop: number, rowHeight: number): number {
+    const safeScrollTop=Math.max(0, scrollTop);
+    return rowHeight>0?Math.floor(safeScrollTop/rowHeight)*rowHeight:safeScrollTop;
+}
+
 /** Calculate the overscanned slice needed for a fixed-height virtual tree viewport. */
 export function getVirtualWindow(
     itemCount: number,
