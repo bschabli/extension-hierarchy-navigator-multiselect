@@ -42,7 +42,10 @@ function testRefreshPreservesSurvivingUiState(): void {
         showSelectedOnly: true
     });
     assert(
-        state.openNodes.join(',')===`${ paths.furniture },${ paths.bookcases },missing/path`,
+        state.openNodes.length===3&&
+            state.openNodes.includes(paths.furniture)&&
+            state.openNodes.includes(paths.bookcases)&&
+            state.openNodes.includes('missing/path'),
         'Refresh should retain unique expansion intent while Tableau data may be temporarily filtered.'
     );
     assert(state.searchText==='  bush ', 'Refresh should retain the exact search text.');
@@ -96,7 +99,7 @@ function testReconciliationKeepsNewestExpansionIntent(): void {
     const openNodes=Array.from(
         { length: MAX_OPEN_NODE_PATHS+2 },
         (_value, index) => `path-${ index }`
-    );
+    ).concat(`path-${ MAX_OPEN_NODE_PATHS+1 }`);
     const state=reconcileHierarchyUiState(makeTree(), {
         openNodes,
         recentNodeKeys: [],

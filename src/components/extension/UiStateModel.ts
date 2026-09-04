@@ -68,7 +68,7 @@ export function saveHierarchyUiState(
     if(!storage) { return; }
     try {
         storage.setItem(key, JSON.stringify({
-            openNodes: unique(state.openNodes),
+            openNodes: newestUnique(state.openNodes, MAX_OPEN_NODE_PATHS),
             recentNodeKeys: unique(state.recentNodeKeys).slice(0, 8),
             searchText: state.searchText.slice(0, 1000),
             selectedValues: unique(state.selectedValues),
@@ -102,7 +102,7 @@ export function reconcileHierarchyUiState(
     return {
         // Keep expansion intent for branches temporarily absent from filtered
         // Tableau summary data. Unknown paths are inert and are capped when loaded.
-        openNodes: unique(currentState.openNodes.slice(-MAX_OPEN_NODE_PATHS)),
+        openNodes: newestUnique(currentState.openNodes, MAX_OPEN_NODE_PATHS),
         recentNodeKeys: unique(currentState.recentNodeKeys).slice(0, 8),
         searchText: currentState.searchText,
         selectedValues,
@@ -112,6 +112,19 @@ export function reconcileHierarchyUiState(
 
 function unique(values: readonly string[]): string[] {
     return Array.from(new Set(values));
+}
+
+/** Retain the newest distinct values without traversing older values once the limit is full. */
+function newestUnique(values: readonly string[], limit: number): string[] {
+    const seen=new Set<string>();
+    const newestValues: string[]=[];
+    for(let index=values.length-1;index>=0&&newestValues.length<limit;index--) {
+        const value=values[index];
+        if(seen.has(value)) { continue; }
+        seen.add(value);
+        newestValues.push(value);
+    }
+    return newestValues.reverse();
 }
 
 function stringArray(value: unknown): string[] {
