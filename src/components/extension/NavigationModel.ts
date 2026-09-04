@@ -138,3 +138,8 @@ export function getAncestorPaths(path: string, includeSelf=false): string[] {
     }
     return paths;
 }
+
+/** Reveal an active item without collapsing branches the user already opened. */
+export function revealHierarchyPath(openPaths: readonly string[], activePath: string): string[] {
+    return Array.from(new Set(openPaths.concat(getAncestorPaths(activePath))));
+}

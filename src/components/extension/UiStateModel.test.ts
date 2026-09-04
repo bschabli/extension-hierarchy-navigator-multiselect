@@ -41,12 +41,15 @@ function testRefreshPreservesSurvivingUiState(): void {
         showSelectedOnly: true
     });
     assert(
-        state.openNodes.join(',')===`${ paths.furniture },${ paths.bookcases }`,
-        'Refresh should retain unique expanded branches that still exist.'
+        state.openNodes.join(',')===`${ paths.furniture },${ paths.bookcases },missing/path`,
+        'Refresh should retain unique expansion intent while Tableau data may be temporarily filtered.'
     );
     assert(state.searchText==='  bush ', 'Refresh should retain the exact search text.');
     assert(state.selectedValues.join(',')==='bush,hon', 'Refresh should retain selectable values that still exist.');
-    assert(state.recentNodeKeys.length===1, 'Refresh should discard recent items that no longer exist.');
+    assert(
+        state.recentNodeKeys.length===2,
+        'Refresh should retain recent-item intent while Tableau data may be temporarily filtered.'
+    );
     assert(state.showSelectedOnly, 'Refresh should retain selected-only mode.');
 }
 
@@ -66,7 +69,7 @@ function testSelectionBehaviorControlsAvailableValues(): void {
     );
 }
 
-function testRemovedBranchIsCollapsedAfterRefresh(): void {
+function testTemporarilyRemovedBranchRetainsExpansionIntent(): void {
     const original=makeTree();
     const furniture=original[0];
     const chairs=furniture.nodes.find(node => node.label==='Chairs')!;
@@ -81,9 +84,15 @@ function testRemovedBranchIsCollapsedAfterRefresh(): void {
         selectedValues: ['hon'],
         showSelectedOnly: true
     });
-    assert(state.openNodes.length===1&&state.openNodes[0]===furniture.key, 'Removed branches should not stay expanded.');
+    assert(
+        state.openNodes.includes(removedPath),
+        'A branch temporarily removed by Tableau filtering should reopen when its rows return.'
+    );
     assert(state.selectedValues.length===0, 'Removed filter values should not remain selected.');
-    assert(state.recentNodeKeys.length===0, 'Removed nodes should not remain in recent selections.');
+    assert(
+        state.recentNodeKeys.includes(chairs.key),
+        'Temporarily removed nodes should remain available to the recent-item history when they return.'
+    );
     assert(state.searchText==='hon', 'A zero-result search should remain available after refresh.');
 }
 
@@ -148,7 +157,7 @@ function testStoredArraysAreBoundedBeforeDeduplication(): void {
 
 testRefreshPreservesSurvivingUiState();
 testSelectionBehaviorControlsAvailableValues();
-testRemovedBranchIsCollapsedAfterRefresh();
+testTemporarilyRemovedBranchRetainsExpansionIntent();
 testSessionStorageRoundTrip();
 testCorruptStoredStateFallsBackSafely();
 testStoredArraysAreBoundedBeforeDeduplication();
