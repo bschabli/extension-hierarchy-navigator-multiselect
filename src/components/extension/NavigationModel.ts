@@ -143,10 +143,17 @@ export function getAncestorPaths(path: string, includeSelf=false): string[] {
 
 /** Reveal an active item without collapsing branches the user already opened. */
 export function revealHierarchyPath(openPaths: readonly string[], activePath: string): string[] {
-    const requiredPaths=Array.from(new Set(getAncestorPaths(activePath))).slice(0, MAX_OPEN_NODE_PATHS);
+    const requiredPaths=getAncestorPaths(activePath).slice(-MAX_OPEN_NODE_PATHS);
     const requiredPathSet=new Set(requiredPaths);
     const retainedLimit=MAX_OPEN_NODE_PATHS-requiredPaths.length;
-    const availablePaths=Array.from(new Set(openPaths)).filter(path => !requiredPathSet.has(path));
-    const retainedPaths=retainedLimit===0?[]:availablePaths.slice(-retainedLimit);
+    const retainedPathSet=new Set<string>();
+    const retainedPaths: string[]=[];
+    for(let index=openPaths.length-1;index>=0&&retainedPaths.length<retainedLimit;index--) {
+        const path=openPaths[index];
+        if(requiredPathSet.has(path)||retainedPathSet.has(path)) { continue; }
+        retainedPathSet.add(path);
+        retainedPaths.push(path);
+    }
+    retainedPaths.reverse();
     return retainedPaths.concat(requiredPaths);
 }
