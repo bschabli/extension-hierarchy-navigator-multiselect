@@ -1,4 +1,5 @@
 import { SelectionBehavior } from '../API/SelectionBehavior';
+import { MAX_OPEN_NODE_PATHS } from './NavigationModel';
 import { buildFlatTree } from './TreeModel';
 import {
     HierarchyUiStorage,
@@ -91,6 +92,28 @@ function testEmptySelectionSkipsTreeTraversal(): void {
     );
 }
 
+function testReconciliationKeepsNewestExpansionIntent(): void {
+    const openNodes=Array.from(
+        { length: MAX_OPEN_NODE_PATHS+2 },
+        (_value, index) => `path-${ index }`
+    );
+    const state=reconcileHierarchyUiState(makeTree(), {
+        openNodes,
+        recentNodeKeys: [],
+        searchText: '',
+        selectedValues: [],
+        showSelectedOnly: false
+    });
+    assert(
+        state.openNodes.length===MAX_OPEN_NODE_PATHS,
+        'Reconciled expansion intent should remain bounded.'
+    );
+    assert(
+        state.openNodes[0]==='path-2'&&state.openNodes[MAX_OPEN_NODE_PATHS-1]===`path-${ MAX_OPEN_NODE_PATHS+1 }`,
+        'Reconciliation should evict the oldest paths and retain the newest expansion intent.'
+    );
+}
+
 function testTemporarilyRemovedBranchRetainsExpansionIntent(): void {
     const original=makeTree();
     const furniture=original[0];
@@ -180,6 +203,7 @@ function testStoredArraysAreBoundedBeforeDeduplication(): void {
 testRefreshPreservesSurvivingUiState();
 testSelectionBehaviorControlsAvailableValues();
 testEmptySelectionSkipsTreeTraversal();
+testReconciliationKeepsNewestExpansionIntent();
 testTemporarilyRemovedBranchRetainsExpansionIntent();
 testSessionStorageRoundTrip();
 testCorruptStoredStateFallsBackSafely();

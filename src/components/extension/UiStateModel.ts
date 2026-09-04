@@ -102,7 +102,7 @@ export function reconcileHierarchyUiState(
     return {
         // Keep expansion intent for branches temporarily absent from filtered
         // Tableau summary data. Unknown paths are inert and are capped when loaded.
-        openNodes: unique(currentState.openNodes).slice(0, MAX_OPEN_NODE_PATHS),
+        openNodes: unique(currentState.openNodes).slice(-MAX_OPEN_NODE_PATHS),
         recentNodeKeys: unique(currentState.recentNodeKeys).slice(0, 8),
         searchText: currentState.searchText,
         selectedValues,
