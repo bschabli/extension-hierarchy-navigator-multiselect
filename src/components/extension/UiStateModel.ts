@@ -1,5 +1,6 @@
 import { SelectionBehavior } from '../API/SelectionBehavior';
 import { NormalizedTreeNode, getAllSelectableFilterValues } from './TreeModel';
+import { MAX_OPEN_NODE_PATHS } from './NavigationModel';
 
 export interface HierarchyUiState {
     openNodes: string[];
@@ -67,7 +68,7 @@ export function saveHierarchyUiState(
     if(!storage) { return; }
     try {
         storage.setItem(key, JSON.stringify({
-            openNodes: unique(state.openNodes),
+            openNodes: newestUnique(state.openNodes, MAX_OPEN_NODE_PATHS),
             recentNodeKeys: unique(state.recentNodeKeys).slice(0, 8),
             searchText: state.searchText.slice(0, 1000),
             selectedValues: unique(state.selectedValues),
@@ -81,7 +82,7 @@ export function saveHierarchyUiState(
 }
 
 /**
- * Keep refresh-safe UI values that still exist in the latest hierarchy.
+ * Reconcile UI state while retaining intent that may be temporarily absent.
  *
  * Search text is user input rather than hierarchy data, so it is retained
  * verbatim. Expansion and recent-item intent is retained because dashboard
@@ -93,12 +94,15 @@ export function reconcileHierarchyUiState(
     currentState: HierarchyUiState,
     selectionBehavior=SelectionBehavior.TERMINAL
 ): HierarchyUiState {
-    const selectableValues=new Set(getAllSelectableFilterValues(nodes, selectionBehavior));
-    const selectedValues=unique(currentState.selectedValues).filter(value => selectableValues.has(value));
+    const currentSelectedValues=unique(currentState.selectedValues);
+    const selectedValues=currentSelectedValues.length===0?[]:(() => {
+        const selectableValues=new Set(getAllSelectableFilterValues(nodes, selectionBehavior));
+        return currentSelectedValues.filter(value => selectableValues.has(value));
+    })();
     return {
         // Keep expansion intent for branches temporarily absent from filtered
         // Tableau summary data. Unknown paths are inert and are capped when loaded.
-        openNodes: unique(currentState.openNodes).slice(0, 10000),
+        openNodes: newestUnique(currentState.openNodes, MAX_OPEN_NODE_PATHS),
         recentNodeKeys: unique(currentState.recentNodeKeys).slice(0, 8),
         searchText: currentState.searchText,
         selectedValues,
@@ -108,6 +112,19 @@ export function reconcileHierarchyUiState(
 
 function unique(values: readonly string[]): string[] {
     return Array.from(new Set(values));
+}
+
+/** Retain the newest distinct values without traversing older values once the limit is full. */
+function newestUnique(values: readonly string[], limit: number): string[] {
+    const seen=new Set<string>();
+    const newestValues: string[]=[];
+    for(let index=values.length-1;index>=0&&newestValues.length<limit;index--) {
+        const value=values[index];
+        if(seen.has(value)) { continue; }
+        seen.add(value);
+        newestValues.push(value);
+    }
+    return newestValues.reverse();
 }
 
 function stringArray(value: unknown): string[] {

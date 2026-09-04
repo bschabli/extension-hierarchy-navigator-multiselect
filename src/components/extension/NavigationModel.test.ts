@@ -9,6 +9,7 @@ import {
     getHierarchyLevelCount,
     getHierarchyLevelSelectionValues,
     getHierarchyNavigationEntries,
+    MAX_OPEN_NODE_PATHS,
     revealHierarchyPath,
     updateHierarchyLevelSelection
 } from './NavigationModel';
@@ -42,6 +43,17 @@ function testNavigationMetadata(): void {
     assert(
         revealed.includes('other/open/branch')&&revealed.length===3,
         'Revealing an active item should preserve existing expansion state.'
+    );
+    const oversizedOpenPaths=Array.from({ length: MAX_OPEN_NODE_PATHS+2 }, (_value, index) => `path-${ index }`);
+    const bounded=revealHierarchyPath(oversizedOpenPaths, bush.path);
+    assert(bounded.length===MAX_OPEN_NODE_PATHS, 'Revealed expansion state should remain bounded.');
+    assert(
+        getAncestorPaths(bush.path).every(path => bounded.includes(path)),
+        'The active item ancestors should be retained when older expansion paths are evicted.'
+    );
+    assert(
+        !bounded.includes('path-0')&&!bounded.includes('path-1')&&bounded.includes(`path-${ MAX_OPEN_NODE_PATHS+1 }`),
+        'Bounded reveals should evict the oldest unrelated paths and retain the newest ones.'
     );
 }
 
