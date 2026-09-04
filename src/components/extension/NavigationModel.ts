@@ -1,6 +1,8 @@
 import { SelectionBehavior } from '../API/SelectionBehavior';
 import { NormalizedTreeNode, getNodeSelectionValues } from './TreeModel';
 
+export const MAX_OPEN_NODE_PATHS=10000;
+
 export interface HierarchyNavigationEntry {
     depth: number;
     node: NormalizedTreeNode;
@@ -141,5 +143,10 @@ export function getAncestorPaths(path: string, includeSelf=false): string[] {
 
 /** Reveal an active item without collapsing branches the user already opened. */
 export function revealHierarchyPath(openPaths: readonly string[], activePath: string): string[] {
-    return Array.from(new Set(openPaths.concat(getAncestorPaths(activePath))));
+    const requiredPaths=Array.from(new Set(getAncestorPaths(activePath))).slice(0, MAX_OPEN_NODE_PATHS);
+    const requiredPathSet=new Set(requiredPaths);
+    const retainedLimit=MAX_OPEN_NODE_PATHS-requiredPaths.length;
+    const availablePaths=Array.from(new Set(openPaths)).filter(path => !requiredPathSet.has(path));
+    const retainedPaths=retainedLimit===0?[]:availablePaths.slice(-retainedLimit);
+    return retainedPaths.concat(requiredPaths);
 }

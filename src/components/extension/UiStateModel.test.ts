@@ -69,6 +69,28 @@ function testSelectionBehaviorControlsAvailableValues(): void {
     );
 }
 
+function testEmptySelectionSkipsTreeTraversal(): void {
+    const inaccessibleTree=new Proxy(makeTree(), {
+        get(target, property, receiver) {
+            if(property==='reduce') {
+                throw new Error('The hierarchy should not be traversed for an empty selection.');
+            }
+            return Reflect.get(target, property, receiver);
+        }
+    });
+    const state=reconcileHierarchyUiState(inaccessibleTree, {
+        openNodes: ['remembered/path'],
+        recentNodeKeys: [],
+        searchText: '',
+        selectedValues: [],
+        showSelectedOnly: false
+    });
+    assert(
+        state.openNodes[0]==='remembered/path'&&state.selectedValues.length===0,
+        'Empty-selection refreshes should reconcile without traversing the hierarchy.'
+    );
+}
+
 function testTemporarilyRemovedBranchRetainsExpansionIntent(): void {
     const original=makeTree();
     const furniture=original[0];
@@ -157,6 +179,7 @@ function testStoredArraysAreBoundedBeforeDeduplication(): void {
 
 testRefreshPreservesSurvivingUiState();
 testSelectionBehaviorControlsAvailableValues();
+testEmptySelectionSkipsTreeTraversal();
 testTemporarilyRemovedBranchRetainsExpansionIntent();
 testSessionStorageRoundTrip();
 testCorruptStoredStateFallsBackSafely();

@@ -1,5 +1,6 @@
 import { SelectionBehavior } from '../API/SelectionBehavior';
 import { NormalizedTreeNode, getAllSelectableFilterValues } from './TreeModel';
+import { MAX_OPEN_NODE_PATHS } from './NavigationModel';
 
 export interface HierarchyUiState {
     openNodes: string[];
@@ -81,7 +82,7 @@ export function saveHierarchyUiState(
 }
 
 /**
- * Keep refresh-safe UI values that still exist in the latest hierarchy.
+ * Reconcile UI state while retaining intent that may be temporarily absent.
  *
  * Search text is user input rather than hierarchy data, so it is retained
  * verbatim. Expansion and recent-item intent is retained because dashboard
@@ -93,12 +94,15 @@ export function reconcileHierarchyUiState(
     currentState: HierarchyUiState,
     selectionBehavior=SelectionBehavior.TERMINAL
 ): HierarchyUiState {
-    const selectableValues=new Set(getAllSelectableFilterValues(nodes, selectionBehavior));
-    const selectedValues=unique(currentState.selectedValues).filter(value => selectableValues.has(value));
+    const currentSelectedValues=unique(currentState.selectedValues);
+    const selectedValues=currentSelectedValues.length===0?[]:(() => {
+        const selectableValues=new Set(getAllSelectableFilterValues(nodes, selectionBehavior));
+        return currentSelectedValues.filter(value => selectableValues.has(value));
+    })();
     return {
         // Keep expansion intent for branches temporarily absent from filtered
         // Tableau summary data. Unknown paths are inert and are capped when loaded.
-        openNodes: unique(currentState.openNodes).slice(0, 10000),
+        openNodes: unique(currentState.openNodes).slice(0, MAX_OPEN_NODE_PATHS),
         recentNodeKeys: unique(currentState.recentNodeKeys).slice(0, 8),
         searchText: currentState.searchText,
         selectedValues,
