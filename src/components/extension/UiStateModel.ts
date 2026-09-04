@@ -84,40 +84,22 @@ export function saveHierarchyUiState(
  * Keep refresh-safe UI values that still exist in the latest hierarchy.
  *
  * Search text is user input rather than hierarchy data, so it is retained
- * verbatim. Expanded paths, recent nodes, and selected filter values are
- * removed only when their corresponding branch or value no longer exists.
+ * verbatim. Expansion and recent-item intent is retained because dashboard
+ * filtering can temporarily remove rows. Selected values are removed when
+ * they are no longer present in the current hierarchy.
  */
 export function reconcileHierarchyUiState(
     nodes: readonly NormalizedTreeNode[],
     currentState: HierarchyUiState,
     selectionBehavior=SelectionBehavior.TERMINAL
 ): HierarchyUiState {
-    const availableOpenPaths=new Set<string>();
-
-    function addOpenPaths(currentNodes: readonly NormalizedTreeNode[], parentPath: string): void {
-        currentNodes.forEach(node => {
-            const path=parentPath===''?node.key:`${ parentPath }/${ node.key }`;
-            if(node.nodes.length>0) { availableOpenPaths.add(path); }
-            addOpenPaths(node.nodes, path);
-        });
-    }
-
-    addOpenPaths(nodes, '');
     const selectableValues=new Set(getAllSelectableFilterValues(nodes, selectionBehavior));
-    const availableNodeKeys=new Set<string>();
-    function addNodeKeys(currentNodes: readonly NormalizedTreeNode[]): void {
-        currentNodes.forEach(node => {
-            availableNodeKeys.add(node.key);
-            addNodeKeys(node.nodes);
-        });
-    }
-    addNodeKeys(nodes);
     const selectedValues=unique(currentState.selectedValues).filter(value => selectableValues.has(value));
     return {
-        openNodes: unique(currentState.openNodes).filter(path => availableOpenPaths.has(path)),
-        recentNodeKeys: unique(currentState.recentNodeKeys)
-            .filter(key => availableNodeKeys.has(key))
-            .slice(0, 8),
+        // Keep expansion intent for branches temporarily absent from filtered
+        // Tableau summary data. Unknown paths are inert and are capped when loaded.
+        openNodes: unique(currentState.openNodes).slice(0, 10000),
+        recentNodeKeys: unique(currentState.recentNodeKeys).slice(0, 8),
         searchText: currentState.searchText,
         selectedValues,
         showSelectedOnly: currentState.showSelectedOnly&&selectedValues.length>0

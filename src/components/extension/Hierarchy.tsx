@@ -46,11 +46,11 @@ import {
     collapseHierarchyLevel,
     expandHierarchyLevel,
     filterHierarchyToSelection,
-    getAncestorPaths,
     getHierarchyBreadcrumbs,
     getHierarchyLevelCount,
     getHierarchyLevelSelectionValues,
     getHierarchyNavigationEntries,
+    revealHierarchyPath,
     updateHierarchyLevelSelection
 } from './NavigationModel';
 
@@ -194,7 +194,6 @@ function Hierarchy(props: Props) {
         hierarchyDefinitionSignature
     );
     const [initialUiState]=useState(() => loadHierarchyUiState(getSessionStorage(), uiStorageKey));
-    const childRef=useRef<TreeMenu|null>(null);
     const lastReappliedSelectionsVersionRef=useRef(0);
     const loadSequenceRef=useRef(0);
     const datasetSnapshotRef=useRef<HierarchyDatasetSnapshot>();
@@ -495,8 +494,14 @@ function Hierarchy(props: Props) {
 
         selectedRef.current=nextSelectedValues;
         setSelectedLeafValues(nextSelectedValues);
-        setRecentNodeKeys(reconciledUiState.recentNodeKeys);
-        setShowSelectedOnly(reconciledUiState.showSelectedOnly);
+        setRecentNodeKeys(currentRecentNodeKeys => preserveUiState?reconcileHierarchyUiState(nextTree, {
+            openNodes: [],
+            recentNodeKeys: currentRecentNodeKeys,
+            searchText: '',
+            selectedValues: [],
+            showSelectedOnly: false
+        }, selectionBehavior).recentNodeKeys:[]);
+        setShowSelectedOnly(current => preserveUiState&&current&&nextSelectedValues.size>0);
         setOpenNodes(currentOpenNodes => preserveUiState?reconcileHierarchyUiState(nextTree, {
             openNodes: currentOpenNodes,
             recentNodeKeys: [],
@@ -621,9 +626,7 @@ function Hierarchy(props: Props) {
         else { currentLabelRef.current=value; }
         const match=pathMap.find(node => type==='id'? node.hierarchyValue===value:node.label===value);
         if(typeof match==='undefined') { return; }
-        const nextOpenNodes=getAncestorPaths(match.path);
-        setOpenNodes(nextOpenNodes);
-        if(childRef.current) { childRef.current.resetOpenNodes(nextOpenNodes, match.path); }
+        setOpenNodes(currentOpenNodes => revealHierarchyPath(currentOpenNodes, match.path));
         currentIdRef.current=match.hierarchyValue;
         currentLabelRef.current=match.label;
         setActiveNodeKey(match.key);
@@ -635,12 +638,10 @@ function Hierarchy(props: Props) {
     function navigateToNode(node: NormalizedTreeNode): void {
         const path=pathByNodeKey.get(node.key);
         if(!path) { return; }
-        const nextOpenNodes=Array.from(new Set(openNodes.concat(getAncestorPaths(path))));
         if(showSelectedOnly&&getSelectionState(node, selectedRef.current, selectionBehavior)==='none') {
             setShowSelectedOnly(false);
         }
-        setOpenNodes(nextOpenNodes);
-        if(childRef.current) { childRef.current.resetOpenNodes(nextOpenNodes, path); }
+        setOpenNodes(currentOpenNodes => revealHierarchyPath(currentOpenNodes, path));
         setActiveNode(node, false);
         window.requestAnimationFrame(() => focusTreeItem(path));
     }
@@ -980,6 +981,7 @@ function Hierarchy(props: Props) {
             >{screenReaderAnnouncement}</div>
             <TreeMenu
                 data={visibleTree}
+                disableKeyboard={true}
                 openNodes={effectiveOpenNodes}
                 hasSearch={false}
                 onClickItem={item => {
@@ -987,8 +989,6 @@ function Hierarchy(props: Props) {
                     const node=nodeById.get(nodeId);
                     if(node) { toggleSelection(node); }
                 }}
-                resetOpenNodesOnDataUpdate={true}
-                ref={childRef}
             >
                 {({ items }) => {
                     virtualItemsRef.current=items;

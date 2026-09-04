@@ -9,6 +9,7 @@ import {
     getHierarchyLevelCount,
     getHierarchyLevelSelectionValues,
     getHierarchyNavigationEntries,
+    revealHierarchyPath,
     updateHierarchyLevelSelection
 } from './NavigationModel';
 
@@ -37,6 +38,11 @@ function testNavigationMetadata(): void {
         'Breadcrumbs should include every ancestor and the active node.'
     );
     assert(getAncestorPaths(bush.path).length===2, 'Ancestor paths should exclude the active item by default.');
+    const revealed=revealHierarchyPath(['other/open/branch'], bush.path);
+    assert(
+        revealed.includes('other/open/branch')&&revealed.length===3,
+        'Revealing an active item should preserve existing expansion state.'
+    );
 }
 
 function testSelectedOnlyTree(): void {
