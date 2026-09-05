@@ -1,4 +1,5 @@
 import { SelectionBehavior } from '../API/SelectionBehavior';
+import { MAX_OPEN_NODE_PATHS } from './NavigationModel';
 import { buildFlatTree } from './TreeModel';
 import {
     HierarchyUiStorage,
@@ -41,7 +42,10 @@ function testRefreshPreservesSurvivingUiState(): void {
         showSelectedOnly: true
     });
     assert(
-        state.openNodes.join(',')===`${ paths.furniture },${ paths.bookcases },missing/path`,
+        state.openNodes.length===3&&
+            state.openNodes.includes(paths.furniture)&&
+            state.openNodes.includes(paths.bookcases)&&
+            state.openNodes.includes('missing/path'),
         'Refresh should retain unique expansion intent while Tableau data may be temporarily filtered.'
     );
     assert(state.searchText==='  bush ', 'Refresh should retain the exact search text.');
@@ -66,6 +70,50 @@ function testSelectionBehaviorControlsAvailableValues(): void {
     assert(
         !state.selectedValues.includes('Furniture|Bookcases'),
         'Values not represented by source rows should be removed from node-only selections.'
+    );
+}
+
+function testEmptySelectionSkipsTreeTraversal(): void {
+    const inaccessibleTree=new Proxy(makeTree(), {
+        get(target, property, receiver) {
+            if(property==='reduce') {
+                throw new Error('The hierarchy should not be traversed for an empty selection.');
+            }
+            return Reflect.get(target, property, receiver);
+        }
+    });
+    const state=reconcileHierarchyUiState(inaccessibleTree, {
+        openNodes: ['remembered/path'],
+        recentNodeKeys: [],
+        searchText: '',
+        selectedValues: [],
+        showSelectedOnly: false
+    });
+    assert(
+        state.openNodes[0]==='remembered/path'&&state.selectedValues.length===0,
+        'Empty-selection refreshes should reconcile without traversing the hierarchy.'
+    );
+}
+
+function testReconciliationKeepsNewestExpansionIntent(): void {
+    const openNodes=Array.from(
+        { length: MAX_OPEN_NODE_PATHS+2 },
+        (_value, index) => `path-${ index }`
+    ).concat(`path-${ MAX_OPEN_NODE_PATHS+1 }`);
+    const state=reconcileHierarchyUiState(makeTree(), {
+        openNodes,
+        recentNodeKeys: [],
+        searchText: '',
+        selectedValues: [],
+        showSelectedOnly: false
+    });
+    assert(
+        state.openNodes.length===MAX_OPEN_NODE_PATHS,
+        'Reconciled expansion intent should remain bounded.'
+    );
+    assert(
+        state.openNodes[0]==='path-2'&&state.openNodes[MAX_OPEN_NODE_PATHS-1]===`path-${ MAX_OPEN_NODE_PATHS+1 }`,
+        'Reconciliation should evict the oldest paths and retain the newest expansion intent.'
     );
 }
 
@@ -157,6 +205,8 @@ function testStoredArraysAreBoundedBeforeDeduplication(): void {
 
 testRefreshPreservesSurvivingUiState();
 testSelectionBehaviorControlsAvailableValues();
+testEmptySelectionSkipsTreeTraversal();
+testReconciliationKeepsNewestExpansionIntent();
 testTemporarilyRemovedBranchRetainsExpansionIntent();
 testSessionStorageRoundTrip();
 testCorruptStoredStateFallsBackSafely();
