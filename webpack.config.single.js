@@ -6,7 +6,11 @@ module.exports = {
   devtool: 'inline-source-map',
   output: {
     path: path.join(__dirname, '/dist'),
-    filename: 'bundle.js'
+    filename: 'bundle.js',
+    environment: {
+      // Tableau Desktop can embed Chromium versions without Object.hasOwn.
+      hasOwn: false,
+    },
   },
   devServer: {
     static: {

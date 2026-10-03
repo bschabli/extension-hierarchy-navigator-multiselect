@@ -21,7 +21,11 @@ module.exports = {
   devtool: 'eval-source-map',
   output: {
     path: path.join(__dirname, '/docs'),
-    filename: '[name].js'
+    filename: '[name].js',
+    environment: {
+      // Tableau Desktop can embed Chromium versions without Object.hasOwn.
+      hasOwn: false,
+    },
   },
   devServer: {
     static: {
