@@ -4,6 +4,7 @@ import {Status} from '../API/Interfaces';
 import {withHTMLSpaces} from '../API/Utils';
 import { useTranslation } from '../localization/I18n';
 import { Button, ButtonProps, DropdownSelect, DropdownSelectProps } from './UiComponents';
+import { isSelectorUnavailable } from './SelectorState';
 export interface SelectorProps {
     title?: string;
     description?: string;
@@ -19,16 +20,19 @@ export interface SelectorProps {
 // Shows if setting has not yet been configured
 export const Selector: React.FC<SelectorProps> = (props) => {
     const {t}=useTranslation();
+    const inputId=React.useId();
     const accessibleName=props.title||props.description||t('Select an option');
+    const unavailable=isSelectorUnavailable(props.status);
     const dropdownSelectProps: DropdownSelectProps = {
         className: 'dropdown-select',
-        disabled: props.status!==Status.set,
+        disabled: unavailable,
+        id: inputId,
         kind: 'line',
         onChange: props.onChange,
         value: props.selected,
     };
     const buttonProps: ButtonProps = {
-        disabled: props.status !== Status.set,
+        disabled: unavailable,
         kind: 'filledGreen',
         onClick: props.onClick,
         style: { marginTop: '8px' },
@@ -50,7 +54,7 @@ export const Selector: React.FC<SelectorProps> = (props) => {
     return (
         <div className='config-field'>
             {props.title&&
-                <label className='config-field-label'>
+                <label className='config-field-label' htmlFor={inputId}>
                     {props.title}
                     {props.required&&<span className='config-required'>{t('Required')}</span>}
                 </label>

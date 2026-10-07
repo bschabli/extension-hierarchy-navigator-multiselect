@@ -683,6 +683,11 @@ const hierarchyAPI=(): any => {
                 }
             });
 
+            // Availability is live Tableau metadata and must not depend on a
+            // stale or missing status value from persisted configuration.
+            _initialData.worksheet.status=_initialData.dashboardItems.worksheets.length>0?
+                Status.set:Status.notpossible;
+
             syncLegacyFilterTarget(_initialData.worksheet);
             if(_initialData.type===HierType.RECURSIVE) {
                 if(_initialData.parameters.childId==='') {

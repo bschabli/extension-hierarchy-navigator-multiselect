@@ -50,6 +50,8 @@
     "src/components/config/FilterCompatibilityModel.ts",
     "src/components/config/FilterCompatibilityModel.test.ts",
     "src/components/localization/I18n.tsx",
-    "src/components/localization/I18n.test.ts"
+    "src/components/localization/I18n.test.ts",
+    "src/components/shared/SelectorState.ts",
+    "src/components/shared/SelectorState.test.ts"
   ]
 }
