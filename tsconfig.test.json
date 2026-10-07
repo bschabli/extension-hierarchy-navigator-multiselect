@@ -11,6 +11,7 @@
   },
   "include": [
     "src/components/build/WebpackCompatibility.test.ts",
+    "src/components/build/ManifestPermissions.test.ts",
     "src/components/API/ConfigurationModel.ts",
     "src/components/API/ConfigurationModel.test.ts",
     "src/components/API/ConfigurationMigration.ts",
