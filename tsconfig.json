@@ -4,7 +4,7 @@
     "outDir": "./dist/",
     "module": "es6",
     "target": "es6",
-    "lib": ["es6", "dom", "dom.iterable"],
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
     "sourceMap": true,
     "allowJs": true,
     "jsx": "react-jsx",

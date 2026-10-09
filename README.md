@@ -1,84 +1,84 @@
-# Hierarchy Navigator Multiselect
+# Hierarchy Navigator / Filter — Tableau Viz Extension
 
-Hierarchy Navigator Multiselect is a Tableau dashboard extension for navigating flat/dimensional and recursive hierarchies with shared checkbox selection.
+**Hierarchy Navigator** is a standalone Tableau Viz Extension for hierarchical navigation and multi-select filtering. It supports search, expansion, breadcrumbs, level actions and keyboard navigation. Use its native worksheet selection as the source of Tableau filter actions for your dashboard.
 
-## Features
+## Add the Viz Extension
 
-- Flat hierarchies stored as ordered level columns
-- Recursive parent/child hierarchies
-- Multi-selection with selected, unselected, and partially selected parent states
-- Configurable parent selection behavior: terminal values, entire subtree, or direct node only
-- Filtering across multiple target worksheets with independent field and value mappings (ID, label, path, or hierarchy level)
-- Live source-to-target value compatibility previews and actionable setup guidance
-- Virtualized rendering when more than 250 hierarchy rows are visible
-- Incremental refreshes that skip unchanged datasets and reuse unchanged tree branches
-- Portable JSON configuration import/export with schema migration reporting
-- Runtime diagnostics for rows, nodes, load time, refresh behavior, filters, and Tableau API capabilities
-- Optional parameter output and source-sheet mark selection
-- Data validation for duplicate IDs, orphaned children, cycles, blank labels, and malformed paths
-- Live hierarchy preview during configuration
-- Search highlighting, ancestor context, and automatic path expansion
-- Fuzzy search, active-item breadcrumbs, and recently selected shortcuts
-- Selected-only view plus expand, collapse, select, and clear actions for any hierarchy level
-- Result counts beside nodes and an optional compact layout for small dashboard zones
-- Remembered expansion, search, and selection state across data refreshes
-- Keyboard navigation, screen-reader announcements, and English/German localization
+Requires Tableau **2024.2 or later** with Viz Extensions enabled. The worksheet manifest requests summary data only; it does not request full underlying-data access.
 
-## Test the hosted extension
+1. Run `npm ci` and `npm start` (Node.js 22.15 or later).
+2. In a worksheet's **Marks** card, choose **Add Extension → Access Local Extensions**.
+3. Open `src/hierarchy-viz.local.trex`.
+4. Add discrete dimensions to the encoding tiles:
 
-1. Open the [project test page](https://bschabli.github.io/extension-hierarchy-navigator-multiselect/).
-2. Download the [network-enabled manifest](https://bschabli.github.io/extension-hierarchy-navigator-multiselect/hierarchynavigator-multiselect.trex).
-3. In Tableau, add an Extension, choose **My Extensions**, and select the downloaded manifest.
-4. Configure the hierarchy source worksheet and any target worksheet/filter mappings.
+| Encoding | Flat / dimensional hierarchy | Recursive hierarchy |
+| --- | --- | --- |
+| Hierarchy | Ordered level fields, from root to leaf | Exactly one label field |
+| Node ID | One unique, non-null key per summary row | One unique, non-null node key |
+| Parent ID | Leave empty | Parent key; null for roots |
 
-The hosted extension URL is:
+Keep one summary row per Node ID. Additional Detail fields may split rows and introduce duplicate IDs. The extension reports duplicate/blank IDs and cycles instead of silently rendering ambiguous data. Missing intermediate flat levels are skipped; orphaned recursive nodes remain visible with a validation notice (for example after worksheet filtering).
 
-`https://bschabli.github.io/extension-hierarchy-navigator-multiselect/hierarchynavigator.html`
+The production manifest is `src/hierarchy-viz.trex`; it points to `https://bschabli.github.io/extension-hierarchy-navigator-multiselect/hierarchy-viz.html`. This URL becomes available when the new build is deployed. The exact URL must be allowed by your Tableau Cloud/Server administrator. The production and local manifests represent the same Viz Extension.
 
-Tableau Cloud and Tableau Server administrators must add that exact network-enabled URL to the site safe list and allow the required data access before the extension can run.
+## Navigator and filter behavior
 
-The included [sample workbook](https://bschabli.github.io/extension-hierarchy-navigator-multiselect/Hierarchy%20Navigator%20Extension%20v2.twbx) can be used as a starting point.
+- Flat and recursive hierarchies with checkbox multi-selection and partial parent states.
+- Parent selection: terminal descendants, entire subtree, or direct node only.
+- Native worksheet mark selection, including synchronization when Tableau clears/changes selection.
+- Fuzzy search, highlighted matches, ancestor context, breadcrumbs and recent items.
+- Selected-only view and level-specific expand, collapse, select and clear actions.
+- Virtualized rows above 250 visible nodes, paged summary-data loading and incremental tree reuse.
+- Refreshes on `SummaryDataChanged`, with stale results discarded and readers released.
+- Keyboard navigation and tree semantics; English and German UI.
+- Compact layout, saved navigator preferences and versioned JSON preference import/export.
+- Row/node counts and actionable loading, setup, validation and output errors.
 
-## Local development
+In **Settings**, authors can save density and parent-selection behavior in the workbook. Viewers can adjust their current navigator settings without changing saved workbook settings. Search and expansion are remembered for the browser session; Tableau remains the source of truth for mark selection.
 
-Install Node.js 22.15 or newer, then install dependencies and start the development server:
+### Filtering and parameters
 
-```sh
-npm install
-npm start
-```
+A Viz Extension runs in its own worksheet. Selection is sent to that worksheet using native mark-selection APIs. Configure **Tableau filter, highlight or parameter actions** from that worksheet to other views as required. The Viz Extension does not enumerate or directly mutate unrelated dashboard worksheets. Parent-selection behavior determines which node IDs are selected; clearing selection uses Tableau's native clear operation.
 
-Use `src/hierarchynavigator-1.0.local.trex` with the local development server.
+## Migration from the dashboard extension
 
-The configuration review step can export a portable JSON backup or import settings from another dashboard. Live Tableau worksheet metadata is excluded from exports, and imported mappings should be reviewed and validated before saving.
+Existing dashboard extensions cannot be converted in place by swapping a manifest: Tableau uses a different extension host. Add a worksheet Viz Extension, assign its encodings, configure the desired Tableau actions, then place that worksheet on your dashboard. Verify behavior before removing the old dashboard object.
 
-Build and validate the project with:
+The original `hierarchynavigator-1.0*.trex` manifests, `hierarchynavigator.html`, configuration dialog and sample workbooks remain as **dashboard compatibility artifacts**. Existing workbooks retain their direct filter mappings and parameter-output integration. Old dashboard configuration exports describe source/target worksheets and are not Viz navigator-settings files; recreate those mappings using encodings and native actions. The shared tree renderer also serves the compatibility extension.
+
+The new primary entry point and landing page no longer depend on the fork's screenshot-based onboarding, legacy dashboard wizard, `extend` or `react-simple-tree-menu`. The external tree-menu dependency has been removed entirely. The Viz entry point vendors the official Tableau API 1.14 library at an explicit version; it uses APIs available since 1.12. Dashboard compatibility keeps its previous API library.
+
+## Development and verification
 
 ```sh
+npm ci
 npm run typecheck
 npm test
 npm run build
+npm run test:host
 ```
 
-## Local Tableau sandbox testing
+`test:host` serves a **local-only simulated Tableau host** at `http://127.0.0.1:8081`. Build first. It supports flat/recursive fixtures, 600-node data, data-change events and external selection clearing. It is not included in the published extension. Use it to inspect navigation, selection preservation, search, settings and keyboard navigation. It does not replace an integration test inside Tableau.
 
-The sandbox manifests are development manifests. They point to Tableau's local sandbox server and are not public hosted manifests.
+Unit tests cover encoding/field-ID resolution, raw versus formatted IDs, validation, empty datasets, visible rows, refresh coalescing, disposal, reader cleanup and serialized mark selection, alongside the existing hierarchy tests. Before release, also verify real worksheet field drops/reordering, Tableau selection/filter/parameter actions, workbook save/reopen and Server/Cloud security settings.
 
-```sh
-npm run build
-npm run sandbox
-```
+Architecture:
 
-Then load `src/hierarchynavigator-1.0.local.sandboxed.trex` in Tableau. The source URL matches the extension name and port in `sandbox-config.json`:
+- `src/components/viz/VizModel.ts`: typed encoding bindings and hierarchy validation.
+- `src/components/viz/VizRuntime.ts`: worksheet refresh and native selection lifecycle.
+- `src/components/viz/HierarchyViz.tsx`: initialization, settings and the navigator application shell.
+- `src/components/extension/Hierarchy.tsx` and `VisibleTree.tsx`: navigator rows, interaction and virtualization.
+- `src/css/viz.css`: navigator appearance and responsive layout.
 
-`http://localhost:8765/sandbox/extension-hierarchy-navigator-multiselect/hierarchynavigator.html`
+Pushes to `master` build and deploy `docs/` via GitHub Pages. Pull requests run type-checking, tests, XML validation and a production build. Webpack currently reports bundle-size advisories; these are not build failures.
 
-A generally available sandboxed extension must be reviewed and hosted by Tableau. Until that publishing process is complete, use the GitHub Pages manifest as a network-enabled extension or use the local sandbox workflow above.
+## Tableau references
 
-## Deployment
-
-Pushes to `master` are built and deployed to GitHub Pages by `.github/workflows/pages.yml`. Pull requests run the type-check, test, manifest-validation, and production-build workflow before merging.
+- [Create a Viz Extension](https://tableau.github.io/extensions-api/docs/vizext/trex_viz_create/)
+- [Viz manifest and encoding definitions](https://tableau.github.io/extensions-api/docs/vizext/trex_viz_manifest/)
+- [Paged summary data](https://tableau.github.io/extensions-api/docs/core/trex_getdata/)
+- [Official vendored API library](https://github.com/tableau/extensions-api/blob/main/lib/previous/tableau.extensions.1.14.0.min.js)
 
 ## License
 
-See [LICENSE](LICENSE).
+See [LICENSE](LICENSE). Original third-party attributions are preserved.

@@ -16,6 +16,7 @@ export interface CheckboxProps extends Omit<React.InputHTMLAttributes<HTMLInputE
 
 export interface TextFieldProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'type'> {
     kind?: 'line'|'outline'|'search';
+    clearLabel?: string;
     label?: React.ReactNode;
     message?: React.ReactNode;
     onClear?: () => void;
@@ -99,6 +100,7 @@ export function TextField(props: TextFieldProps) {
     const {
         className='',
         kind='line',
+        clearLabel='Clear',
         label,
         message,
         onClear,
@@ -117,7 +119,7 @@ export function TextField(props: TextFieldProps) {
             <div className='ui-input-shell'>
                 <input {...inputProps} id={inputId} style={style} type={kind==='search'?'search':'text'} value={value} />
                 {onClear&&hasValue&&
-                    <button className='ui-input-clear' type='button' onClick={onClear} aria-label='Clear'>×</button>
+                    <button className='ui-input-clear' type='button' onClick={onClear} aria-label={clearLabel}>×</button>
                 }
             </div>
             {message&&<div className='ui-field-message'>{message}</div>}

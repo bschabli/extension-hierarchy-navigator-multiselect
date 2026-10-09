@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import TreeMenu, { TreeMenuItem } from 'react-simple-tree-menu';
+import VisibleTree, { TreeMenuItem } from './VisibleTree';
 import { defaultSelectedProps, HierarchyProps, HierType, isDebugEnabled } from '../API/Interfaces';
 import { SelectionBehavior } from '../API/SelectionBehavior';
-import { loadSummaryDataset, resolveSummaryColumnIndexes } from '../API/SummaryData';
+import { loadSummaryDataset, resolveSummaryColumnIndexes, SummaryDataset } from '../API/SummaryData';
 import { HighlightedHierarchyLabel } from '../shared/HighlightedHierarchyLabel';
 import { useTranslation } from '../localization/I18n';
 import {
@@ -71,6 +71,8 @@ interface PathMap {
 }
 
 interface Props {
+    dataset?: SummaryDataset;
+    externalSelection?: { values: string[]; revision: number };
     currentId: string;
     currentLabel: string;
     data: HierarchyProps;
@@ -120,8 +122,8 @@ function CheckboxTreeItem(props: CheckboxTreeItemProps) {
     return (
         <li
             ref={props.setRef}
-            className='rstm-tree-item hierarchy-checkbox-item'
-            style={{ ...props.style, paddingLeft: `${ 0.5+props.level*1.25 }rem` }}
+            className='hierarchy-tree-row hierarchy-checkbox-item'
+            style={props.style}
             role='treeitem'
             tabIndex={props.tabIndex}
             data-tree-key={props.itemKey}
@@ -140,6 +142,7 @@ function CheckboxTreeItem(props: CheckboxTreeItemProps) {
             onFocus={props.onFocus}
             onKeyDown={props.onKeyDown}
         >
+            <div className='hierarchy-tree-cell' style={{ paddingLeft: `${0.5+props.level*1.25}rem` }}>
             <button
                 className={`hierarchy-toggle${ props.hasNodes? '':' hierarchy-toggle--empty' }`}
                 type='button'
@@ -150,7 +153,7 @@ function CheckboxTreeItem(props: CheckboxTreeItemProps) {
                 onClick={(event) => {
                     event.stopPropagation();
                     if(props.hasNodes&&props.toggleNode) { props.toggleNode(); }
-                    event.currentTarget.parentElement?.focus();
+                    event.currentTarget.closest<HTMLElement>('[data-tree-key]')?.focus();
                 }}
             >
                 {props.hasNodes? (props.isOpen? props.openedIcon:props.closedIcon):null}
@@ -165,6 +168,7 @@ function CheckboxTreeItem(props: CheckboxTreeItemProps) {
                 <HighlightedHierarchyLabel label={props.label} searchTerm={props.searchTerm} />
             </span>
             <span className='hierarchy-node-count' aria-hidden='true'>{props.resultCount}</span>
+            </div>
         </li>
     );
 }
@@ -187,10 +191,10 @@ function Hierarchy(props: Props) {
         props.data.separator,
         selectionBehavior
     ]);
-    const dashboardName=window.tableau.extensions.dashboardContent?.dashboard.name||'';
+    const dashboardName=props.dataset?'worksheet-viz':window.tableau.extensions.dashboardContent?.dashboard.name||'';
     const uiStorageKey=createHierarchyUiStorageKey(
         dashboardName,
-        window.tableau.extensions.dashboardObjectId,
+        props.dataset?props.data.worksheet.name:window.tableau.extensions.dashboardObjectId,
         hierarchyDefinitionSignature
     );
     const [initialUiState]=useState(() => loadHierarchyUiState(getSessionStorage(), uiStorageKey));
@@ -306,6 +310,14 @@ function Hierarchy(props: Props) {
     }, [openNodes, recentNodeKeys, searchVal, selectedLeafValues, showSelectedOnly, uiStorageKey]);
 
     useEffect(() => {
+        if(!props.externalSelection) { return; }
+        const allowed=new Set(getAllSelectableFilterValues(tree, selectionBehavior));
+        const next=new Set(props.externalSelection.values.filter(value => allowed.has(value)));
+        selectedRef.current=next;
+        setSelectedLeafValues(next);
+    }, [props.externalSelection, tree, selectionBehavior]);
+
+    useEffect(() => {
         if(selectionBehaviorRef.current===selectionBehavior) { return; }
         selectionBehaviorRef.current=selectionBehavior;
         selectedRef.current=new Set<string>();
@@ -390,13 +402,13 @@ function Hierarchy(props: Props) {
         reapplySelectionsVersion: number
     ): Promise<void> {
         const loadStartedAt=readPerformanceTime();
-        const worksheet=window.tableau.extensions.dashboardContent!.dashboard.worksheets.find(
+        const worksheet=props.dataset?undefined:window.tableau.extensions.dashboardContent?.dashboard.worksheets.find(
             candidate => candidate.name===props.data.worksheet.name
         );
-        if(typeof worksheet==='undefined') {
+        if(!props.dataset&&typeof worksheet==='undefined') {
             throw new Error(`Worksheet “${ props.data.worksheet.name }” is no longer available.`);
         }
-        const dataTable=await loadSummaryDataset(worksheet);
+        const dataTable=props.dataset||await loadSummaryDataset(worksheet!);
         if(dataTable.limited||dataTable.rows.length<dataTable.totalRowCount) {
             throw new Error(
                 `Tableau returned ${ dataTable.rows.length } of ${ dataTable.totalRowCount } hierarchy rows.`
@@ -871,7 +883,7 @@ function Hierarchy(props: Props) {
                 {props.data.options.titleEnabled&&<span style={{ fontWeight: 'bold' }}>{props.data.options.title}</span>}
                 <span className='hierarchy-selection-status'>
                     {selectedLeafValues.size===0?
-                        t('All values shown (no filter)'):
+                        t(props.dataset?'No marks selected':'All values shown (no filter)'):
                         t(selectedLeafValues.size===1?'{count} value selected':'{count} values selected', {
                             count: selectedLeafValues.size
                         })}
@@ -979,11 +991,9 @@ function Hierarchy(props: Props) {
                 aria-live='polite'
                 aria-atomic='true'
             >{screenReaderAnnouncement}</div>
-            <TreeMenu
+            <VisibleTree
                 data={visibleTree}
-                disableKeyboard={true}
                 openNodes={effectiveOpenNodes}
-                hasSearch={false}
                 onClickItem={item => {
                     const nodeId=item.key.split('/').pop()||'';
                     const node=nodeById.get(nodeId);
@@ -1011,6 +1021,7 @@ function Hierarchy(props: Props) {
                     return (<>
                         <TextField
                             kind='search'
+                            clearLabel={t('Clear')}
                             className='fullWidth'
                             style={searchStyle}
                             placeholder={t('Type and search')}
@@ -1060,7 +1071,7 @@ function Hierarchy(props: Props) {
                         >
                             <ul
                                 id='hierarchy-tree'
-                                className={`rstm-tree-item-group${ virtualized?' hierarchy-tree-list--virtualized':'' }`}
+                                className={`hierarchy-tree-list${ virtualized?' hierarchy-tree-list--virtualized':'' }`}
                                 role='tree'
                                 aria-label={t('Hierarchy navigator')}
                                 aria-describedby='hierarchy-keyboard-help'
@@ -1113,7 +1124,7 @@ function Hierarchy(props: Props) {
                         </div>
                     </>);
                 }}
-            </TreeMenu>
+            </VisibleTree>
             {debugState}
         </div>
     );

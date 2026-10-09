@@ -1,0 +1,38 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Hierarchy Viz · API fixture</title>
+<body><aside style="padding:8px;background:#edf3f6;font:12px system-ui;position:relative;z-index:10">Tableau API fixture — <button onclick="refreshData()">Refresh data</button> <button onclick="toggleData()">Flat / Recursive</button> <button onclick="largeData()">600 nodes</button> <button onclick="clearNativeSelection()">Clear native selection</button> <button onclick="toggleEmpty()">Empty / Restore</button> <button onclick="toggleEncodings()">Encodings / Restore</button> <output id="calls">No native selection</output></aside><div id="app"></div>
+<script>
+const listeners=new Map();
+let recursive=false, large=false, empty=false, unconfigured=false;
+const columns=['Region','Product','ID','Parent'].map((fieldName,index) => ({fieldName,fieldId:'f'+index,index,dataType:'string',isReferenced:true}));
+const cell=(value,formattedValue=String(value??'')) => ({value,nativeValue:value,formattedValue});
+function rows() {
+  if(empty) return [];
+  if(large) return Array.from({length:600},(_,i) => [cell('Europe'),cell('Product '+String(i).padStart(4,'0')),cell(i+1),cell(null)]);
+  return [
+    [cell('Europe'),cell('Furniture'),cell(1),cell(null)],
+    [cell('Europe'),cell('Desks'),cell(2),cell(1)],
+    [cell('Europe'),cell('Chairs'),cell(3),cell(1)],
+    [cell('Americas'),cell('Technology'),cell(4),cell(null)],
+    [cell('Americas'),cell('Monitors'),cell(5),cell(4)],
+    [cell('Americas'),cell('Accessories'),cell(6),cell(4)]
+  ];
+}
+function on(type,fn) { if(!listeners.has(type))listeners.set(type,new Set());listeners.get(type).add(fn);return () => listeners.get(type).delete(fn); }
+function emit(type) { for(const fn of listeners.get(type)||[])fn(); }
+let selected=[];
+const worksheet={name:'Sales hierarchy',addEventListener:on,
+  getVisualSpecificationAsync:async () => ({activeMarksSpecificationIndex:0,marksSpecifications:[{encodings:(unconfigured?[]:recursive? [['hierarchy',1],['id',2],['parent',3]]:[['hierarchy',0],['hierarchy',1],['id',2]]).map(([id,index]) => ({id,field:{fieldId:'f'+index,name:columns[index].fieldName}}))}]}),
+  getSummaryDataReaderAsync:async () => { const data=rows();return {pageCount:1,totalRowCount:data.length,getPageAsync:async () => ({columns,data,totalRowCount:data.length}),releaseAsync:async () => {}}; },
+  selectMarksByValueAsync:async criteria => {selected=criteria[0].value;document.getElementById('calls').textContent='Selected IDs: '+JSON.stringify(selected.slice(0,10))+(selected.length>10?' … ('+selected.length+' total)':'');emit('mark-selection-changed');},
+  clearSelectedMarksAsync:async () => {selected=[];document.getElementById('calls').textContent='Selection cleared';emit('mark-selection-changed');},
+  getSelectedMarksAsync:async () => ({data:[{columns,data:rows().filter(row => selected.includes(String(row[2].value)))}]})
+};
+const settings=new Map();
+window.tableau={TableauEventType:{SummaryDataChanged:'summary-data-changed',SettingsChanged:'settings-changed',MarkSelectionChanged:'mark-selection-changed'},SelectionUpdateType:{Replace:'replace'},ExtensionMode:{Authoring:'authoring'},extensions:{initializeAsync:async () => {},worksheetContent:{worksheet},environment:{mode:'authoring',locale:'de_DE',tableauVersion:'2025.2'},settings:{get:key => settings.get(key),set:(key,value) => settings.set(key,value),saveAsync:async () => {emit('settings-changed');},addEventListener:on}}};
+function refreshData(){emit('summary-data-changed');}
+function toggleData(){recursive=!recursive;large=false;refreshData();}
+function largeData(){large=true;recursive=false;refreshData();}
+function toggleEmpty(){empty=!empty;refreshData();}
+function toggleEncodings(){unconfigured=!unconfigured;refreshData();}
+function clearNativeSelection(){worksheet.clearSelectedMarksAsync();}
+</script><script defer src="/viz.js"></script></body></html>

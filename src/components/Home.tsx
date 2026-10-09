@@ -1,59 +1,30 @@
-import * as React from 'react';
 import { createRoot } from 'react-dom/client';
 import '../css/style.css';
-import hierimage from '../images/TableauHierarchyNavigator.png';
+import '../css/viz.css';
 import { LocalizationProvider, useTranslation } from './localization/I18n';
 
-function AHome() {
+function Home() {
     const {t}=useTranslation();
-    return (
-			<React.Fragment>
-				<div className='icontainer'>
-					<div className='box'>
-						<div className='left'>
-							<div><img src={hierimage} width='45%' alt={t('Hierarchy preview')} /></div>
-							<h1 className='iheader'>{t('Hierarchy Navigator Multiselect')}</h1>
-							<span className='tagline'>{t('Flat and recursive Tableau hierarchies with checkbox selection')}</span>
-						</div>
-						<div className='right'>
-							<h4 className='big'>{t('About this project')}</h4>
-							<p>
-								{t('This fork extends the open-source Tableau Hierarchy Navigator with shared checkbox multi-selection for Flat/Dimensional and Recursive hierarchies.')}
-							</p>
-							<ul>
-								<li>{t('Select leaves across multiple branches.')}</li>
-								<li>{t('Select or clear an entire parent subtree.')}</li>
-								<li>{t('See checked and indeterminate parent states.')}</li>
-								<li>{t('Handle incomplete Flat paths without visible NULL nodes.')}</li>
-								<li>{t('Apply the complete selection to filters on multiple Tableau worksheets.')}</li>
-								<li>{t('Validate IDs, labels, parent relationships, cycles, and hierarchy paths before saving.')}</li>
-								<li>{t('Try the configured hierarchy in a live, dashboard-safe preview before saving.')}</li>
-								<li>{t('Choose whether a parent selects terminal values, its entire subtree, or only its own direct ID.')}</li>
-								<li>{t('Search with highlighted matches, retained ancestor context, and optional automatic path expansion.')}</li>
-								<li>{t('Keep expanded branches, search text, and valid selections through dashboard data refreshes.')}</li>
-								<li>{t('Navigate the hierarchy fully by keyboard with visible focus and screen-reader announcements.')}</li>
-								<li>{t('Use the complete interface in English or German based on the Tableau or browser locale.')}</li>
-							</ul>
-							<h4 className='big'>{t('Test the Extension')}</h4>
-							<ol>
-								<li><a href='./hierarchynavigator-multiselect.trex'>{t('Download the multiselect test manifest')}</a>.</li>
-								<li>{t('In Tableau, add an Extension and choose My Extensions, then select the downloaded manifest.')}</li>
-								<li>{t('Configure the hierarchy source worksheet, ordered fields or recursive IDs, and one or more target worksheet/filter mappings.')}</li>
-								<li>{t('Use the included')} <a href='./Hierarchy%20Navigator%20Extension%20v2.twbx'>{t('sample workbook')}</a> {t('as a starting point if needed.')}</li>
-							</ol>
-							<p><b>{t('Testing note:')}</b> {t('This test build is deployed automatically from the latest master branch.')}</p>
-							<div className='gh' style={{paddingTop: '10px'}}>
-								<a href='https://github.com/bschabli/extension-hierarchy-navigator-multiselect'>{t('View source and documentation on GitHub')}</a>
-							</div>
-						</div>
-					</div>
-				</div>
-			</React.Fragment>
-    );
+    return <main className='hierarchy-viz viz-home'>
+        <span className='viz-eyebrow'>TABLEAU VIZ EXTENSION</span>
+        <h1>Hierarchy Navigator</h1>
+        <p className='viz-lead'>{t('Navigate your hierarchies and filter your dashboard with multi-selection, directly from a Tableau worksheet.')}</p>
+        <a className='viz-download' href='./hierarchy-viz.trex'>{t('Download Viz Extension')}</a>
+        <div className='viz-home-grid'>
+            <article><h2>Hierarchy Navigator</h2><p>{t('Browse flat and recursive hierarchies with multi-selection, search, breadcrumbs and keyboard navigation.')}</p></article>
+            <article><h2>{t('Native Tableau workflow')}</h2><p>{t('Assign fields on the Marks card. Use Tableau selection actions to filter other worksheets or update parameters.')}</p></article>
+        </div>
+        <h2>{t('Set up your hierarchy')}</h2>
+        <ol><li>{t('In Tableau 2024.2 or later, choose Add Extension on the worksheet Marks card and open the manifest.')}</li>
+            <li>{t('Hierarchy: ordered levels, or one label for a recursive hierarchy.')}</li>
+            <li>{t('Node ID: a unique key for each row.')}</li>
+            <li>{t('Parent ID: optional, enables a recursive hierarchy.')}</li>
+        </ol>
+        <p><a href='https://github.com/bschabli/extension-hierarchy-navigator-multiselect'>{t('Documentation and source code')}</a></p>
+        <p>{t('Existing dashboard workbooks can continue using the compatibility extension.')} <a href='./hierarchynavigator-multiselect.trex'>{t('Dashboard compatibility manifest')}</a></p>
+    </main>;
 }
 
-export default AHome;
-const container = document.getElementById('app') as HTMLElement;
-const root = createRoot(container);
-
-root.render(<LocalizationProvider><AHome /></LocalizationProvider>);
+const container=document.getElementById('app');
+if(container) { createRoot(container).render(<LocalizationProvider><Home/></LocalizationProvider>); }
+export default Home;

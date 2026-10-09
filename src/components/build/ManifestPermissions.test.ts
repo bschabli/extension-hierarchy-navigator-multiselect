@@ -56,3 +56,14 @@ for(const sourcePath of productionSources) {
 }
 
 console.log('Manifest permission tests passed.');
+
+for(const fileName of ['hierarchy-viz.trex', 'hierarchy-viz.local.trex']) {
+    const manifest=fs.readFileSync(path.join(sourceDirectory,fileName),'utf8');
+    assert(manifest.includes('<worksheet-extension '), `${fileName} must register a worksheet Viz Extension.`);
+    assert(!manifest.includes('<dashboard-extension '), `${fileName} must not use the dashboard host.`);
+    assert(manifest.includes('<min-api-version>1.12</min-api-version>'), 'Viz Extensions require API 1.12 or later.');
+    const encodings=Array.from(manifest.matchAll(/<encoding id="([^"]+)"/g), match => match[1]);
+    assert(JSON.stringify(encodings)===JSON.stringify(['hierarchy','id','parent']), 'Manifest and runtime encodings must expose only the three navigator encodings.');
+    assert(manifest.includes('/hierarchy-viz.html</url>'), 'Viz manifests must point to the worksheet entry point.');
+}
+console.log('Viz manifest host and encoding contracts passed.');

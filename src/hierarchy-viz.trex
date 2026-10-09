@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest manifest-version="0.1" xmlns="http://www.tableau.com/xml/extension_manifest">
+  <worksheet-extension id="com.bschabli.extensions.hierarchynavigator.viz" extension-version="3.0.0">
+    <default-locale>en_US</default-locale>
+    <name resource-id="name"/>
+    <description>Hierarchical navigation and multi-select filtering through native Tableau selection actions.</description>
+    <author name="Benedikt Schablitzki" email="benedikt@schablitzki.com" organization="Open Source" website="https://github.com/bschabli/extension-hierarchy-navigator-multiselect"/>
+    <min-api-version>1.12</min-api-version>
+    <source-location><url>https://bschabli.github.io/extension-hierarchy-navigator-multiselect/hierarchy-viz.html</url></source-location>
+    <icon/>
+    <encoding id="hierarchy">
+      <display-name resource-id="hierarchy">Hierarchy</display-name>
+      <role-spec><role-type>discrete-dimension</role-type></role-spec>
+      <tooltip>Ordered levels for flat data; one label field for recursive data.</tooltip>
+    </encoding>
+    <encoding id="id">
+      <display-name resource-id="id">Node ID</display-name>
+      <role-spec><role-type>discrete-dimension</role-type></role-spec>
+      <fields max-count="1"/>
+      <tooltip>A unique, non-null key for each hierarchy row.</tooltip>
+    </encoding>
+    <encoding id="parent">
+      <display-name resource-id="parent">Parent ID</display-name>
+      <role-spec><role-type>discrete-dimension</role-type></role-spec>
+      <fields max-count="1"/>
+      <tooltip>Optional parent key; adding this field enables recursive mode.</tooltip>
+    </encoding>
+  </worksheet-extension>
+  <resources>
+    <resource id="name"><text locale="en_US">Hierarchy Navigator</text><text locale="de_DE">Hierarchy Navigator</text></resource>
+    <resource id="hierarchy"><text locale="en_US">Hierarchy</text><text locale="de_DE">Hierarchie</text></resource>
+    <resource id="id"><text locale="en_US">Node ID</text><text locale="de_DE">Knoten-ID</text></resource>
+    <resource id="parent"><text locale="en_US">Parent ID</text><text locale="de_DE">Eltern-ID</text></resource>
+  </resources>
+</manifest>

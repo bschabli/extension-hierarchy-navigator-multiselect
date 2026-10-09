@@ -727,49 +727,18 @@ select::-ms-expand {
 
 /*  React simple tree menu */
 
-.rstm-toggle-icon {
-    display: inline-block; }
-    .rstm-toggle-icon-symbol {
-      width: 2rem;
-      height: 15px;
-      text-align: center;
-      line-height: 15px; }
-  
-  .rstm-tree-item-group {
-    list-style-type: none;
-    padding-left: 0px;
-    padding-right: 0px;
-    border-top: 1px solid #ccc;
+.hierarchy-tree-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
     text-align: left;
-    /* width: 100vw;  */
-    /* font-family: "Benton Sans"; */
-    display: inline;
 }
-  
-  .rstm-tree-item {
-    /* padding: 0.75rem 1rem; */
+.hierarchy-tree-row {
     cursor: pointer;
-   /*  color: #333; */
     background: none;
-    /* border-bottom: 1px solid #ccc; */
-    box-shadow: none;
-    z-index: unset;
-    position: relative; 
+    position: relative;
     white-space: nowrap;
-    /* 
-    Uncomment below if ellipses are to be used;
-    also may need adjustments to --active below
-    overflow: hidden;
-    text-overflow: ellipsis;
-    */
 }
-  .rstm-search {
-    padding: 1rem 1.5rem;
-    border: none;
-    width: 100%; 
-    /* font-family: "Benton Sans"; */
-    }
-
 
 /* Native hierarchy-level reordering. */
 .sortableList {
@@ -2423,4 +2392,12 @@ select::-ms-expand {
         justify-content: flex-end;
         width: 100%;
     }
+}
+
+.hierarchy-tree-cell {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    flex: 1;
+    box-sizing: border-box;
 }

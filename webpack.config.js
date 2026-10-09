@@ -14,6 +14,7 @@ module.exports = {
     ],
   },
   entry: {
+    viz: './src/components/viz/HierarchyViz.tsx',
     splash: './src/components/Home.tsx',
     config: './src/components/config/Config.tsx',
     hier: './src/components/extension/HierarchyNavigator.tsx'
@@ -66,6 +67,13 @@ module.exports = {
     extensions: ['.tsx', '.ts', '.js'],
   },
   plugins: [
+    new HtmlWebpackPlugin({
+      title: 'Hierarchy Navigator',
+      template: './src/hierarchy-viz.html',
+      filename: 'hierarchy-viz.html',
+      hash: true,
+      chunks: ['viz']
+    }),
     new HtmlWebpackPlugin({
       title: "Splash Page",
       template: './src/index.html',
